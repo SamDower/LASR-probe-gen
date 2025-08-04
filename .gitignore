@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Other
+src/lasr_tutorial/wandb/
+src/lasr_tutorial/.data/
