@@ -12,3 +12,11 @@ wheels/
 # Other
 src/lasr_tutorial/wandb/
 src/lasr_tutorial/.data/
+
+# secrets
+.env
+
+
+# datasets
+*.pt
+*.pkl
