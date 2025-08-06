@@ -1,7 +1,7 @@
 [project]
-name = "lasr-tutorial"
+name = "probe_gen"
 version = "0.1.0"
-description = "Add your description here"
+description = "Investigation into whether linear probes generalise to on policy behaviours from off policy data"
 readme = "README.md"
 authors = [
     { name = "Sam Dower", email = "samdower@hotmail.co.uk" }
@@ -12,6 +12,8 @@ dependencies = [
     "ipython>=8.18.1",
     "jupyter>=1.1.1",
     "matplotlib>=3.9.4",
+    "pandas>=2.3.1",
+    "scikit-learn>=1.6.1",
     "torch>=2.7.1",
     "torchvision>=0.22.1",
     "wandb>=0.21.0",
@@ -22,6 +24,4 @@ requires = ["uv_build>=0.8.4,<0.9.0"]
 build-backend = "uv_build"
 
 [tool.uv.workspace]
-members = [
-    "src/probe_gen",
-]
+members = []
