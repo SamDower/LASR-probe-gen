@@ -104,6 +104,7 @@ def train_probe(
     num_epochs: int = 2,
     early_stop_patience: int = 50,
     device: str = "cpu",
+    silent: bool = False,
 ) -> Tuple[LinearProbe, List[float], List[float]]:
     """
     Train a linear probe on activation data
@@ -207,10 +208,11 @@ def train_probe(
                 print(f"Early stopping at epoch {epoch + 1}")
                 break
 
-            print(
-                f"Epoch {epoch + 1}/{num_epochs}, Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}"
-            )
-        else:
+            if not silent:
+                print(
+                    f"Epoch {epoch + 1}/{num_epochs}, Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}"
+                )
+        elif not silent:
             print(f"Epoch {epoch + 1}/{num_epochs}, Train Loss: {avg_train_loss:.4f}")
 
         scheduler.step()
