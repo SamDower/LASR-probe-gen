@@ -310,8 +310,41 @@ def _load_existing_results(output_file):
 
     try:
         with open(output_file, "rb") as f:
-            results = pickle.load(f)
-        return results, len(results)
+            loaded_obj = pickle.load(f)
+
+        # If file contains a DataFrame (from an older run), convert to list-of-dicts
+        if isinstance(loaded_obj, pd.DataFrame):
+            df = loaded_obj
+            # Accept both legacy and new column names
+            # Expected new columns: input_formatted, input, model_outputs, activations
+            # Legacy columns: input_filtered, input, model_output, activations
+            results = []
+            for _, row in df.iterrows():
+                result_entry = {
+                    "original_index": None,
+                    "input": row.get("input")
+                    if "input" in df.columns
+                    else row.get("input_filtered"),
+                    "input_formatted": row.get("input_formatted")
+                    if "input_formatted" in df.columns
+                    else row.get("input"),
+                    "activations": row.get("activations", {}),
+                    "model_outputs": row.get("model_outputs")
+                    if "model_outputs" in df.columns
+                    else row.get("model_output", ""),
+                }
+                results.append(result_entry)
+            return results, len(results)
+
+        # If file already contains a list-like, return as-is
+        if isinstance(loaded_obj, list):
+            return loaded_obj, len(loaded_obj)
+
+        # Fallback: unknown object type, start fresh
+        print(
+            f"Warning: Unexpected object type in {output_file}: {type(loaded_obj)}. Starting fresh."
+        )
+        return [], 0
     except (pickle.PickleError, FileNotFoundError, EOFError) as e:
         print(f"Could not load existing results: {e}. Starting fresh.")
         return [], 0
@@ -323,10 +356,10 @@ def _create_result_entry(
     """Create a standardized result entry."""
     return {
         "original_index": original_idx,
-        "input_filtered": original_input,  # This is the unformatted/filtered input
-        "input": formatted_input,  # This is the formatted input used by the model
+        "input": original_input,  # Human input / raw prompt
+        "input_formatted": formatted_input,  # Exact input after chat template
         "activations": activations,
-        "model_output": model_output,
+        "model_outputs": model_output,
     }
 
 
@@ -382,9 +415,23 @@ def _process_failed_batch(batch_prompts, human_inputs, start_idx):
 
 
 def _save_results_to_file(results, output_file):
-    """Save results to pickle file."""
-    with open(output_file, "wb") as f:
+    """Save results to pickle file atomically to avoid corruption."""
+    tmp_path = f"{output_file}.tmp"
+    with open(tmp_path, "wb") as f:
         pickle.dump(results, f)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, output_file)
+
+
+def _save_dataframe_atomic(df, output_file):
+    """Save a DataFrame to pickle atomically."""
+    tmp_path = f"{output_file}.tmp"
+    df.to_pickle(tmp_path)
+    # Ensure data hits disk
+    with open(tmp_path, "rb") as f:
+        os.fsync(f.fileno())
+    os.replace(tmp_path, output_file)
 
 
 def process_batched_dataframe_incremental(
@@ -411,7 +458,7 @@ def process_batched_dataframe_incremental(
     Returns:
         int: Number of processed examples
     """
-    # Extract and format prompts
+    # Extract raw prompts (will be formatted exactly once below)
     dataset = df[prompt_column].tolist()
 
     # Extract human inputs if specified
@@ -430,8 +477,15 @@ def process_batched_dataframe_incremental(
         f"Processing {len(formatted_prompts)} examples in {num_batches} batches of size {batch_size}"
     )
 
-    # Load existing results if available
-    results, num_existing = _load_existing_results(output_file)
+    # Define incremental checkpoint path (list of dicts)
+    incremental_path = (
+        output_file.replace(".pkl", "_incremental.pkl")
+        if output_file.endswith(".pkl")
+        else f"{output_file}_incremental.pkl"
+    )
+
+    # Load existing results if available (resume from incremental list file)
+    results, num_existing = _load_existing_results(incremental_path)
     start_batch = num_existing // batch_size
 
     if num_existing > 0:
@@ -469,21 +523,39 @@ def process_batched_dataframe_incremental(
                 batch_prompts, human_inputs, start_idx
             )
 
-        # Add batch results and save
+        # Add batch results and save incremental checkpoints separately
         results.extend(batch_results)
-        _save_results_to_file(results, output_file)
+        _save_results_to_file(results, incremental_path)
+        # Also save a partial DataFrame table to the final --out path
+        partial_df = pd.DataFrame(
+            {
+                "input_formatted": [r["input_formatted"] for r in results],
+                "input": [r["input"] for r in results],
+                "model_outputs": [r["model_outputs"] for r in results],
+                "activations": [r["activations"] for r in results],
+            }
+        )
+        _save_dataframe_atomic(partial_df, output_file)
 
         print(
             f"Saved batch {batch_idx + 1}/{num_batches} - Total processed: {len(results)} examples"
         )
 
     print(f"Completed processing {len(results)} examples")
-    print(f"Results saved to: {output_file}")
+    print(f"Incremental checkpoints saved to: {incremental_path}")
 
-    # Also save as a properly structured DataFrame
-    df_output_file = output_file.replace(".pkl", "_dataframe.pkl")
-    final_df = save_results_as_dataframe(output_file, df_output_file)
-
+    # Build and save final DataFrame with new schema directly to --out
+    final_df = pd.DataFrame(
+        {
+            "input_formatted": [r["input_formatted"] for r in results],
+            "input": [r["input"] for r in results],
+            "model_outputs": [r["model_outputs"] for r in results],
+            "activations": [r["activations"] for r in results],
+        }
+    )
+    final_df.to_pickle(output_file)
+    print(f"Final DataFrame saved to: {output_file}")
+    print(f"DataFrame shape: {final_df.shape}")
     return len(results)
 
 
@@ -509,11 +581,33 @@ def convert_to_dataframe(results):
     Returns:
         pd.DataFrame: DataFrame with columns (input_filtered, input, model_output, activations)
     """
+    # Accept both old and new keys to support resuming mid-run, but output legacy schema
     df_data = {
-        "input_filtered": [r["input_filtered"] for r in results],
-        "input": [r["input"] for r in results],
-        "model_output": [r["model_output"] for r in results],
-        "activations": [r["activations"] for r in results],
+        "input_filtered": [
+            (
+                r.get("input_filtered")
+                if r.get("input_filtered") is not None
+                else r.get("input")
+            )
+            for r in results
+        ],
+        "input": [
+            (
+                r.get("input_formatted")
+                if r.get("input_formatted") is not None
+                else r.get("input")
+            )
+            for r in results
+        ],
+        "model_output": [
+            (
+                r.get("model_output")
+                if r.get("model_output") is not None
+                else r.get("model_outputs")
+            )
+            for r in results
+        ],
+        "activations": [r.get("activations") for r in results],
     }
 
     return pd.DataFrame(df_data)
@@ -588,9 +682,8 @@ def process_file(
 
     print(f"Loaded {len(human_list)} examples")
 
-    # Format prompts and create DataFrame
-    formatted = format_prompts_from_strings(tokenizer, human_list)
-    df = pd.DataFrame({"inputs": formatted, "human_inputs": human_list})
+    # Create DataFrame with raw human inputs only (formatting happens once later)
+    df = pd.DataFrame({"human_inputs": human_list})
 
     # Process incrementally
     print(f"Processing data and saving to {output_file}...")
@@ -599,7 +692,7 @@ def process_file(
         model,
         tokenizer,
         df,
-        "inputs",
+        "human_inputs",
         batch_size=1,
         output_file=output_file,
         human_input_column="human_inputs",
@@ -607,18 +700,7 @@ def process_file(
 
     print(f"Processed {num_processed} examples")
 
-    # Demonstrate loading results
-    print("Loading and converting results...")
-    results = load_incremental_results(output_file)
-    final_df = convert_to_dataframe(results)
-
-    if len(results) > 0:
-        print(f"Final DataFrame shape: {final_df.shape}")
-        if final_df.iloc[0]["activations"]:
-            first_activation_shape = final_df.iloc[0]["activations"][0].shape
-            print(f"First activation tensor shape: {first_activation_shape}")
-    else:
-        print("No results to display")
+    # Conversion/inspection removed per request
 
 
 def main():
