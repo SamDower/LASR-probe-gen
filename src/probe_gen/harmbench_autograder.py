@@ -24,14 +24,17 @@ Environment Variables:
 """
 
 import argparse
+import json
 import os
 import sys
 
 import pandas as pd
 import torch
 from huggingface_hub import hf_hub_download, login
-from transformers import AutoModelForCausalLM, AutoTokenizer        # open jsonl file
-import json
+from tqdm import tqdm
+from transformers import AutoModelForCausalLM, AutoTokenizer  # open jsonl file
+
+tqdm.pandas()  # enables progress_apply
 
 # Llama-2 classifier prompt templates
 LLAMA2_CLS_PROMPT = {
@@ -211,12 +214,12 @@ def rate_dataset(
         )[0]
 
     print("Applying classifier to dataset...")
-    df[f"rating_{response_column}"] = df.apply(classify_row, axis=1)
+    df[f"rating_{response_column}"] = df.progress_apply(classify_row, axis=1)
 
     print("Classification complete!")
 
     # Save the results
-    df.to_pickle(output_path)
+    df.to_json(output_path, orient="records", lines=True)
     print(f"Results saved to: {output_path}")
 
     return df
@@ -318,36 +321,31 @@ def main():
         sys.exit(1)
 
 
-# if __name__ == "__main__":
-#     main()
-
 def load_dataset_from_jsonl(dataset_file):
-    
     # for dataset in datasets[:1]:
     df = pd.DataFrame(columns=["input", "output"])
-    with open(dataset_file, 'r') as file:
+    with open(dataset_file, "r") as file:
         for line in file:
             data = json.loads(line)
-            inputs = json.loads(data['inputs'])
-            
-            human = inputs[0]['content']
-            assistant = inputs[1]['content']
-            new_row = pd.DataFrame({'input': [human], 'output': [assistant]})
+            inputs = json.loads(data["inputs"])
+
+            human = inputs[0]["content"]
+            assistant = inputs[1]["content"]
+            new_row = pd.DataFrame({"input": [human], "output": [assistant]})
             df = pd.concat([df, new_row], ignore_index=True)
     return df
 
 
-def grade_data(repo_id, filename, request_column, response_column, output_path, hf_token, verbose):
+def grade_data(
+    filename, request_column, response_column, output_path, hf_token, verbose
+):
     try:
-        df = load_dataset_from_jsonl("../../data/refusal/on_policy_balanced.jsonl")
+        df = load_dataset_from_jsonl(filename)
         print(f"Loaded DataFrame with shape: {df.shape}")
-
 
         # Verify required columns exist
         if request_column not in df.columns:
-            raise ValueError(
-                f"Request column '{request_column}' not found in dataset"
-            )
+            raise ValueError(f"Request column '{request_column}' not found in dataset")
         if response_column not in df.columns:
             raise ValueError(
                 f"Response column '{response_column}' not found in dataset"
@@ -376,4 +374,13 @@ def grade_data(repo_id, filename, request_column, response_column, output_path, 
         sys.exit(1)
 
 
-grade_data("off_policy_raw.jsonl", "input", "output", "out.json", "", True)
+if __name__ == "__main__":
+    # main()
+    grade_data(
+        filename="data/refusal/off_policy_raw.jsonl",
+        request_column="input",
+        response_column="output",
+        output_path="data/refusal/off_policy_harmgrader.jsonl",
+        hf_token="",
+        verbose=False,
+    )
