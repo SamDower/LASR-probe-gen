@@ -29,6 +29,36 @@ if hf_token:
     login(token=hf_token)
 
 
+def _sanitize_for_path(text: str) -> str:
+    """Sanitize arbitrary text for safe filesystem paths."""
+    import re
+
+    text = text.replace(os.sep, "_")
+    text = re.sub(r"[^A-Za-z0-9._-]+", "_", text)
+    text = re.sub(r"_+", "_", text).strip("._-")
+    return text or "unnamed"
+
+
+def _build_output_path(
+    base_out: str, model_name: str, policy: str, behaviour: str
+) -> str:
+    """Construct the final output path under datasets/<behaviour>/<model>__<policy>/.
+
+    Appends policy to the provided base filename to avoid accidental overrides.
+    """
+    safe_model = _sanitize_for_path(model_name)
+    safe_policy = _sanitize_for_path(policy)
+    safe_behaviour = _sanitize_for_path(behaviour)
+
+    base_dir = os.path.join("datasets", safe_behaviour, f"{safe_model}__{safe_policy}")
+    os.makedirs(base_dir, exist_ok=True)
+
+    root, ext = os.path.splitext(os.path.basename(base_out))
+    ext = ext if ext else ".pkl"
+    final_name = f"{_sanitize_for_path(root)}__{safe_policy}{ext}"
+    return os.path.join(base_dir, final_name)
+
+
 def get_pad_token(model_id, tokenizer):
     if tokenizer.pad_token is not None:
         return tokenizer.pad_token
@@ -103,6 +133,27 @@ def format_prompts_from_strings(tokenizer, prompt_strings):
     return formatted_prompts
 
 
+def format_prompts_from_pairs(tokenizer, human_list, assistant_list):
+    """
+    Takes lists of human and assistant strings and formats them as a single dialogue turn.
+    Returns chat-formatted strings without a generation prompt (teacher forcing / off-policy).
+    """
+    assert len(human_list) == len(assistant_list), (
+        "human_list and assistant_list must be same length"
+    )
+    formatted_prompts = []
+    for human, assistant in zip(human_list, assistant_list):
+        messages = [
+            {"role": "user", "content": human},
+            {"role": "assistant", "content": assistant},
+        ]
+        formatted_prompt = tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=False
+        )
+        formatted_prompts.append(formatted_prompt)
+    return formatted_prompts
+
+
 def _prepare_batch_inputs(tokenizer, prompts, max_length=512):
     """Prepare and tokenize batch inputs."""
     # Handle single prompt case
@@ -118,7 +169,7 @@ def _prepare_batch_inputs(tokenizer, prompts, max_length=512):
     )
 
 
-def _generate_sequences(model, tokenizer, inputs, max_new_tokens=200, temperature=0.7):
+def _generate_sequences(model, tokenizer, inputs, max_new_tokens=200, temperature=0.0):
     """
     Generate sequences from inputs with smart temperature handling.
 
@@ -135,11 +186,12 @@ def _generate_sequences(model, tokenizer, inputs, max_new_tokens=200, temperatur
     model.eval()
     with torch.no_grad():
         # Prepare base generation arguments
-        base_args = {
-            **inputs,
-            "max_new_tokens": max_new_tokens,
-            "pad_token_id": tokenizer.pad_token_id,
-        }
+        pad_id = (
+            tokenizer.pad_token_id
+            if tokenizer.pad_token_id is not None
+            else tokenizer.eos_token_id
+        )
+        base_args = {**inputs, "max_new_tokens": max_new_tokens, "pad_token_id": pad_id}
 
         # Smart temperature handling with clean parameter passing
         if temperature == 0.0:
@@ -167,7 +219,7 @@ def _generate_sequences(model, tokenizer, inputs, max_new_tokens=200, temperatur
                 "temperature": clamped_temp,
             }
 
-        outputs = model.generate(**generation_args)
+        outputs = model.generate(**generation_args)  # this gives input + output
     return outputs
 
 
@@ -233,10 +285,12 @@ def get_batch_res_activations(
     model,
     tokenizer,
     prompts,
+    outputs=None,
     verbose=False,
     max_length=512,
     max_new_tokens=200,
     temperature=0.0,
+    do_generation=True,
 ):
     """
     Efficient batch version - get activations from all layers for multiple prompts.
@@ -254,6 +308,7 @@ def get_batch_res_activations(
             - 0.1-1.0: Low to moderate randomness (good for most tasks)
             - 1.0-2.0: High randomness (creative generation)
             - >2.0: Very high randomness (automatically clamped to 2.0)
+        outputs: If provided, use these outputs instead of generating new ones (on policy vs. off policy)
 
     Returns:
         tuple: (activations_dict, decoded_outputs, input_length)
@@ -268,8 +323,15 @@ def get_batch_res_activations(
     input_length = inputs.input_ids.shape[1]
     batch_size = inputs.input_ids.shape[0]
 
-    # Step 2: Generate sequences
-    outputs = _generate_sequences(model, tokenizer, inputs, max_new_tokens, temperature)
+    # Step 2: Build sequences (input_ids covering input [+ generated tokens])
+    if outputs is not None:
+        sequences = outputs
+    elif do_generation:
+        sequences = _generate_sequences(
+            model, tokenizer, inputs, max_new_tokens, temperature
+        )  # tensor shape: [batch, input_len + new_len]
+    else:
+        sequences = inputs.input_ids
 
     # Clean up input tensors
     del inputs
@@ -281,23 +343,32 @@ def get_batch_res_activations(
     try:
         # Forward pass to capture activations
         with torch.no_grad():
-            model(outputs)
+            # Build attention mask from pad token id to safely handle padding
+            if isinstance(sequences, torch.Tensor):
+                attention_mask = (
+                    sequences.ne(tokenizer.pad_token_id).long().to(sequences.device)
+                )
+                model(input_ids=sequences, attention_mask=attention_mask)
+            else:
+                # Fallback for unexpected type (should not happen)
+                model(sequences)
     finally:
         # Always clean up hooks
         for hook in hooks:
             hook.remove()
 
     # Step 4: Decode outputs
-    raw_outputs = _decode_outputs(tokenizer, outputs, verbose)
+    raw_outputs = _decode_outputs(tokenizer, sequences, verbose)
 
     if verbose:
         print("\nBatch processing summary:")
         print(f"  Processed {batch_size} prompts")
         print(f"  Original input length: {input_length}")
-        print(f"  Final sequence length: {outputs.shape[1]}")
+        if isinstance(sequences, torch.Tensor):
+            print(f"  Final sequence length: {sequences.shape[1]}")
 
     # Final cleanup
-    del outputs
+    del sequences
     _cleanup_gpu_memory()
 
     return activations, raw_outputs, input_length
@@ -312,35 +383,32 @@ def _load_existing_results(output_file):
         with open(output_file, "rb") as f:
             loaded_obj = pickle.load(f)
 
-        # If file contains a DataFrame (from an older run), convert to list-of-dicts
+        # If file contains a DataFrame (from an older/partial run), convert to list-of-dicts
         if isinstance(loaded_obj, pd.DataFrame):
             df = loaded_obj
-            # Accept both legacy and new column names
-            # Expected new columns: input_formatted, input, model_outputs, activations
-            # Legacy columns: input_filtered, input, model_output, activations
             results = []
             for _, row in df.iterrows():
-                result_entry = {
-                    "original_index": None,
-                    "input": row.get("input")
-                    if "input" in df.columns
-                    else row.get("input_filtered"),
-                    "input_formatted": row.get("input_formatted")
-                    if "input_formatted" in df.columns
-                    else row.get("input"),
-                    "activations": row.get("activations", {}),
-                    "model_outputs": row.get("model_outputs")
-                    if "model_outputs" in df.columns
-                    else row.get("model_output", ""),
-                }
-                results.append(result_entry)
+                results.append(
+                    {
+                        "original_index": None,
+                        "input": row.get("input")
+                        if "input" in df.columns
+                        else row.get("input_filtered"),
+                        "input_formatted": row.get("input_formatted")
+                        if "input_formatted" in df.columns
+                        else row.get("input"),
+                        "activations": row.get("activations", {}),
+                        "model_outputs": row.get("model_outputs")
+                        if "model_outputs" in df.columns
+                        else row.get("model_output", ""),
+                    }
+                )
             return results, len(results)
 
-        # If file already contains a list-like, return as-is
+        # If already a list, return as-is
         if isinstance(loaded_obj, list):
             return loaded_obj, len(loaded_obj)
 
-        # Fallback: unknown object type, start fresh
         print(
             f"Warning: Unexpected object type in {output_file}: {type(loaded_obj)}. Starting fresh."
         )
@@ -442,6 +510,7 @@ def process_batched_dataframe_incremental(
     batch_size=1,
     output_file="activations_incremental.pkl",
     human_input_column=None,
+    do_generation=True,
 ):
     """
     Process a pandas DataFrame and save activations incrementally after each batch.
@@ -469,7 +538,12 @@ def process_batched_dataframe_incremental(
         human_inputs = dataset
 
     print("Formatting prompts...")
-    formatted_prompts = format_prompts_from_strings(tokenizer, dataset)
+    if do_generation:
+        # For on-policy, format as user-only prompts with generation prompt
+        formatted_prompts = format_prompts_from_strings(tokenizer, dataset)
+    else:
+        # For off-policy, prompts are already full sequences in df[prompt_column]
+        formatted_prompts = dataset
 
     # Calculate processing parameters
     num_batches = (len(formatted_prompts) + batch_size - 1) // batch_size
@@ -503,7 +577,11 @@ def process_batched_dataframe_incremental(
             # Clear GPU memory and get activations
             _cleanup_gpu_memory()
             batch_activations, batch_outputs, input_length = get_batch_res_activations(
-                model, tokenizer, batch_prompts, verbose=False
+                model,
+                tokenizer,
+                batch_prompts,
+                verbose=False,
+                do_generation=do_generation,
             )
 
             # Process successful batch
@@ -668,13 +746,32 @@ def load_jsonl_data(file_path):
 
 
 def process_file(
-    model, tokenizer, dataset_path: str, output_file: str, batch_size: int = 1
+    model,
+    tokenizer,
+    dataset_path: str,
+    output_file: str,
+    batch_size: int = 1,
+    policy: str = "on_policy",
+    behaviour: str = "refusal",
+    sample: int = 0,
 ):
-    """Process data from a JSONL file and save results."""
+    """Process data from a JSONL file and save results.
+
+    policy options:
+      - on_policy: feed human prompts and generate model outputs
+      - off_policy_prompt: alias of off_policy_other_model (teacher forcing)
+      - off_policy_other_model: feed human+assistant as fixed targets (no generation)
+    """
     print("\n=== File Processing ===")
 
     # Load data from file
     human_list, assistant_list, full_list = load_jsonl_data(dataset_path)
+
+    # Optional sampling for quick tests
+    if sample and sample > 0:
+        human_list = human_list[:sample]
+        assistant_list = assistant_list[:sample]
+        full_list = full_list[:sample]
 
     if not human_list:
         print(f"No data loaded from {dataset_path}")
@@ -682,20 +779,46 @@ def process_file(
 
     print(f"Loaded {len(human_list)} examples")
 
-    # Create DataFrame with raw human inputs only (formatting happens once later)
-    df = pd.DataFrame({"human_inputs": human_list})
+    # Build DataFrame and controls based on policy
+    if policy == "on_policy":
+        df = pd.DataFrame({"human_inputs": human_list})
+        prompt_column = "human_inputs"
+        do_generation = True
+        human_input_column = "human_inputs"
+    elif policy in ("off_policy_other_model", "off_policy_prompt"):
+        formatted_pairs = format_prompts_from_pairs(
+            tokenizer, human_list, assistant_list
+        )
+        df = pd.DataFrame(
+            {
+                "full_dialogue": formatted_pairs,
+                "human_inputs": human_list,
+            }
+        )
+        prompt_column = "full_dialogue"
+        do_generation = False
+        human_input_column = "human_inputs"
+    else:
+        raise ValueError(
+            f"Unknown policy '{policy}'. Use one of: on_policy, off_policy_prompt, off_policy_other_model"
+        )
 
     # Process incrementally
-    print(f"Processing data and saving to {output_file}...")
+    # Build deterministic output path under datasets/<behaviour>/<model>__<policy>/
+    final_out_path = _build_output_path(
+        output_file, model.config._name_or_path, policy, behaviour
+    )
+    print(f"Processing data and saving to {final_out_path}...")
 
     num_processed = process_batched_dataframe_incremental(
         model,
         tokenizer,
         df,
-        "human_inputs",
-        batch_size=1,
-        output_file=output_file,
-        human_input_column="human_inputs",
+        prompt_column,
+        batch_size=batch_size,
+        output_file=final_out_path,
+        human_input_column=human_input_column,
+        do_generation=do_generation,
     )
 
     print(f"Processed {num_processed} examples")
@@ -711,6 +834,19 @@ def main():
     parser.add_argument("--out", default="my_activations.pkl")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--sample", type=int, default=0, help="If >0, run on N samples")
+    parser.add_argument(
+        "--policy",
+        type=str,
+        default="on_policy",
+        choices=["on_policy", "off_policy_prompt", "off_policy_other_model"],
+        help="Activation policy: generate (on_policy) or teacher-forced (off_policy_*)",
+    )
+    parser.add_argument(
+        "--behaviour",
+        type=str,
+        default="refusal",
+        help="Name of the behaviour bucket; outputs saved under datasets/<behaviour>/",
+    )
     args = parser.parse_args()
 
     print(f"Loading model: {args.model}")
@@ -722,6 +858,9 @@ def main():
         dataset_path=args.data,
         output_file=args.out,
         batch_size=args.batch_size,
+        policy=args.policy,
+        behaviour=args.behaviour,
+        sample=args.sample,
     )
 
 
