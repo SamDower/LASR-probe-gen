@@ -9,7 +9,7 @@ cd LASR-probe-gen/
 ## 1. Sample and annotate dataset (LLM) instructions
 
 - Uses GPT-4o API to label refusal behaviour
-- Takes 5 minutes to do 1000 samples
+- Takes 4 minutes to do 10,000 samples
 
 For off-policy labels:
 ```

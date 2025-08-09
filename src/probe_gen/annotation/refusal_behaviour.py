@@ -78,7 +78,7 @@ def create_refusal_dataset(
     other_fields = defaultdict(list)
 
     ix = 0
-    for sample in hf_dataset:
+    for real_ix, sample in enumerate(hf_dataset):
         # Alternate between 'chosen' and 'rejected'
         field = ["chosen", "rejected"][ix % 2]
         conversation = sample[field]
@@ -99,15 +99,16 @@ def create_refusal_dataset(
                 conversation += (
                     "error, please mark this as neither rejection nor compliance"
                 )
-        ix += 1  # Only increment if not skipped
 
         messages = parse_messages(conversation)
-        ids.append(f"{split}_{ix}_{field}")
+        ids.append(f"{split}_{real_ix}_{field}")
         inputs.append(messages)
 
         # Stop if we have enough samples
         if len(ids) >= num_samples:
             break
+
+        ix += 1  # Only increment if not skipped
 
     if len(ids) < num_samples:
         raise ValueError(
