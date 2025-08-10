@@ -8,15 +8,18 @@ authors = [
 ]
 requires-python = ">=3.9"
 dependencies = [
+    "einops>=0.8.1",
     "huggingface-hub>=0.34.3",
     "ipykernel>=6.30.0",
     "ipython>=8.18.1",
+    "jaxtyping>=0.2.36",
     "jupyter>=1.1.1",
     "matplotlib>=3.9.4",
     "pandas>=2.3.1",
     "scikit-learn>=1.6.1",
     "torch>=2.7.1",
     "torchvision>=0.22.1",
+    "transformers>=4.55.0",
     "wandb>=0.21.0",
 ]
 
