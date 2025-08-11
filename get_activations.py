@@ -95,6 +95,11 @@ def get_model(model_name: str):
 # Note: Model and tokenizer are now loaded in main() via CLI args
 
 
+def suggest_layer(total_layers):
+    # Sweet spot seems to be 60-70% through
+    return int(total_layers * 0.65)
+
+
 def get_res_layers_to_enumerate(model):
     model_name = model.config._name_or_path
     if "gpt" in model_name:
@@ -169,7 +174,7 @@ def _prepare_batch_inputs(tokenizer, prompts, max_length=512):
     )
 
 
-def _generate_sequences(model, tokenizer, inputs, max_new_tokens=200, temperature=0.0):
+def _generate_sequences(model, tokenizer, inputs, max_new_tokens=75, temperature=0.0):
     """
     Generate sequences from inputs with smart temperature handling.
 
@@ -246,12 +251,21 @@ def _create_activation_hook(activations_dict, layer_name, verbose=False):
 
 
 def _register_activation_hooks(model, verbose=False):
-    """Register hooks on all model layers and return the hooks and activations dict."""
+    """Register hooks on later model layers only and return the hooks and activations dict."""
     activations = {}
     layers_to_enum = get_res_layers_to_enumerate(model)
     hooks = []
 
-    for i, layer in enumerate(layers_to_enum):
+    # Only use later layers starting from suggested layer index
+    total_layers = len(layers_to_enum)
+    start_layer_idx = suggest_layer(total_layers)
+
+    if verbose:
+        print(
+            f"Total layers: {total_layers}, starting from layer {start_layer_idx} (65% through)"
+        )
+
+    for i, layer in enumerate(layers_to_enum[start_layer_idx:], start=start_layer_idx):
         hook_fn = _create_activation_hook(activations, i, verbose)
         hook_handle = layer.register_forward_hook(hook_fn)
         hooks.append(hook_handle)
@@ -288,7 +302,7 @@ def get_batch_res_activations(
     outputs=None,
     verbose=False,
     max_length=512,
-    max_new_tokens=200,
+    max_new_tokens=75,
     temperature=0.0,
     do_generation=True,
 ):
