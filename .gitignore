@@ -12,6 +12,7 @@ wheels/
 # Other
 src/lasr_tutorial/wandb/
 src/lasr_tutorial/.data/
+notebooks/wandb/
 
 # secrets
 .env
