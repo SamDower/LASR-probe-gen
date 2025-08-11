@@ -9,7 +9,7 @@ cd LASR-probe-gen/
 ## 1. Sample and annotate dataset (LLM) instructions
 
 - Uses GPT-4o API to label refusal behaviour
-- Takes 5 minutes to do 1000 samples
+- Takes 4 minutes to do 10,000 samples
 
 For off-policy labels:
 ```
@@ -32,7 +32,13 @@ For renting a GPU:
 - Needs 60 GB GPU
 
 ```
-uv run get_activations.py
+python get_activations.py \
+  --model "meta-llama/Llama-3.2-3B-Instruct" \
+  --data "/rds/general/user/nk1924/home/LASR-probe-gen/data/refusal/anthropic_raw_apr_23.jsonl" \
+  --out "/rds/general/user/nk1924/home/LASR-probe-gen/my_activations.pkl" \
+  --batch-size 1 \
+  --policy off_policy_other_model \
+  --behaviour refusal
 ```
 
 
