@@ -23,6 +23,9 @@ src/lasr_tutorial/.data/
 # logs
 logs/
 
+#hf cache   
+hf_cache/
+
 # datasets
 *.pt
 *.pkl
