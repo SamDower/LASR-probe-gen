@@ -6,6 +6,10 @@ dist/
 wheels/
 *.egg-info
 
+#.sh scripts
+*.sh
+*.log
+
 # Virtual environments
 .venv
 
@@ -16,6 +20,8 @@ src/lasr_tutorial/.data/
 # secrets
 .env
 
+# logs
+logs/
 
 # datasets
 *.pt
