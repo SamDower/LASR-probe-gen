@@ -6,6 +6,10 @@ dist/
 wheels/
 *.egg-info
 
+#.sh scripts
+*.sh
+*.log
+
 # Virtual environments
 .venv
 
@@ -17,6 +21,11 @@ notebooks/wandb/
 # secrets
 .env
 
+# logs
+logs/
+
+#hf cache   
+hf_cache/
 
 # datasets
 *.pt
