@@ -6,10 +6,13 @@ cd LASR-probe-gen/
 ```
 
 
-## 1. Sample and annotate dataset (LLM) instructions
+## 1. Sample and annotate dataset
 
 - Uses GPT-4o API to label refusal behaviour
 - Takes 4 minutes to do 10,000 samples
+
+Hardware requirements:
+- n/a
 
 For off-policy labels:
 ```
@@ -21,15 +24,15 @@ uv run src/probe_gen/annotation/refusal_behaviour.py --path data/refusal/on_poli
 ```
 
 
-## 2. Get activations for dataset instructions
+## 2. Get activations for dataset
 
 - Uses meta-llama/Llama-3.2-3B-Instruct to get actviations for on policy data
 - Takes 1-2 hours to generate output activations for 1000 samples
 
-For renting a GPU:
-- Needs ??? GB disk
-- Needs ??? GB RAM
+Hardware requirements:
 - Needs 60 GB GPU
+- Needs ??? GB RAM
+
 
 ```
 python get_activations.py \
@@ -41,15 +44,53 @@ python get_activations.py \
   --behaviour refusal
 ```
 
+## 3. Train probes on activations dataset
+- Currently just using notebooks/TrainProbe.ipynb and running cells
+
+Hardware requirements:
+- Needs ??? GB RAM
+
 
 # Other
-## ~~ Sample and annotate dataset (classifier) instructions~~
+## Connect vscode to vast.ai
+Open a terminal that isnt WSL (e.g. Windows/ Mac/ Native Linux) and run this command while just pressing enter for each option, to set up a private and public ssh key:
+```
+ssh-keygen -t rsa
+```
+Then copy the contents of the public key file (e.g. at "C:\Users\<username_here>\.ssh\id_rsa.pub") and add it to vast.ai at https://cloud.vast.ai/manage-keys/ clicking 'SSH Keys' tab at the top.\
+Then create a GPU instance and click on 'Terminal Connection Options' near the 'Open' button to get the ssh command, which you then add to to specify your private ssh key location to. It should look like this:
+```
+ ssh -p 55327 root@199.126.134.31 -L 8080:localhost:8080 -i ~\.ssh\id_rsa
+ ```
+Then open vscode without WSL connection and select 'Connect to host...' and paste the ssh command in. \
+It might ask you to choose a config to save the ssh instruction to, in which case do that and then redo 'Connect to host...' but this time just select the ssh IP from the list instead of pasting the command. \
+You should be connected. Now to open the workspace folder, click File → Open folder instead of using the explorer menu. \
+To move files over, you can git clone or pull from google drive or scp from local files to the instance, for example:
+```
+scp -P 55327 local_file.py root@199.126.134.31:/workspace
+```
+
+
+## Run notebooks in vscode connected to vast.ai
+Same as below but it might ask you to install vscode extensions for python and jupyter first and then click 'Select kernel' in the top right. Also, it may be possible to avoid creating a new kernel if selecting the 'probe-gen .venv' works.
+
+
+## Run notebooks in vast.ai browser
+When not running individual python scripts and want to use JupyterLabs, need to set up a new kernel in the Jupyter terminal:
+```
+uv sync
+uv run python -m ipykernel install --user --name=uv-env --display-name "Python (uv)"
+```
+Only now open the notebook and go to Kernel → Change Kernel → Python (uv).
+
+
+## Use autograder on dataset (unused)
 
 - Uses cais/HarmBench-Llama-2-13b-cls to label refusal
 - Takes 5 minutes to do 1000 samples
 - Specify main function for which file to take in
 
-For renting a GPU:
+Hardware requirements:
 - Needs 40 GB disk
 - Needs 30-70 GB RAM
 - Needs 100 GB GPU
