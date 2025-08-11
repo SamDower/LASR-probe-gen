@@ -20,13 +20,14 @@ def _create_attention_mask(tensor_list, max_len):
     return torch.cat(masks, dim=0)
 
 
-def load_hf_activations_and_labels(repo_id, filename, layer):
+def load_hf_activations_and_labels(repo_id, activations_filename, labels_filename, layer):
     """
     Fits the probe to training data.
 
     Args:
         repo_id (str): Huggingface repository id.
-        filename (str): Huggingface file name.
+        activations_filename (str): Huggingface file name for activations.
+        labels_filename (str): Labels filename e.g. on_policy_raw.jsonl.
         layer (int): Model layer we should get the activations from. 
     
     Returns:
@@ -36,7 +37,7 @@ def load_hf_activations_and_labels(repo_id, filename, layer):
     """
     # Load the labels (TODO: currently from the json file but we will need to change this to load from huggingface as well)
     labels_list = []
-    with open("../data/refusal/on_policy_raw.jsonl", 'r') as file:
+    with open(labels_filename, 'r') as file:
         for line in file:
             data = json.loads(line)
             if data["scale_labels"] <= 5:
@@ -47,7 +48,7 @@ def load_hf_activations_and_labels(repo_id, filename, layer):
     print("loaded labels")
 
     # Load activations
-    file_path = hf_hub_download(repo_id=repo_id, filename=filename, repo_type="dataset")
+    file_path = hf_hub_download(repo_id=repo_id, filename=activations_filename, repo_type="dataset")
     df = pd.read_pickle(file_path)
 
     # Extract all activations
