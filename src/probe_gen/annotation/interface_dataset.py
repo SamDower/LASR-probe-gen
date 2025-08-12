@@ -1,10 +1,10 @@
 import hashlib
 import json
+import os
 import pickle
 import random
 from enum import Enum
 from functools import cached_property
-from pathlib import Path
 from typing import (
     Any,
     Callable,
@@ -270,7 +270,7 @@ class BaseDataset(BaseModel, Generic[R]):
 
     @classmethod
     def from_jsonl(
-        cls, file_path: Path, field_mapping: Optional[Mapping[str, str]] = None
+        cls, file_path: str, field_mapping: Optional[Mapping[str, str]] = None
     ) -> Self:
         with open(file_path, "r") as f:
             df = pd.DataFrame([json.loads(line) for line in f])
@@ -279,7 +279,7 @@ class BaseDataset(BaseModel, Generic[R]):
 
     @classmethod
     def from_csv(
-        cls, file_path: Path, field_mapping: Optional[Mapping[str, str]] = None
+        cls, file_path: str, field_mapping: Optional[Mapping[str, str]] = None
     ) -> Self:
         df = pd.read_csv(file_path)
         return cls.from_pandas(df, field_mapping=field_mapping)
@@ -299,7 +299,7 @@ class BaseDataset(BaseModel, Generic[R]):
     @classmethod
     def load_from(
         cls,
-        file_path_or_name: Path | str,
+        file_path_or_name: str,
         field_mapping: Optional[Mapping[str, str]] = None,
         **loader_kwargs: Any,
     ) -> Self:
@@ -315,22 +315,13 @@ class BaseDataset(BaseModel, Generic[R]):
             loader_kwargs: Additional keyword arguments to pass to the loader
         """
         # Infer from extension
-        if isinstance(file_path_or_name, Path):
-            if file_path_or_name.endswith(".jsonl"):
-                loader = cls.from_jsonl
-            elif file_path_or_name.endswith(".csv"):
-                loader = cls.from_csv
-            else:
-                raise ValueError(f"Unsupported file type: '{file_path_or_name}'")
-            return loader(
-                file_path_or_name, field_mapping=field_mapping, **loader_kwargs
-            )
+        if file_path_or_name.endswith(".jsonl"):
+            loader = cls.from_jsonl
+        elif file_path_or_name.endswith(".csv"):
+            loader = cls.from_csv
         else:
-            if not len(file_path_or_name.split("/")) == 2:
-                raise ValueError(f"Invalid dataset name: {file_path_or_name}")
-            return cls.from_huggingface(
-                file_path_or_name, field_mapping=field_mapping, **loader_kwargs
-            )
+            raise ValueError(f"Unsupported file type: '{file_path_or_name}'")
+        return loader(file_path_or_name, field_mapping=field_mapping, **loader_kwargs)
 
     @classmethod
     def concatenate(
@@ -517,10 +508,10 @@ class BaseDataset(BaseModel, Generic[R]):
             df = pd.DataFrame(base_data)
         return df
 
-    def save_to(self, file_path: Path, overwrite: bool = False) -> None:
+    def save_to(self, file_path: str, overwrite: bool = False) -> None:
         self._check_tensor_shapes()
 
-        if not overwrite and file_path.exists():
+        if not overwrite and os.path.exists(file_path):
             raise FileExistsError(
                 f"File {file_path} already exists. Use overwrite=True to overwrite."
             )
@@ -660,11 +651,3 @@ def subsample_balanced_subset(
     random.shuffle(indices)
 
     return dataset[indices]
-
-
-if __name__ == "__main__":
-    from models_under_pressure.config import EVAL_DATASETS
-
-    for name, path in EVAL_DATASETS.items():
-        dataset = LabelledDataset.load_from(path)
-        print(dataset[:5])
