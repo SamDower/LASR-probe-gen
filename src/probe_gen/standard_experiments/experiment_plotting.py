@@ -3,52 +3,30 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
+import sys
+from pathlib import Path
+project_root = Path(__file__).parent.parent
+sys.path.append(str(project_root))
+from probes.wandb_interface import load_probe_eval_dict_by_datasets
 
 
-
-def get_eval_results_by_datasets(train_dataset, test_dataset):
-    """Get accuracy for runs matching specific train and test datasets"""
-    api = wandb.Api()
-    
-    # Query runs with specific config filters
-    runs = api.runs(
-        "samdower/LASR_probe_gen",
-        filters={
-            "config.train_dataset": train_dataset,
-            "config.test_dataset": test_dataset,
-            "state": "finished"  # Only completed runs
-        }
-    )
-    
-    results = []
-    for run in runs:
-        accuracy = run.summary.get('accuracy', None)
-        roc_auc = run.summary.get('roc_auc', None)
-        tpr_at_1_fpr = run.summary.get('tpr_at_1_fpr', None)
-        if accuracy is not None:
-            results.append({
-                'run_id': run.id,
-                'run_name': run.name,
-                'accuracy': accuracy,
-                'roc_auc': roc_auc,
-                'tpr_at_1_fpr': tpr_at_1_fpr,
-                'train_dataset': run.config.get('train_dataset'),
-                'test_dataset': run.config.get('test_dataset')
-            })
-    
-    if len(results) > 1:
-        print(f"### WARNING ###: multiple runs for dataset pair ({train_dataset}, {test_dataset}), returning latest.")
-    elif len(results) == 0:
-        print(f"### WARNING ###: could not find run for dataset pair ({train_dataset}, {test_dataset}), returning None.")
-        return None
-    return results[-1]
 
 def plot_results_table(dataset_list, metric):
+    """
+    Plots a grid showing a metric for probes trained and tested on each of the specified datasets in a grid.
+
+    Args:
+        dataset_list (array): A list of all of the dataset names (as stored on wandb) to form the rows and columns of the grid.
+        metric (str): The metric to plot in each cell of the grid (e.g. 'accuracy', 'roc_auc').
+    
+    Returns:
+        eval_dict (dict): evalualtion dictionary.
+    """
 
     results_table = np.full((len(dataset_list), len(dataset_list)), -1, dtype=float)
     for train_index in range(len(dataset_list)):
         for test_index in range(len(dataset_list)):
-            results = get_eval_results_by_datasets(dataset_list[train_index], dataset_list[test_index])
+            results = load_probe_eval_dict_by_datasets(dataset_list[train_index], dataset_list[test_index])
             print(results)
             print(type(results[metric]))
             results_table[train_index, test_index] = results[metric]
