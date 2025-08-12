@@ -24,7 +24,20 @@ uv run src/probe_gen/annotation/refusal_behaviour.py --path data/refusal/on_poli
 ```
 
 
-## 2. Get activations for dataset
+## 2. Get on policy outputs for dataset
+
+- Uses meta-llama/Llama-3.2-3B-Instruct to get outputs
+- Takes 4 minutes to generate outputs for 20,000 samples
+
+Hardware requirements: 10 GB GPU
+
+```
+uv run python scripts/get_outputs.py --data data/refusal/off_policy_raw_20k.jsonl --out on_policy_raw_20k.pkl --batch-size 200 --sample 0 --behaviour refusal
+
+```
+
+
+## 3. Get activations for dataset
 
 - Uses meta-llama/Llama-3.2-3B-Instruct to get actviations for on policy data
 - Takes 1-2 hours to generate output activations for 1000 samples
@@ -44,7 +57,7 @@ python get_activations.py \
   --behaviour refusal
 ```
 
-## 3. Train probes on activations dataset
+## 4. Train probes on activations dataset
 - Currently just using notebooks/TrainProbe.ipynb and running cells
 
 Hardware requirements:
