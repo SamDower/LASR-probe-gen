@@ -438,7 +438,8 @@ def _build_output_path(
     os.makedirs(base_dir, exist_ok=True)
 
     root, ext = os.path.splitext(os.path.basename(base_out))
-    ext = ext if ext else ".pkl"
+    # ext = ext if ext else ".pkl"
+    ext = ext if ext else ".jsonl"
     final_name = f"{_sanitize_for_path(root)}__{safe_policy}{ext}"
     return os.path.join(base_dir, final_name)
 
@@ -450,7 +451,10 @@ def _load_existing_results(output_file):
 
     try:
         with open(output_file, "rb") as f:
-            loaded_obj = pickle.load(f)
+            if output_file.endswith(".pkl"):
+                loaded_obj = pickle.load(f)
+            else:
+                loaded_obj = json.load(f)
 
         # If file contains a DataFrame (from an older/partial run), convert to list-of-dicts
         if isinstance(loaded_obj, pd.DataFrame):
@@ -602,17 +606,28 @@ def _process_failed_batch_outputs_only(batch_prompts, human_inputs, start_idx):
 def _save_results_to_file(results, output_file):
     """Save results to pickle file atomically to avoid corruption."""
     tmp_path = f"{output_file}.tmp"
-    with open(tmp_path, "wb") as f:
-        pickle.dump(results, f)
-        f.flush()
-        os.fsync(f.fileno())
+    if output_file.endswith(".pkl"):
+        with open(tmp_path, "wb") as f:
+            pickle.dump(results, f)
+            f.flush()
+            os.fsync(f.fileno())
+    else:
+        with open(tmp_path, "w") as f:
+            for result in results:
+                f.write(json.dumps(result) + "\n")
+
     os.replace(tmp_path, output_file)
 
 
 def _save_dataframe_atomic(df, output_file):
     """Save a DataFrame to pickle atomically."""
     tmp_path = f"{output_file}.tmp"
-    df.to_pickle(tmp_path)
+
+    if output_file.endswith(".pkl"):
+        df.to_pickle(tmp_path)
+    else:
+        df.to_json(tmp_path, orient="records", lines=True)
+
     # Ensure data hits disk
     with open(tmp_path, "rb") as f:
         os.fsync(f.fileno())
@@ -854,7 +869,11 @@ def process_batched_dataframe_outputs_only(
             "model_outputs": [r["model_outputs"] for r in results],
         }
     )
-    final_df.to_pickle(output_file)
+
+    if output_file.endswith(".pkl"):
+        final_df.to_pickle(output_file)
+    else:
+        final_df.to_json(output_file, orient="records", lines=True)
     print(f"Final DataFrame saved to: {output_file}")
     print(f"DataFrame shape: {final_df.shape}")
     return len(results)
