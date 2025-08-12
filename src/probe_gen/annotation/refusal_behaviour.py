@@ -1,11 +1,9 @@
 from collections import defaultdict
 
-import pandas as pd
 from datasets import load_dataset
-from huggingface_hub import hf_hub_download
 
-from probe_gen.annotation.interface_dataset import Dataset, Message
-from probe_gen.annotation.label_dataset import label_dataset
+from probe_gen.annotation.interface_dataset import Dataset, LabelledDataset, Message
+from probe_gen.annotation.label_dataset import label_and_save_dataset
 
 SYSTEM_PROMPT_REFUSE = """\
 Please analyze whether the given dialogue between user and assistant involves the assistant rejecting the user request.
@@ -56,20 +54,9 @@ def parse_messages(text: str) -> list[Message]:
 
 
 def create_refusal_dataset(
-    dataset_path: str = "data/refusal/out.jsonl",
     num_samples: int = 1000,
-    outputs_hf: str = None,
-) -> None:
-    # Load the outputs dataset if provided
-    if outputs_hf is not None:
-        file_path = hf_hub_download(
-            repo_id="NLie2/anthropic-refusal-activations",
-            filename="dataframe_with_activations.pkl",
-            repo_type="dataset",
-        )
-        dataset_acts = pd.read_pickle(file_path)
-
-    # Load the inputs dataset
+) -> Dataset:
+    # Stream the hf dataset
     split = "train"
     hf_dataset = load_dataset("Anthropic/hh-rlhf", split=split, streaming=True)
 
@@ -87,19 +74,6 @@ def create_refusal_dataset(
         if conversation.count("\n\nAssistant:") != 1:
             continue
 
-        # Replace assistant outputs if provided and parse messages
-        if outputs_hf is not None:
-            conversation = conversation.split("Assistant: ")[0] + "Assistant: "
-            if "assistantassistant\n\n" in dataset_acts.loc[ix]["model_outputs"]:
-                conversation += dataset_acts.loc[ix]["model_outputs"].split(
-                    "assistantassistant\n\n"
-                )[1]
-            else:
-                print(f"Error processing sample {ix}, no assistantassistant.")
-                conversation += (
-                    "error, please mark this as neither rejection nor compliance"
-                )
-
         messages = parse_messages(conversation)
         ids.append(f"{split}_{real_ix}_{field}")
         inputs.append(messages)
@@ -116,19 +90,16 @@ def create_refusal_dataset(
         )
 
     dataset = Dataset(inputs=inputs, ids=ids, other_fields=other_fields)
-    label_dataset(
-        dataset=dataset,
-        dataset_path=dataset_path,
-        system_prompt=SYSTEM_PROMPT_REFUSE,
-    )
+    return dataset
 
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
+
     parser.add_argument(
-        "--path",
+        "--out_path",
         type=str,
         default="data/refusal/out.jsonl",
         help="Output directory for the dataset",
@@ -137,18 +108,42 @@ if __name__ == "__main__":
         "--num_samples",
         type=int,
         default=1000,
-        help="Number of samples to use",
+        help="Number of samples to use (not used if in_path is provided)",
     )
     parser.add_argument(
-        "--outputs_hf",
+        "--in_path",
         type=str,
         default=None,
-        help="Huggingface dataset of on policy outputs",
+        help="Input directory of an existing dataset (optional)",
     )
+    parser.add_argument(
+        "--do_label",
+        type=bool,
+        default=True,
+        help="Whether to label the dataset",
+    )
+    parser.add_argument(
+        "--do_subsample",
+        type=bool,
+        default=True,
+        help="Whether to subsample the dataset",
+    )
+
     args = parser.parse_args()
 
-    create_refusal_dataset(
-        dataset_path=args.path,
-        num_samples=args.num_samples,
-        outputs_hf=args.outputs_hf,
+    # Load the dataset
+    if args.in_path is None:
+        dataset = create_refusal_dataset(num_samples=args.num_samples)
+    else:
+        try:
+            dataset = LabelledDataset.load_from(args.in_path)
+        except Exception:
+            dataset = Dataset.load_from(args.in_path)
+
+    label_and_save_dataset(
+        dataset=dataset,
+        dataset_path=args.out_path,
+        system_prompt=SYSTEM_PROMPT_REFUSE,
+        do_subsample=args.do_subsample,
+        do_label=args.do_label,
     )

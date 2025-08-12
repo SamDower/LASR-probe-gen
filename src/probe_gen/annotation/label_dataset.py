@@ -10,6 +10,7 @@ from probe_gen.annotation.interface_dataset import (
     Dataset,
     LabelledDataset,
     Record,
+    subsample_balanced_subset,
 )
 
 
@@ -183,30 +184,58 @@ async def label_dataset_async(
     )
 
 
-def label_dataset(
+def label_and_save_dataset(
     dataset: Dataset,
     dataset_path: str,
     system_prompt: str,
     model: str = "gpt-4o",
     max_concurrent: int = 50,
-) -> LabelledDataset:
-    """Synchronous wrapper for the async label_dataset function"""
+    do_subsample: bool = True,
+    do_label: bool = True,
+) -> None:
+    """
+    Label a dataset if needed and save it to a file.
+
+    Args:
+        dataset: The dataset to label
+        dataset_path: The path to save the dataset
+        system_prompt: The system prompt to use for labeling
+        model: The model to use for labeling
+        max_concurrent: Maximum number of concurrent API calls
+        do_subsample: Whether to subsample the dataset
+    """
     if os.path.exists(dataset_path):
         raise ValueError(
             f"Dataset already exists at {dataset_path}. Please remove it or use a different path."
         )
 
-    labelled_dataset = asyncio.run(
-        label_dataset_async(
-            dataset=dataset,
-            dataset_path=dataset_path,
-            system_prompt=system_prompt,
-            model=model,
-            max_concurrent=max_concurrent,
+    if do_label:
+        labelled_dataset = asyncio.run(
+            label_dataset_async(
+                dataset=dataset,
+                dataset_path=dataset_path,
+                system_prompt=system_prompt,
+                model=model,
+                max_concurrent=max_concurrent,
+            )
         )
-    )
-    labelled_dataset.print_label_distribution()
+        labelled_dataset.print_label_distribution()
+    else:
+        labelled_dataset = dataset
 
     # Save the data
     print(f"Saving the data to {dataset_path}")
     labelled_dataset.save_to(dataset_path, overwrite=True)
+
+    if do_subsample:
+        # Subsample the data
+        print("Subsampling the data to get a balanced dataset")
+        subsampled_dataset = subsample_balanced_subset(labelled_dataset)
+
+        # Save the balanced data
+        if "raw" in dataset_path:
+            new_dataset_path = dataset_path.replace("raw", "balanced")
+        else:
+            new_dataset_path = dataset_path.replace(".jsonl", "_balanced.jsonl")
+        print(f"Saving the balanced data to {new_dataset_path}")
+        subsampled_dataset.save_to(new_dataset_path, overwrite=True)
