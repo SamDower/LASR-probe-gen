@@ -42,3 +42,6 @@ build-backend = "hatchling.build"
 
 [tool.uv.workspace]
 members = []
+
+[tool.hatchling.build.targets.wheel]
+packages = ["gen_data"]
