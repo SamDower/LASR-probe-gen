@@ -126,7 +126,7 @@ def _prepare_batch_inputs(tokenizer, prompts, max_length=512):
     return tokenizer(
         prompts,
         return_tensors="pt",
-        padding=True,
+        padding="longest",
         truncation=True,
         max_length=max_length,
     )
@@ -303,7 +303,14 @@ def get_batch_outputs_only(
     _cleanup_gpu_memory()
 
     # Step 3: Decode outputs (no activation extraction needed)
-    raw_outputs = _decode_outputs(tokenizer, sequences, verbose)
+    # Extract only the newly generated tokens (not the input prompt)
+    if do_generation and isinstance(sequences, torch.Tensor):
+        # For generation, slice off the input tokens to get only new tokens
+        new_token_sequences = sequences[:, input_length:]
+        raw_outputs = _decode_outputs(tokenizer, new_token_sequences, verbose)
+    else:
+        # For non-generation (off-policy), decode the full sequence
+        raw_outputs = _decode_outputs(tokenizer, sequences, verbose)
 
     if verbose:
         print("\nBatch processing summary:")
@@ -319,7 +326,7 @@ def get_batch_outputs_only(
     return raw_outputs, input_length
 
 
-def get_batch_res_activations(
+def get_batch_res_activations_with_generation(
     model,
     tokenizer,
     prompts,
@@ -347,6 +354,7 @@ def get_batch_res_activations(
             - 1.0-2.0: High randomness (creative generation)
             - >2.0: Very high randomness (automatically clamped to 2.0)
         outputs: If provided, use these outputs instead of generating new ones (on policy vs. off policy)
+        do_generation: Whether to generate new tokens (True) or use existing sequences (False)
 
     Returns:
         tuple: (activations_dict, decoded_outputs, input_length)
@@ -370,6 +378,81 @@ def get_batch_res_activations(
         )  # tensor shape: [batch, input_len + new_len]
     else:
         sequences = inputs.input_ids
+
+    # Clean up input tensors
+    del inputs
+    _cleanup_gpu_memory()
+
+    # Step 3: Register hooks and capture activations
+    hooks, activations = _register_activation_hooks(model, verbose)
+
+    try:
+        # Forward pass to capture activations
+        with torch.no_grad():
+            # Build attention mask from pad token id to safely handle padding
+            if isinstance(sequences, torch.Tensor):
+                attention_mask = (
+                    sequences.ne(tokenizer.pad_token_id).long().to(sequences.device)
+                )
+                model(input_ids=sequences, attention_mask=attention_mask)
+            else:
+                # Fallback for unexpected type (should not happen)
+                model(sequences)
+    finally:
+        # Always clean up hooks
+        for hook in hooks:
+            hook.remove()
+
+    # Step 4: Decode outputs
+    raw_outputs = _decode_outputs(tokenizer, sequences, verbose)
+
+    if verbose:
+        print("\nBatch processing summary:")
+        print(f"  Processed {batch_size} prompts")
+        print(f"  Original input length: {input_length}")
+        if isinstance(sequences, torch.Tensor):
+            print(f"  Final sequence length: {sequences.shape[1]}")
+
+    # Final cleanup
+    del sequences
+    _cleanup_gpu_memory()
+
+    return activations, raw_outputs, input_length
+
+
+def get_batch_res_activations(
+    model,
+    tokenizer,
+    outputs,
+    verbose=False,
+    max_length=512,
+):
+    """
+    Get activations layers for existing conversation outputs.
+    Captures activations for the FULL sequence (input + generated tokens) without generation.
+
+    Args:
+        model: The language model
+        tokenizer: Model tokenizer
+        outputs: String or list of strings representing complete conversations/outputs
+        verbose: Whether to print debug information
+        max_length: Maximum sequence length for tokenization
+
+    Returns:
+        tuple: (activations_dict, decoded_outputs, input_length)
+            - activations_dict: Dict mapping layer indices to activation tensors
+            - decoded_outputs: List of conversation strings (same as input)
+            - input_length: Tokenized sequence length
+    """
+    # Step 1: Prepare inputs - tokenize the complete outputs
+    inputs = _prepare_batch_inputs(tokenizer, outputs, max_length)
+    inputs = inputs.to(model.device)
+
+    input_length = inputs.input_ids.shape[1]
+    batch_size = inputs.input_ids.shape[0]
+
+    # Use the tokenized outputs directly (no generation needed)
+    sequences = inputs.input_ids
 
     # Clean up input tensors
     del inputs
@@ -504,15 +587,42 @@ def _create_result_entry(
     }
 
 
+def _extract_assistant_response(full_output):
+    """Extract just the assistant response from a full model output sequence."""
+    # Look for the assistant response after "assistant\n\n" pattern
+    if "assistant\n\n" in full_output:
+        # Split on "assistant\n\n" and take the last part
+        parts = full_output.split("assistant\n\n")
+        if len(parts) > 1:
+            return parts[-1].strip()
+
+    # Fallback: look for other patterns or return as-is
+    # If no clear pattern found, return the full output
+    return full_output.strip()
+
+
 def _create_output_only_result_entry(
     original_idx, original_input, formatted_input, model_output
 ):
     """Create a result entry for output-only processing (no activations)."""
+    import json
+
+    # Extract just the assistant response (in case model_output contains full sequence)
+    clean_assistant_response = _extract_assistant_response(model_output)
+
+    # Create the conversation format with user and assistant roles
+    conversation = [
+        {"role": "user", "content": original_input},
+        {"role": "assistant", "content": clean_assistant_response},
+    ]
+
     return {
-        "original_index": original_idx,
+        "inputs": json.dumps(conversation),  # JSON string of the conversation
+        "ids": f"generated_{original_idx}",  # Unique identifier
+        "original_index": original_idx,  # Keep for backwards compatibility
         "input": original_input,  # Human input / raw prompt
         "input_formatted": formatted_input,  # Exact input after chat template
-        "model_outputs": model_output,
+        "model_outputs": model_output,  # Keep for backwards compatibility (full output)
     }
 
 
@@ -845,11 +955,41 @@ def process_batched_dataframe_outputs_only(
         results.extend(batch_results)
         _save_results_to_file(results, incremental_path)
         # Also save a partial DataFrame table to the final --out path
+        # Handle backwards compatibility for old results without new keys
+        inputs_list = []
+        ids_list = []
+        for i, r in enumerate(results):
+            if "inputs" in r:
+                inputs_list.append(r["inputs"])
+                ids_list.append(r["ids"])
+            else:
+                # Create new format for old results
+                import json
+
+                # Extract just the assistant response from the full model output
+                clean_assistant_response = _extract_assistant_response(
+                    r["model_outputs"]
+                )
+                conversation = [
+                    {"role": "user", "content": r["input"]},
+                    {"role": "assistant", "content": clean_assistant_response},
+                ]
+                inputs_list.append(json.dumps(conversation))
+                ids_list.append(f"generated_{r.get('original_index', i)}")
+
         partial_df = pd.DataFrame(
             {
-                "input_formatted": [r["input_formatted"] for r in results],
-                "input": [r["input"] for r in results],
-                "model_outputs": [r["model_outputs"] for r in results],
+                "inputs": inputs_list,  # JSON string of conversation
+                "ids": ids_list,  # Unique identifiers
+                "input_formatted": [
+                    r["input_formatted"] for r in results
+                ],  # Keep for backwards compatibility
+                "input": [
+                    r["input"] for r in results
+                ],  # Keep for backwards compatibility
+                "model_outputs": [
+                    r["model_outputs"] for r in results
+                ],  # Keep for backwards compatibility
             }
         )
         _save_dataframe_atomic(partial_df, output_file)
@@ -862,11 +1002,37 @@ def process_batched_dataframe_outputs_only(
     print(f"Incremental checkpoints saved to: {incremental_path}")
 
     # Build and save final DataFrame with schema (no activations column)
+    # Handle backwards compatibility for old results without new keys
+    inputs_list = []
+    ids_list = []
+    for i, r in enumerate(results):
+        if "inputs" in r:
+            inputs_list.append(r["inputs"])
+            ids_list.append(r["ids"])
+        else:
+            # Create new format for old results
+            import json
+
+            # Extract just the assistant response from the full model output
+            clean_assistant_response = _extract_assistant_response(r["model_outputs"])
+            conversation = [
+                {"role": "user", "content": r["input"]},
+                {"role": "assistant", "content": clean_assistant_response},
+            ]
+            inputs_list.append(json.dumps(conversation))
+            ids_list.append(f"generated_{r.get('original_index', i)}")
+
     final_df = pd.DataFrame(
         {
-            "input_formatted": [r["input_formatted"] for r in results],
-            "input": [r["input"] for r in results],
-            "model_outputs": [r["model_outputs"] for r in results],
+            "inputs": inputs_list,  # JSON string of conversation
+            "ids": ids_list,  # Unique identifiers
+            "input_formatted": [
+                r["input_formatted"] for r in results
+            ],  # Keep for backwards compatibility
+            "input": [r["input"] for r in results],  # Keep for backwards compatibility
+            "model_outputs": [
+                r["model_outputs"] for r in results
+            ],  # Keep for backwards compatibility
         }
     )
 
@@ -958,7 +1124,6 @@ def process_batched_dataframe_incremental(
                 tokenizer,
                 batch_prompts,
                 verbose=False,
-                do_generation=do_generation,
             )
 
             # Process successful batch
@@ -1014,6 +1179,346 @@ def process_batched_dataframe_incremental(
     return len(results)
 
 
+# def process_batched_dataframe_incremental(
+#     model,
+#     tokenizer,
+#     df,
+#     prompt_column,
+#     batch_size=1,
+#     output_file="activations_incremental.pkl",
+#     human_input_column=None,
+#     do_generation=True,
+# ):
+#     """
+#     Process a pandas DataFrame and save activations incrementally after each batch.
+
+#     Args:
+#         model: The model to get activations from
+#         tokenizer: Tokenizer for the model
+#         df: pandas DataFrame containing the prompts
+#         prompt_column: Name of the column containing the formatted prompt strings
+#         batch_size: Number of examples to process at once
+#         output_file: File to save results incrementally
+#         human_input_column: Name of the column containing the original human input (for input_filtered)
+
+#     Returns:
+#         int: Number of processed examples
+#     """
+#     # Extract raw prompts (will be formatted exactly once below)
+#     dataset = df[prompt_column].tolist()
+
+#     # Extract human inputs if specified
+#     if human_input_column and human_input_column in df.columns:
+#         human_inputs = df[human_input_column].tolist()
+#     else:
+#         # Fallback to using the original dataset as human input
+#         human_inputs = dataset
+
+#     print("Formatting prompts...")
+#     if do_generation:
+#         # For on-policy, format as user-only prompts with generation prompt
+#         formatted_prompts = format_prompts_from_strings(tokenizer, dataset)
+#     else:
+#         # For off-policy, prompts are already full sequences in df[prompt_column]
+#         formatted_prompts = dataset
+
+#     # Calculate processing parameters
+#     num_batches = (len(formatted_prompts) + batch_size - 1) // batch_size
+#     print(
+#         f"Processing {len(formatted_prompts)} examples in {num_batches} batches of size {batch_size}"
+#     )
+
+#     # Define incremental checkpoint path (list of dicts)
+#     incremental_path = (
+#         output_file.replace(".pkl", "_incremental.pkl")
+#         if output_file.endswith(".pkl")
+#         else f"{output_file}_incremental.pkl"
+#     )
+
+#     # Load existing results if available (resume from incremental list file)
+#     results, num_existing = _load_existing_results(incremental_path)
+#     start_batch = num_existing // batch_size
+
+#     if num_existing > 0:
+#         print(
+#             f"Resuming from batch {start_batch} (already processed {num_existing} examples)"
+#         )
+
+#     # Process batches
+#     for batch_idx in tqdm(range(start_batch, num_batches), desc="Processing batches"):
+#         start_idx = batch_idx * batch_size
+#         end_idx = min(start_idx + batch_size, len(formatted_prompts))
+#         batch_prompts = formatted_prompts[start_idx:end_idx]
+
+#         try:
+#             # Clear GPU memory and get activations
+#             _cleanup_gpu_memory()
+#             batch_activations, batch_outputs, input_length = get_batch_res_activations(
+#                 model,
+#                 tokenizer,
+#                 batch_prompts,
+#                 verbose=False,
+#                 do_generation=do_generation,
+#             )
+
+#             # Process successful batch
+#             batch_results = _process_successful_batch(
+#                 batch_activations, batch_outputs, batch_prompts, human_inputs, start_idx
+#             )
+
+#             # Clean up GPU memory
+#             del batch_activations
+#             _cleanup_gpu_memory()
+#             gc.collect()
+
+#         except Exception as e:
+#             print(f"Error processing batch {batch_idx}: {e}")
+#             # Process failed batch
+#             batch_results = _process_failed_batch(
+#                 batch_prompts, human_inputs, start_idx
+#             )
+
+#         # Add batch results and save incremental checkpoints separately
+#         results.extend(batch_results)
+#         _save_results_to_file(results, incremental_path)
+#         # Also save a partial DataFrame table to the final --out path
+#         partial_df = pd.DataFrame(
+#             {
+#                 "input_formatted": [r["input_formatted"] for r in results],
+#                 "input": [r["input"] for r in results],
+#                 "model_outputs": [r["model_outputs"] for r in results],
+#                 "activations": [r["activations"] for r in results],
+#             }
+#         )
+#         _save_dataframe_atomic(partial_df, output_file)
+
+#         print(
+#             f"Saved batch {batch_idx + 1}/{num_batches} - Total processed: {len(results)} examples"
+#         )
+
+#     print(f"Completed processing {len(results)} examples")
+#     print(f"Incremental checkpoints saved to: {incremental_path}")
+
+#     # Build and save final DataFrame with new schema directly to --out
+#     final_df = pd.DataFrame(
+#         {
+#             "input_formatted": [r["input_formatted"] for r in results],
+#             "input": [r["input"] for r in results],
+#             "model_outputs": [r["model_outputs"] for r in results],
+#             "activations": [r["activations"] for r in results],
+#         }
+#     )
+#     final_df.to_pickle(output_file)
+#     print(f"Final DataFrame saved to: {output_file}")
+#     print(f"DataFrame shape: {final_df.shape}")
+#     return len(results)
+
+
+def process_batched_dataframe_incremental(
+    model,
+    tokenizer,
+    df,
+    prompt_column,
+    batch_size=1,
+    output_file="activations_incremental.pkl",
+    human_input_column=None,
+):
+    """
+    Process a pandas DataFrame and save activations incrementally after each batch.
+    Expects formatted conversation strings in prompt_column and extracts activations from them.
+
+    Args:
+        model: The model to get activations from
+        tokenizer: Tokenizer for the model
+        df: pandas DataFrame containing the prompts
+        prompt_column: Name of the column containing the formatted conversation strings
+        batch_size: Number of examples to process at once
+        output_file: File to save results incrementally
+        human_input_column: Name of the column containing the original human input
+
+    Returns:
+        int: Number of processed examples
+    """
+    # Extract formatted conversation strings (no additional formatting needed)
+    formatted_prompts = df[prompt_column].tolist()
+
+    # Extract human inputs if specified
+    if human_input_column and human_input_column in df.columns:
+        human_inputs = df[human_input_column].tolist()
+    else:
+        # Fallback to using the formatted prompts
+        human_inputs = formatted_prompts
+
+    # Calculate processing parameters
+    num_batches = (len(formatted_prompts) + batch_size - 1) // batch_size
+    print(
+        f"Processing {len(formatted_prompts)} examples in {num_batches} batches of size {batch_size}"
+    )
+
+    # Define incremental checkpoint path (list of dicts)
+    incremental_path = (
+        output_file.replace(".pkl", "_incremental.pkl")
+        if output_file.endswith(".pkl")
+        else f"{output_file}_incremental.pkl"
+    )
+
+    # Load existing results if available (resume from incremental list file)
+    results, num_existing = _load_existing_results(incremental_path)
+    start_batch = num_existing // batch_size
+
+    if num_existing > 0:
+        print(
+            f"Resuming from batch {start_batch} (already processed {num_existing} examples)"
+        )
+
+    # Process batches
+    for batch_idx in tqdm(range(start_batch, num_batches), desc="Processing batches"):
+        start_idx = batch_idx * batch_size
+        end_idx = min(start_idx + batch_size, len(formatted_prompts))
+        batch_prompts = formatted_prompts[start_idx:end_idx]
+
+        try:
+            # Clear GPU memory and get activations
+            _cleanup_gpu_memory()
+            batch_activations, batch_outputs, input_length = get_batch_res_activations(
+                model,
+                tokenizer,
+                batch_prompts,
+                verbose=False,
+            )
+
+            # Process successful batch
+            batch_results = _process_successful_batch(
+                batch_activations, batch_outputs, batch_prompts, human_inputs, start_idx
+            )
+
+            # Clean up GPU memory
+            del batch_activations
+            _cleanup_gpu_memory()
+            gc.collect()
+
+        except Exception as e:
+            print(f"Error processing batch {batch_idx}: {e}")
+            # Process failed batch
+            batch_results = _process_failed_batch(
+                batch_prompts, human_inputs, start_idx
+            )
+
+        # Add batch results and save incremental checkpoints separately
+        results.extend(batch_results)
+        _save_results_to_file(results, incremental_path)
+        # Also save a partial DataFrame table to the final --out path
+        partial_df = pd.DataFrame(
+            {
+                "input_formatted": [r["input_formatted"] for r in results],
+                "input": [r["input"] for r in results],
+                "model_outputs": [r["model_outputs"] for r in results],
+                "activations": [r["activations"] for r in results],
+            }
+        )
+        _save_dataframe_atomic(partial_df, output_file)
+
+        print(
+            f"Saved batch {batch_idx + 1}/{num_batches} - Total processed: {len(results)} examples"
+        )
+
+    print(f"Completed processing {len(results)} examples")
+    print(f"Incremental checkpoints saved to: {incremental_path}")
+
+    # Build and save final DataFrame with new schema directly to --out
+    final_df = pd.DataFrame(
+        {
+            "input_formatted": [r["input_formatted"] for r in results],
+            "input": [r["input"] for r in results],
+            "model_outputs": [r["model_outputs"] for r in results],
+            "activations": [r["activations"] for r in results],
+        }
+    )
+    final_df.to_pickle(output_file)
+    print(f"Final DataFrame saved to: {output_file}")
+    print(f"DataFrame shape: {final_df.shape}")
+    return len(results)
+
+
+# def process_file(
+#     model,
+#     tokenizer,
+#     dataset_path: str,
+#     output_file: str,
+#     batch_size: int = 1,
+#     policy: str = "on_policy",
+#     behaviour: str = "refusal",
+#     sample: int = 0,
+# ):
+#     """Process data from a JSONL file and save results.
+
+#     policy options:
+#       - on_policy: feed human prompts and generate model outputs
+#       - off_policy_prompt: alias of off_policy_other_model (teacher forcing)
+#       - off_policy_other_model: feed human+assistant as fixed targets (no generation)
+#     """
+#     print("\n=== File Processing ===")
+
+#     # Load data from file
+#     human_list, assistant_list, full_list = load_jsonl_data(dataset_path, policy)
+
+#     # Optional sampling for quick tests
+#     if sample and sample > 0:
+#         human_list = human_list[:sample]
+#         assistant_list = assistant_list[:sample]
+#         full_list = full_list[:sample]
+
+#     if not human_list:
+#         print(f"No data loaded from {dataset_path}")
+#         return
+
+#     print(f"Loaded {len(human_list)} examples")
+
+#     # Build DataFrame and controls based on policy
+#     if policy == "on_policy":
+#         df = pd.DataFrame({"human_inputs": human_list})
+#         prompt_column = "human_inputs"
+#         do_generation = True
+#         human_input_column = "human_inputs"
+#     elif policy in ("off_policy_other_model", "off_policy_prompt"):
+#         formatted_pairs = format_prompts_from_pairs(
+#             tokenizer, human_list, assistant_list
+#         )
+#         df = pd.DataFrame(
+#             {
+#                 "full_dialogue": formatted_pairs,
+#                 "human_inputs": human_list,
+#             }
+#         )
+#         prompt_column = "full_dialogue"
+#         do_generation = False
+#         human_input_column = "human_inputs"
+#     else:
+#         raise ValueError(
+#             f"Unknown policy '{policy}'. Use one of: on_policy, off_policy_prompt, off_policy_other_model"
+#         )
+
+#     # Process incrementally
+#     # Build deterministic output path under datasets/<behaviour>/<model>__<policy>/
+#     final_out_path = _build_output_path(
+#         output_file, model.config._name_or_path, policy, behaviour
+#     )
+#     print(f"Processing data and saving to {final_out_path}...")
+
+#     num_processed = process_batched_dataframe_incremental(
+#         model,
+#         tokenizer,
+#         df,
+#         prompt_column,
+#         batch_size=batch_size,
+#         output_file=final_out_path,
+#         human_input_column=human_input_column,
+#         do_generation=do_generation,
+#     )
+
+#     print(f"Processed {num_processed} examples")
+
+
 def process_file(
     model,
     tokenizer,
@@ -1024,13 +1529,7 @@ def process_file(
     behaviour: str = "refusal",
     sample: int = 0,
 ):
-    """Process data from a JSONL file and save results.
-
-    policy options:
-      - on_policy: feed human prompts and generate model outputs
-      - off_policy_prompt: alias of off_policy_other_model (teacher forcing)
-      - off_policy_other_model: feed human+assistant as fixed targets (no generation)
-    """
+    """Process data from a JSONL file and save results."""
     print("\n=== File Processing ===")
 
     # Load data from file
@@ -1048,29 +1547,16 @@ def process_file(
 
     print(f"Loaded {len(human_list)} examples")
 
-    # Build DataFrame and controls based on policy
-    if policy == "on_policy":
-        df = pd.DataFrame({"human_inputs": human_list})
-        prompt_column = "human_inputs"
-        do_generation = True
-        human_input_column = "human_inputs"
-    elif policy in ("off_policy_other_model", "off_policy_prompt"):
-        formatted_pairs = format_prompts_from_pairs(
-            tokenizer, human_list, assistant_list
-        )
-        df = pd.DataFrame(
-            {
-                "full_dialogue": formatted_pairs,
-                "human_inputs": human_list,
-            }
-        )
-        prompt_column = "full_dialogue"
-        do_generation = False
-        human_input_column = "human_inputs"
-    else:
-        raise ValueError(
-            f"Unknown policy '{policy}'. Use one of: on_policy, off_policy_prompt, off_policy_other_model"
-        )
+    # For all policies, we format the complete conversations and extract activations
+    formatted_pairs = format_prompts_from_pairs(tokenizer, human_list, assistant_list)
+    df = pd.DataFrame(
+        {
+            "full_dialogue": formatted_pairs,
+            "human_inputs": human_list,
+        }
+    )
+    prompt_column = "full_dialogue"
+    human_input_column = "human_inputs"
 
     # Process incrementally
     # Build deterministic output path under datasets/<behaviour>/<model>__<policy>/
@@ -1087,7 +1573,6 @@ def process_file(
         batch_size=batch_size,
         output_file=final_out_path,
         human_input_column=human_input_column,
-        do_generation=do_generation,
     )
 
     print(f"Processed {num_processed} examples")
@@ -1137,26 +1622,27 @@ def process_file_outputs_only(
         prompt_column = "human_inputs"
         do_generation = True
         human_input_column = "human_inputs"
-    elif policy == "off_policy_prompt":
-        # Add extra prompt to human inputs for off_policy_prompt
-        if extra_prompt:
-            print(f"Adding extra prompt: '{extra_prompt}'")
-            modified_human_list = [f"{extra_prompt} {human}" for human in human_list]
-        else:
-            modified_human_list = human_list
-        df = pd.DataFrame(
-            {"human_inputs": modified_human_list, "original_human_inputs": human_list}
-        )
-        prompt_column = "human_inputs"
-        do_generation = True
-        human_input_column = "original_human_inputs"  # Use original for saving
-    elif policy == "off_policy_other_model":
+    # elif policy == "off_policy_prompt":
+    #     # Add extra prompt to human inputs for off_policy_prompt
+    #     if extra_prompt:
+    #         print(f"Adding extra prompt: '{extra_prompt}'")
+    #         modified_human_list = [f"{extra_prompt} {human}" for human in human_list]
+    #     else:
+    #         modified_human_list = human_list
+    #     df = pd.DataFrame(
+    #         {"human_inputs": modified_human_list, "original_human_inputs": human_list}
+    #     )
+    #     prompt_column = "human_inputs"
+    #     do_generation = True
+    #     human_input_column = "original_human_inputs"  # Use original for saving
+    elif policy == "off_policy_other_model" or policy == "off_policy_prompt":
         formatted_pairs = format_prompts_from_pairs(
             tokenizer, human_list, assistant_list
         )
         df = pd.DataFrame(
             {
                 "full_dialogue": formatted_pairs,
+                "extra_prompt": extra_prompt,
                 "human_inputs": human_list,
             }
         )
