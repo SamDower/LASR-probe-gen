@@ -25,6 +25,12 @@ def main():
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--sample", type=int, default=0, help="If >0, run on N samples")
     parser.add_argument(
+        "--layers",
+        type=str,
+        default="auto",
+        help="Which layers to extract activations from. Options: 'all' (all layers), 'auto' (65%% through), comma-separated indices '0,5,10', ranges '5-10', or mixed '0,5-8,15'",
+    )
+    parser.add_argument(
         "--policy",
         type=str,
         default="on_policy",
@@ -51,6 +57,7 @@ def main():
         policy=args.policy,
         behaviour=args.behaviour,
         sample=args.sample,
+        layers_str=args.layers,
     )
 
 

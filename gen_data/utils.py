@@ -15,6 +15,55 @@ def suggest_layer(total_layers):
     return int(total_layers * 0.65)
 
 
+def parse_layers_arg(layers_str, total_layers):
+    """Parse the layers argument string into a list of layer indices.
+
+    Args:
+        layers_str: String specifying layers. Can be:
+            - "all": Use all layers
+            - "auto": Use automatic selection (65% through)
+            - comma-separated indices: "0,5,10" -> [0, 5, 10]
+            - range notation: "5-10" -> [5, 6, 7, 8, 9, 10]
+            - mixed: "0,5-8,15" -> [0, 5, 6, 7, 8, 15]
+        total_layers: Total number of layers in the model
+
+    Returns:
+        List of layer indices to extract
+    """
+    if layers_str == "all":
+        return list(range(total_layers))
+    elif layers_str == "auto":
+        start_idx = suggest_layer(total_layers)
+        return list(range(start_idx, total_layers))
+
+    # Parse comma-separated values that can include ranges
+    layer_indices = []
+    parts = layers_str.split(",")
+
+    for part in parts:
+        part = part.strip()
+        if "-" in part:
+            # Handle range notation like "5-10"
+            start, end = part.split("-")
+            start, end = int(start.strip()), int(end.strip())
+            layer_indices.extend(range(start, end + 1))
+        else:
+            # Handle single index
+            layer_indices.append(int(part))
+
+    # Remove duplicates and sort
+    layer_indices = sorted(list(set(layer_indices)))
+
+    # Validate indices
+    for idx in layer_indices:
+        if idx < 0 or idx >= total_layers:
+            raise ValueError(
+                f"Layer index {idx} is out of range. Model has {total_layers} layers (0-{total_layers - 1})"
+            )
+
+    return layer_indices
+
+
 def _cleanup_gpu_memory():
     """Clean up GPU memory if available."""
     if torch.cuda.is_available():
@@ -209,23 +258,28 @@ def _create_activation_hook(activations_dict, layer_name, verbose=False):
     return hook
 
 
-def _register_activation_hooks(model, verbose=False):
-    """Register hooks on later model layers only and return the hooks and activations dict."""
+def _register_activation_hooks(model, layers_str="auto", verbose=False):
+    """Register hooks on specified model layers and return the hooks and activations dict.
+
+    Args:
+        model: The model to register hooks on
+        layers_str: String specifying which layers to extract (default: "auto" for 65% through)
+        verbose: Whether to print debug information
+    """
     activations = {}
     layers_to_enum = get_res_layers_to_enumerate(model)
     hooks = []
 
-    # Only use later layers starting from suggested layer index
     total_layers = len(layers_to_enum)
-    start_layer_idx = suggest_layer(total_layers)
+    layer_indices = parse_layers_arg(layers_str, total_layers)
 
     if verbose:
-        print(
-            f"Total layers: {total_layers}, starting from layer {start_layer_idx} (65% through)"
-        )
+        print(f"Total layers: {total_layers}")
+        print(f"Extracting from layers: {layer_indices}")
 
-    for i, layer in enumerate(layers_to_enum[start_layer_idx:], start=start_layer_idx):
-        hook_fn = _create_activation_hook(activations, i, verbose)
+    for layer_idx in layer_indices:
+        layer = layers_to_enum[layer_idx]
+        hook_fn = _create_activation_hook(activations, layer_idx, verbose)
         hook_handle = layer.register_forward_hook(hook_fn)
         hooks.append(hook_handle)
 
@@ -336,6 +390,7 @@ def get_batch_res_activations_with_generation(
     max_new_tokens=75,
     temperature=0.0,
     do_generation=True,
+    layers_str="auto",
 ):
     """
     Efficient batch version - get activations from all layers for multiple prompts.
@@ -355,6 +410,7 @@ def get_batch_res_activations_with_generation(
             - >2.0: Very high randomness (automatically clamped to 2.0)
         outputs: If provided, use these outputs instead of generating new ones (on policy vs. off policy)
         do_generation: Whether to generate new tokens (True) or use existing sequences (False)
+        layers_str: String specifying which layers to extract (default: "auto" for 65% through)
 
     Returns:
         tuple: (activations_dict, decoded_outputs, input_length)
@@ -384,7 +440,7 @@ def get_batch_res_activations_with_generation(
     _cleanup_gpu_memory()
 
     # Step 3: Register hooks and capture activations
-    hooks, activations = _register_activation_hooks(model, verbose)
+    hooks, activations = _register_activation_hooks(model, layers_str, verbose)
 
     try:
         # Forward pass to capture activations
@@ -426,6 +482,7 @@ def get_batch_res_activations(
     outputs,
     verbose=False,
     max_length=512,
+    layers_str="auto",
 ):
     """
     Get activations layers for existing conversation outputs.
@@ -437,6 +494,7 @@ def get_batch_res_activations(
         outputs: String or list of strings representing complete conversations/outputs
         verbose: Whether to print debug information
         max_length: Maximum sequence length for tokenization
+        layers_str: String specifying which layers to extract (default: "auto" for 65% through)
 
     Returns:
         tuple: (activations_dict, decoded_outputs, input_length)
@@ -459,7 +517,7 @@ def get_batch_res_activations(
     _cleanup_gpu_memory()
 
     # Step 3: Register hooks and capture activations
-    hooks, activations = _register_activation_hooks(model, verbose)
+    hooks, activations = _register_activation_hooks(model, layers_str, verbose)
 
     try:
         # Forward pass to capture activations
@@ -507,11 +565,22 @@ def _sanitize_for_path(text: str) -> str:
 
 
 def _build_output_path(
-    base_out: str, model_name: str, policy: str, behaviour: str
+    base_out: str,
+    model_name: str,
+    policy: str,
+    behaviour: str,
+    default_ext: str = ".jsonl",
 ) -> str:
     """Construct the final output path under datasets/<behaviour>/<model>__<policy>/.
 
     Appends policy to the provided base filename to avoid accidental overrides.
+
+    Args:
+        base_out: Base output filename
+        model_name: Model name
+        policy: Policy name
+        behaviour: Behaviour name
+        default_ext: Default file extension if none provided (default: ".jsonl")
     """
     safe_model = _sanitize_for_path(model_name)
     safe_policy = _sanitize_for_path(policy)
@@ -521,8 +590,7 @@ def _build_output_path(
     os.makedirs(base_dir, exist_ok=True)
 
     root, ext = os.path.splitext(os.path.basename(base_out))
-    # ext = ext if ext else ".pkl"
-    ext = ext if ext else ".jsonl"
+    ext = ext if ext else default_ext
     final_name = f"{_sanitize_for_path(root)}__{safe_policy}{ext}"
     return os.path.join(base_dir, final_name)
 
@@ -1045,140 +1113,6 @@ def process_batched_dataframe_outputs_only(
     return len(results)
 
 
-def process_batched_dataframe_incremental(
-    model,
-    tokenizer,
-    df,
-    prompt_column,
-    batch_size=1,
-    output_file="activations_incremental.pkl",
-    human_input_column=None,
-    do_generation=True,
-):
-    """
-    Process a pandas DataFrame and save activations incrementally after each batch.
-
-    Args:
-        model: The model to get activations from
-        tokenizer: Tokenizer for the model
-        df: pandas DataFrame containing the prompts
-        prompt_column: Name of the column containing the formatted prompt strings
-        batch_size: Number of examples to process at once
-        output_file: File to save results incrementally
-        human_input_column: Name of the column containing the original human input (for input_filtered)
-
-    Returns:
-        int: Number of processed examples
-    """
-    # Extract raw prompts (will be formatted exactly once below)
-    dataset = df[prompt_column].tolist()
-
-    # Extract human inputs if specified
-    if human_input_column and human_input_column in df.columns:
-        human_inputs = df[human_input_column].tolist()
-    else:
-        # Fallback to using the original dataset as human input
-        human_inputs = dataset
-
-    print("Formatting prompts...")
-    if do_generation:
-        # For on-policy, format as user-only prompts with generation prompt
-        formatted_prompts = format_prompts_from_strings(tokenizer, dataset)
-    else:
-        # For off-policy, prompts are already full sequences in df[prompt_column]
-        formatted_prompts = dataset
-
-    # Calculate processing parameters
-    num_batches = (len(formatted_prompts) + batch_size - 1) // batch_size
-    print(
-        f"Processing {len(formatted_prompts)} examples in {num_batches} batches of size {batch_size}"
-    )
-
-    # Define incremental checkpoint path (list of dicts)
-    incremental_path = (
-        output_file.replace(".pkl", "_incremental.pkl")
-        if output_file.endswith(".pkl")
-        else f"{output_file}_incremental.pkl"
-    )
-
-    # Load existing results if available (resume from incremental list file)
-    results, num_existing = _load_existing_results(incremental_path)
-    start_batch = num_existing // batch_size
-
-    if num_existing > 0:
-        print(
-            f"Resuming from batch {start_batch} (already processed {num_existing} examples)"
-        )
-
-    # Process batches
-    for batch_idx in tqdm(range(start_batch, num_batches), desc="Processing batches"):
-        start_idx = batch_idx * batch_size
-        end_idx = min(start_idx + batch_size, len(formatted_prompts))
-        batch_prompts = formatted_prompts[start_idx:end_idx]
-
-        try:
-            # Clear GPU memory and get activations
-            _cleanup_gpu_memory()
-            batch_activations, batch_outputs, input_length = get_batch_res_activations(
-                model,
-                tokenizer,
-                batch_prompts,
-                verbose=False,
-            )
-
-            # Process successful batch
-            batch_results = _process_successful_batch(
-                batch_activations, batch_outputs, batch_prompts, human_inputs, start_idx
-            )
-
-            # Clean up GPU memory
-            del batch_activations
-            _cleanup_gpu_memory()
-            gc.collect()
-
-        except Exception as e:
-            print(f"Error processing batch {batch_idx}: {e}")
-            # Process failed batch
-            batch_results = _process_failed_batch(
-                batch_prompts, human_inputs, start_idx
-            )
-
-        # Add batch results and save incremental checkpoints separately
-        results.extend(batch_results)
-        _save_results_to_file(results, incremental_path)
-        # Also save a partial DataFrame table to the final --out path
-        partial_df = pd.DataFrame(
-            {
-                "input_formatted": [r["input_formatted"] for r in results],
-                "input": [r["input"] for r in results],
-                "model_outputs": [r["model_outputs"] for r in results],
-                "activations": [r["activations"] for r in results],
-            }
-        )
-        _save_dataframe_atomic(partial_df, output_file)
-
-        print(
-            f"Saved batch {batch_idx + 1}/{num_batches} - Total processed: {len(results)} examples"
-        )
-
-    print(f"Completed processing {len(results)} examples")
-    print(f"Incremental checkpoints saved to: {incremental_path}")
-
-    # Build and save final DataFrame with new schema directly to --out
-    final_df = pd.DataFrame(
-        {
-            "input_formatted": [r["input_formatted"] for r in results],
-            "input": [r["input"] for r in results],
-            "model_outputs": [r["model_outputs"] for r in results],
-            "activations": [r["activations"] for r in results],
-        }
-    )
-    final_df.to_pickle(output_file)
-    print(f"Final DataFrame saved to: {output_file}")
-    print(f"DataFrame shape: {final_df.shape}")
-    return len(results)
-
-
 # def process_batched_dataframe_incremental(
 #     model,
 #     tokenizer,
@@ -1322,6 +1256,7 @@ def process_batched_dataframe_incremental(
     batch_size=1,
     output_file="activations_incremental.pkl",
     human_input_column=None,
+    layers_str="auto",
 ):
     """
     Process a pandas DataFrame and save activations incrementally after each batch.
@@ -1335,6 +1270,7 @@ def process_batched_dataframe_incremental(
         batch_size: Number of examples to process at once
         output_file: File to save results incrementally
         human_input_column: Name of the column containing the original human input
+        layers_str: String specifying which layers to extract (default: "auto" for 65% through)
 
     Returns:
         int: Number of processed examples
@@ -1385,6 +1321,7 @@ def process_batched_dataframe_incremental(
                 tokenizer,
                 batch_prompts,
                 verbose=False,
+                layers_str=layers_str,
             )
 
             # Process successful batch
@@ -1528,6 +1465,7 @@ def process_file(
     policy: str = "on_policy",
     behaviour: str = "refusal",
     sample: int = 0,
+    layers_str: str = "auto",
 ):
     """Process data from a JSONL file and save results."""
     print("\n=== File Processing ===")
@@ -1561,7 +1499,7 @@ def process_file(
     # Process incrementally
     # Build deterministic output path under datasets/<behaviour>/<model>__<policy>/
     final_out_path = _build_output_path(
-        output_file, model.config._name_or_path, policy, behaviour
+        output_file, model.config._name_or_path, policy, behaviour, default_ext=".pkl"
     )
     print(f"Processing data and saving to {final_out_path}...")
 
@@ -1573,6 +1511,7 @@ def process_file(
         batch_size=batch_size,
         output_file=final_out_path,
         human_input_column=human_input_column,
+        layers_str=layers_str,
     )
 
     print(f"Processed {num_processed} examples")
