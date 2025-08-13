@@ -30,3 +30,5 @@ hf_cache/
 # datasets
 *.pt
 *.pkl
+
+uv.lock
