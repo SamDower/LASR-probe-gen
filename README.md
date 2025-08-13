@@ -11,6 +11,7 @@ cd LASR-probe-gen/
 - Uses GPT-4o API to label refusal behaviour
 - Takes 4 minutes to do 10,000 samples
 - Hardware requirements: None
+- Make sure you have done 'export OPENAI_API_KEY=<key>'
 
 For sampling a new dataset with off-policy outputs:
 ```
@@ -18,7 +19,7 @@ uv run src/probe_gen/annotation/refusal_behaviour.py --out_path data/refusal/off
 ```
 For labelling an existing dataset with on-policy outputs:
 ```
-uv run src/probe_gen/annotation/refusal_behaviour.py --in_path data/refusal/on_policy_raw.jsonl --do_label True --do_subsample True
+uv run src/probe_gen/annotation/refusal_behaviour.py --out_path data/refusal/on_policy_raw_20k.jsonl --in_path data/refusal/on_policy_unlabelled_20k.jsonl --do_label True --do_subsample True
 ```
 Where --do_label and --do_subsample are True by default.
 
