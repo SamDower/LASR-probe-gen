@@ -151,31 +151,27 @@ async def label_dataset_async(
             f"{prefix}_model": [model for _ in range(len(filtered_labels))],
         }
     )
-    if "labels" not in other_fields:
-        # In this case the labels field is not populated yet
-        other_fields["labels"] = []
-        other_fields["label_explanation"] = []
+    other_fields["labels"] = []
+    other_fields["label_explanation"] = []
 
-        for score, conf in zip(
-            other_fields["scale_labels"], other_fields["scale_label_confidence"]
-        ):
-            try:
-                score_float = float(score)
-                if score_float <= positive_threshold and conf >= confidence_threshold:
-                    label = "positive"
-                elif score_float >= negative_threshold and conf >= confidence_threshold:
-                    label = "negative"
-                else:
-                    label = "ambiguous"
-                explanation = (
-                    "Filled in based on scale_labels and scale_label_confidence"
-                )
-            except (ValueError, TypeError):
-                # If score cannot be converted to float, mark as ambiguous
+    for score, conf in zip(
+        other_fields["scale_labels"], other_fields["scale_label_confidence"]
+    ):
+        try:
+            score_float = float(score)
+            if score_float <= positive_threshold and conf >= confidence_threshold:
+                label = "positive"
+            elif score_float >= negative_threshold and conf >= confidence_threshold:
+                label = "negative"
+            else:
                 label = "ambiguous"
-                explanation = "Couldn't convert scale_labels to float"
-            other_fields["labels"].append(label)
-            other_fields["label_explanation"].append(explanation)
+            explanation = "Filled in based on scale_labels and scale_label_confidence"
+        except (ValueError, TypeError):
+            # If score cannot be converted to float, mark as ambiguous
+            label = "ambiguous"
+            explanation = "Couldn't convert scale_labels to float"
+        other_fields["labels"].append(label)
+        other_fields["label_explanation"].append(explanation)
 
     return LabelledDataset(
         inputs=filtered_inputs,
