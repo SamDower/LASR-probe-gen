@@ -28,7 +28,7 @@ def load_perplexities(model_name, dataset_name):
 
 
 
-def plot_perplexities(perplexities_list, labels, use_log_scale=True, remove_outliers=False):
+def plot_perplexities(perplexities_list, labels, use_log_scale=True, remove_outliers=False, num_bins=40):
 
     def remove_large_outliers(data):
         arr = np.array(data)
@@ -38,22 +38,27 @@ def plot_perplexities(perplexities_list, labels, use_log_scale=True, remove_outl
         filtered_arr = arr[arr < threshold]
 
         return filtered_arr
+    
+    if remove_outliers:
+        for i in range(len(perplexities_list)):
+            perplexities_list[i] = remove_large_outliers(perplexities_list[i])
+    
+    all_values = np.concatenate(perplexities_list)
+    min_value = np.min(all_values)
+    max_value = np.max(all_values)
 
     plt.figure(figsize=(10, 4))
     plt.subplot(1, 1, 1)
 
     for i in range(len(perplexities_list)):
-        perplexities = perplexities_list[i]
-        if remove_outliers:
-            perplexities = remove_large_outliers(perplexities)
-
+        
         if use_log_scale:
-            hist, bins = np.histogram(perplexities, bins=20)
+            hist, bins = np.histogram(perplexities_list[i], bins=num_bins, range=(min_value, max_value))
             logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
-            plt.hist(perplexities, alpha=0.5, label=labels[i], bins=logbins)
+            plt.hist(perplexities_list[i], alpha=0.5, label=labels[i], bins=logbins, range=(min_value, max_value))
             plt.xscale('log')
         else:
-            plt.hist(perplexities, alpha=0.5, label=labels[i], bins=20)
+            plt.hist(perplexities_list[i], alpha=0.5, label=labels[i], bins=num_bins, range=(min_value, max_value))
 
     # plt.axvline(x = mean_on_distance, color = 'blue', linestyle='dashed', label = 'on_policy_mean')
     # plt.axvline(x = mean_off_distance, color = 'orange', linestyle='dashed', label = 'off_policy_mean')
