@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
-from probes.wandb_interface import load_probe_eval_dict_by_datasets
+from probes.wandb_interface import load_probe_eval_dict_by_dict
 
 
 
@@ -27,7 +27,11 @@ def plot_results_table(dataset_list, metric):
     results_table = np.full((len(dataset_list), len(dataset_list)), -1, dtype=float)
     for train_index in range(len(dataset_list)):
         for test_index in range(len(dataset_list)):
-            results = load_probe_eval_dict_by_datasets(dataset_list[train_index], dataset_list[test_index])
+            results = load_probe_eval_dict_by_dict({
+                "config.train_dataset": dataset_list[train_index],
+                "config.test_dataset": dataset_list[test_index],
+                "state": "finished"  # Only completed runs
+            })
             results_table[train_index, test_index] = results[metric]
     
     fig, ax = plt.subplots()
@@ -124,4 +128,50 @@ def plot_per_class_prediction_distributions(y, y_pred_proba):
     plt.title('Prediction Distribution')
 
     plt.tight_layout()
+    plt.show()
+
+
+
+
+
+
+def plot_layer_experiment(layers_list, dataset_name):
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+    ax1.set_title('Accuracy')
+    ax1.set_xlabel('Layer')
+    ax1.set_ylabel('Accuracy')
+    ax1.grid(True, alpha=0.3)
+    
+    ax2.set_title('ROC AUC')
+    ax2.set_xlabel('Layer')
+    ax2.set_ylabel('ROC AUC')
+    ax2.grid(True, alpha=0.3)
+
+    for use_bias in [True, False]:
+        for normalize_inputs in [True, False]:
+            accuracies = []
+            roc_aucs = []
+            for layer in layers_list:
+                print(f"layer {layer}")
+                results = load_probe_eval_dict_by_dict({
+                    "config.train_dataset": dataset_name,
+                    "config.test_dataset": dataset_name,
+                    "config.probe/use_bias": use_bias,
+                    "config.probe/normalize": normalize_inputs,
+                    "config.layer": layer,
+                    "state": "finished"  # Only completed runs
+                })
+                accuracies.append(results['accuracy'])
+                roc_aucs.append(results['roc_auc'])
+
+            # Plot accuracies
+            ax1.plot(layers_list, accuracies, marker='o', linewidth=2, markersize=6, label=f'use_bias={use_bias}, normalize={normalize_inputs}')
+
+            # Plot ROC AUCs
+            ax2.plot(layers_list, roc_aucs, marker='s', linewidth=2, markersize=6, label=f'use_bias={use_bias}, normalize={normalize_inputs}')
+
+    plt.tight_layout()
+    plt.legend()
     plt.show()

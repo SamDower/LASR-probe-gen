@@ -9,7 +9,7 @@ class SklearnLogisticProbe(Probe):
 
     def __init__(self, use_bias=True):
         # Create the sklearn classifier model to be optimized.
-        self.classifier = LogisticRegression(fit_intercept=use_bias)
+        self.classifier = LogisticRegression(fit_intercept=use_bias, max_iter=500)
         # Save the normalizing transformation parameters
         self.transformation_mean = 0.0
         self.transformation_std = 1.0

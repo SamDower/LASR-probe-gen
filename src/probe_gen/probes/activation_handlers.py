@@ -20,55 +20,55 @@ def _create_attention_mask(tensor_list, max_len):
     return torch.cat(masks, dim=0)
 
 
-def load_hf_activations_and_labels(repo_id, activations_filename, labels_filename, verbose=False):
-    """
-    Loads activations for all layers and ground truth labels from Huggingface.
+# def load_hf_activations_and_labels(repo_id, activations_filename, labels_filename, verbose=False):
+#     """
+#     Loads activations for all layers and ground truth labels from Huggingface.
 
-    Args:
-        repo_id (str): Huggingface repository id.
-        activations_filename (str): Huggingface file name for activations.
-        labels_filename (str): Labels filename e.g. on_policy_raw.jsonl.
-        verbose (bool): Should the function output to console. 
+#     Args:
+#         repo_id (str): Huggingface repository id.
+#         activations_filename (str): Huggingface file name for activations.
+#         labels_filename (str): Labels filename e.g. on_policy_raw.jsonl.
+#         verbose (bool): Should the function output to console. 
     
-    Returns:
-        activations_tensors (dict): dictionary of tensors of activations, each with shape [batch_size, seq_len, dim] with keys as ints for each layer.
-        attention_mask (tensor): tensor stating which tokens are real (1) or padded (0) of shape [batch_size, seq_len]
-        labels_tensor (tensor): tensor of ground truth labels of shape [batch_size].
-    """
-    # Load the labels (TODO: currently from the json file but we will need to change this to load from huggingface as well)
-    labels_list = []
-    with open(labels_filename, 'r') as file:
-        for line in file:
-            data = json.loads(line)
-            if data["scale_labels"] <= 5:
-                labels_list.append(1.0)
-            else:
-                labels_list.append(0.0)
-    labels_tensor = torch.tensor(labels_list)
-    if verbose: print("loaded labels")
+#     Returns:
+#         activations_tensors (dict): dictionary of tensors of activations, each with shape [batch_size, seq_len, dim] with keys as ints for each layer.
+#         attention_mask (tensor): tensor stating which tokens are real (1) or padded (0) of shape [batch_size, seq_len]
+#         labels_tensor (tensor): tensor of ground truth labels of shape [batch_size].
+#     """
+#     # Load the labels (TODO: currently from the json file but we will need to change this to load from huggingface as well)
+#     labels_list = []
+#     with open(labels_filename, 'r') as file:
+#         for line in file:
+#             data = json.loads(line)
+#             if data["scale_labels"] <= 5:
+#                 labels_list.append(1.0)
+#             else:
+#                 labels_list.append(0.0)
+#     labels_tensor = torch.tensor(labels_list)
+#     if verbose: print("loaded labels")
 
-    # Load activations
-    file_path = hf_hub_download(repo_id=repo_id, filename=activations_filename, repo_type="dataset")
-    df = pd.read_pickle(file_path)
+#     # Load activations
+#     file_path = hf_hub_download(repo_id=repo_id, filename=activations_filename, repo_type="dataset")
+#     df = pd.read_pickle(file_path)
 
-    activations_tensors = {}
-    attention_mask = None
-    # Extract all activations
-    for layer in df.loc[0]["activations"].keys():
-        all_activations = []
-        for i in range(len(df)):
-            all_activations.append(df.loc[i]["activations"][layer])
-        activations_tensor = pad_sequence(all_activations, batch_first=True, padding_value=0.0).to(torch.float32)
-        activations_tensors[layer] = activations_tensor
-        if attention_mask == None:
-            attention_mask = _create_attention_mask(all_activations, activations_tensor.shape[1])
+#     activations_tensors = {}
+#     attention_mask = None
+#     # Extract all activations
+#     for layer in df.loc[0]["activations"].keys():
+#         all_activations = []
+#         for i in range(len(df)):
+#             all_activations.append(df.loc[i]["activations"][layer])
+#         activations_tensor = pad_sequence(all_activations, batch_first=True, padding_value=0.0).to(torch.float32)
+#         activations_tensors[layer] = activations_tensor
+#         if attention_mask == None:
+#             attention_mask = _create_attention_mask(all_activations, activations_tensor.shape[1])
 
-    if verbose: print(f"loaded activations")
+#     if verbose: print(f"loaded activations")
 
-    return activations_tensors, attention_mask, labels_tensor
+#     return activations_tensors, attention_mask, labels_tensor
 
 
-def load_hf_activations_and_labels_at_layer(repo_id, activations_filename, labels_filename, layer, verbose=False):
+def load_hf_activations_and_labels(repo_id, activations_filename, labels_filename, verbose=False):
     """
     Loads activations for a specified layer and ground truth labels from Huggingface.
 
@@ -103,12 +103,12 @@ def load_hf_activations_and_labels_at_layer(repo_id, activations_filename, label
     # Extract all activations
     all_activations = []
     for i in range(len(df)):
-        all_activations.append(df.loc[i]["activations"][layer])
+        all_activations.append(df.loc[i]["activations"])
     activations_tensor = pad_sequence(all_activations, batch_first=True, padding_value=0.0).to(torch.float32)
-    if verbose: print(f"loaded activations")
+    if verbose: print(f"loaded activations with shape {activations_tensor.shape}")
 
     attention_mask = _create_attention_mask(all_activations, activations_tensor.shape[1])
-    if verbose: print(f"calculated attention mask")
+    if verbose: print(f"calculated attention mask with shape {attention_mask.shape}")
 
     return activations_tensor, attention_mask, labels_tensor
 

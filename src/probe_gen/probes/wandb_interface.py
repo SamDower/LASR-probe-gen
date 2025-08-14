@@ -1,6 +1,6 @@
 import wandb
 
-def save_probe_dict_results(eval_dict, probe_type, probe_use_bias, probe_normalize, train_set_name, test_set_name):
+def save_probe_dict_results(eval_dict, probe_type, probe_use_bias, probe_normalize, layer, train_set_name, test_set_name):
     """
     Saves the evaluation dict to wandb as a single run.
 
@@ -9,6 +9,7 @@ def save_probe_dict_results(eval_dict, probe_type, probe_use_bias, probe_normali
         probe_type (str): The type of probe trained (e.g. 'mean', 'attention').
         probe_use_bias (bool): Whether use_bias is turned on for the probe.
         probe_normalize (bool): Whether the inputs to the probe are normalized or not. 
+        layer (int): The layer of the activations the probe was trained on.
         train_set_name (str): An identifiable name for the data the probe was trained on (e.g. refusal_off_other_model).
         test_set_name (str): An identifiable name for the data the probe was tested on (e.g. refusal_on).
     
@@ -23,6 +24,7 @@ def save_probe_dict_results(eval_dict, probe_type, probe_use_bias, probe_normali
             "probe/type": probe_type,
             "probe/use_bias": probe_use_bias,
             "probe/normalize": probe_normalize,
+            "layer": layer,
             "train_dataset": train_set_name,
             "test_dataset": test_set_name
         }
@@ -39,7 +41,7 @@ def save_probe_dict_results(eval_dict, probe_type, probe_use_bias, probe_normali
     wandb.finish()
 
 
-def load_probe_eval_dict_by_datasets(train_dataset_name, test_dataset_name):
+def load_probe_eval_dict_by_dict(lookup_dict):
     """
     Loads the latest probe evaluation dictionary which used the dataset names provided.
 
@@ -55,11 +57,7 @@ def load_probe_eval_dict_by_datasets(train_dataset_name, test_dataset_name):
     # Query runs with specific config filters
     runs = api.runs(
         "samdower/LASR_probe_gen",
-        filters={
-            "config.train_dataset": train_dataset_name,
-            "config.test_dataset": test_dataset_name,
-            "state": "finished"  # Only completed runs
-        }
+        filters=lookup_dict
     )
     
     results = []
