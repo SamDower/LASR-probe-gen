@@ -1,4 +1,5 @@
 import wandb
+import pandas as pd
 
 def save_probe_dict_results(eval_dict, probe_type, probe_use_bias, probe_normalize, layer, train_set_name, test_set_name):
     """
@@ -73,8 +74,85 @@ def load_probe_eval_dict_by_dict(lookup_dict):
             })
     
     if len(results) == 0:
-        print(f"### WARNING ###: could not find run for dataset pair ({train_dataset_name}, {test_dataset_name}), returning None.")
+        print(f"### WARNING ###: could not find run for lookup dict {lookup_dict}, returning None.")
         return None
     elif len(results) > 1:
-        print(f"### WARNING ###: multiple runs for dataset pair ({train_dataset_name}, {test_dataset_name}), returning latest.")
+        print(f"### WARNING ###: multiple runs for lookup dict {lookup_dict}, returning latest.")
     return results[-1]
+
+
+
+
+
+
+
+
+
+
+def extract_all_run_info(run):
+    """
+    Automatically extract all available information from a wandb run
+    """
+    run_info = {}
+    
+    # 1. Basic run metadata - extract all available attributes
+    basic_attrs = ['id', 'name', 'state', 'created_at', 'updated_at', 'url', 'path', 
+                   'notes', 'tags', 'group', 'job_type', 'sweep', 'project', 'entity']
+    
+    for attr in basic_attrs:
+        if hasattr(run, attr):
+            value = getattr(run, attr)
+            # Convert lists/complex objects to strings for DataFrame compatibility
+            if isinstance(value, (list, dict)):
+                value = str(value) if value else None
+            run_info[attr] = value
+    
+    # 2. All config parameters with proper key naming
+    for key, value in run.config.items():
+        # Replace problematic characters in column names
+        clean_key = f"config_{key.replace('/', '_').replace('.', '_')}"
+        run_info[clean_key] = value
+    
+    # 3. All summary metrics (final logged values)
+    for key, value in run.summary.items():
+        # Skip internal wandb keys that start with underscore
+        if not key.startswith('_'):
+            clean_key = f"metric_{key.replace('/', '_').replace('.', '_')}"
+            run_info[clean_key] = value
+    
+    # 4. System info (if available)
+    if hasattr(run, 'system_metrics') and run.system_metrics:
+        for key, value in run.system_metrics.items():
+            clean_key = f"system_{key.replace('/', '_').replace('.', '_')}"
+            run_info[clean_key] = value
+    
+    return run_info
+
+def load_probe_eval_dicts_as_df(lookup_dict):
+    """
+    Loads the latest probe evaluation dictionary which used the dataset names provided.
+
+    Args:
+        train_dataset_name (str): An identifiable name for the data the probe was trained on (e.g. refusal_off_other_model).
+        test_dataset_name (str): An identifiable name for the data the probe was tested on (e.g. refusal_on).
+    
+    Returns:
+        eval_dict (dict): evalualtion dictionary.
+    """
+    api = wandb.Api()
+    
+    # Query runs with specific config filters
+    runs = api.runs(
+        "samdower/LASR_probe_gen",
+        filters=lookup_dict
+    )
+    
+    results = []
+    for run in runs:        
+        # Get basic info
+        run_info = extract_all_run_info(run)
+        
+        results.append(run_info)
+    
+    df = pd.DataFrame(results)
+    return df

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
-from probes.wandb_interface import load_probe_eval_dict_by_dict
+from probes.wandb_interface import load_probe_eval_dict_by_dict, load_probe_eval_dicts_as_df
 
 
 
@@ -149,22 +149,26 @@ def plot_layer_experiment(layers_list, dataset_name):
     ax2.set_ylabel('ROC AUC')
     ax2.grid(True, alpha=0.3)
 
+    df = load_probe_eval_dicts_as_df({
+        "config.train_dataset": dataset_name,
+        "config.test_dataset": dataset_name,
+        "state": "finished"  # Only completed runs
+    })
+    print(df.columns)
+
+
     for use_bias in [True, False]:
         for normalize_inputs in [True, False]:
             accuracies = []
             roc_aucs = []
             for layer in layers_list:
-                print(f"layer {layer}")
-                results = load_probe_eval_dict_by_dict({
-                    "config.train_dataset": dataset_name,
-                    "config.test_dataset": dataset_name,
-                    "config.probe/use_bias": use_bias,
-                    "config.probe/normalize": normalize_inputs,
-                    "config.layer": layer,
-                    "state": "finished"  # Only completed runs
-                })
-                accuracies.append(results['accuracy'])
-                roc_aucs.append(results['roc_auc'])
+                filtered_df = df
+                filtered_df = filtered_df[filtered_df['config_probe_normalize'] == normalize_inputs]
+                filtered_df = filtered_df[filtered_df['config_probe_use_bias'] == use_bias]
+                filtered_df = filtered_df[filtered_df['config_layer'] == layer]
+                if filtered_df.shape[0] == 1:
+                    accuracies.append(filtered_df['metric_accuracy'].iloc[0])
+                    roc_aucs.append(filtered_df['metric_roc_auc'].iloc[0])
 
             # Plot accuracies
             ax1.plot(layers_list, accuracies, marker='o', linewidth=2, markersize=6, label=f'use_bias={use_bias}, normalize={normalize_inputs}')
