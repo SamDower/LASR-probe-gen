@@ -585,8 +585,7 @@ def _build_output_path(
     safe_model = _sanitize_for_path(model_name)
     safe_policy = _sanitize_for_path(policy)
     safe_behaviour = _sanitize_for_path(behaviour)
-
-    base_dir = os.path.join("datasets", safe_behaviour, f"{safe_model}__{safe_policy}")
+    base_dir = os.path.join("datasets", safe_behaviour, f"{safe_model}/__{safe_policy}")
     os.makedirs(base_dir, exist_ok=True)
 
     root, ext = os.path.splitext(os.path.basename(base_out))
@@ -595,17 +594,48 @@ def _build_output_path(
     return os.path.join(base_dir, final_name)
 
 
+def _build_simple_output_path(
+    base_out: str,
+    model_name: str = None,
+    default_ext: str = ".jsonl",
+) -> str:
+    """Construct a simple output path in the same directory as the base output file.
+
+    Args:
+        base_out: Base output filename (absolute or relative path)
+        model_name: Model name (not used in simple mode)
+        default_ext: Default file extension if none provided (default: ".jsonl")
+    """
+    # Simply return the base_out path as-is
+    # Ensure the directory exists
+    output_dir = os.path.dirname(base_out)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
+    # Add default extension if none provided
+    root, ext = os.path.splitext(base_out)
+    if not ext:
+        return f"{base_out}{default_ext}"
+    return base_out
+
+
 def _load_existing_results(output_file):
     """Load existing results from file if available."""
     if not os.path.exists(output_file):
         return [], 0
 
     try:
-        with open(output_file, "rb") as f:
-            if output_file.endswith(".pkl"):
+        if output_file.endswith(".pkl"):
+            with open(output_file, "rb") as f:
                 loaded_obj = pickle.load(f)
-            else:
-                loaded_obj = json.load(f)
+        else:
+            # Load from JSON lines format
+            loaded_obj = []
+            with open(output_file, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:  # Skip empty lines
+                        loaded_obj.append(json.loads(line))
 
         # If file contains a DataFrame (from an older/partial run), convert to list-of-dicts
         if isinstance(loaded_obj, pd.DataFrame):
@@ -782,7 +812,7 @@ def _process_failed_batch_outputs_only(batch_prompts, human_inputs, start_idx):
 
 
 def _save_results_to_file(results, output_file):
-    """Save results to pickle file atomically to avoid corruption."""
+    """Save results to file atomically to avoid corruption."""
     tmp_path = f"{output_file}.tmp"
     if output_file.endswith(".pkl"):
         with open(tmp_path, "wb") as f:
@@ -790,9 +820,12 @@ def _save_results_to_file(results, output_file):
             f.flush()
             os.fsync(f.fileno())
     else:
+        # Save as JSON lines format
         with open(tmp_path, "w") as f:
             for result in results:
                 f.write(json.dumps(result) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
 
     os.replace(tmp_path, output_file)
 
@@ -819,8 +852,17 @@ def load_incremental_results(output_file="activations_incremental.pkl"):
     Returns:
         list: List of result dictionaries
     """
-    with open(output_file, "rb") as f:
-        results = pickle.load(f)
+    if output_file.endswith(".pkl"):
+        with open(output_file, "rb") as f:
+            results = pickle.load(f)
+    else:
+        # Load from JSON lines format
+        results = []
+        with open(output_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line:  # Skip empty lines
+                    results.append(json.loads(line))
     return results
 
 
@@ -971,11 +1013,19 @@ def process_batched_dataframe_outputs_only(
     )
 
     # Define incremental checkpoint path (list of dicts)
-    incremental_path = (
-        output_file.replace(".pkl", "_incremental.pkl")
-        if output_file.endswith(".pkl")
-        else f"{output_file}_incremental.pkl"
-    )
+    if output_file.endswith(".pkl"):
+        incremental_path = output_file.replace(".pkl", "_incremental.pkl")
+    elif output_file.endswith(".jsonl"):
+        incremental_path = output_file.replace(".jsonl", "_incremental.jsonl")
+    elif output_file.endswith(".json"):
+        incremental_path = output_file.replace(".json", "_incremental.json")
+    else:
+        # Fallback: append _incremental before the extension or at the end
+        if "." in output_file:
+            name, ext = output_file.rsplit(".", 1)
+            incremental_path = f"{name}_incremental.{ext}"
+        else:
+            incremental_path = f"{output_file}_incremental"
 
     # Load existing results if available (resume from incremental list file)
     results, num_existing = _load_existing_results(incremental_path)
@@ -1292,11 +1342,19 @@ def process_batched_dataframe_incremental(
     )
 
     # Define incremental checkpoint path (list of dicts)
-    incremental_path = (
-        output_file.replace(".pkl", "_incremental.pkl")
-        if output_file.endswith(".pkl")
-        else f"{output_file}_incremental.pkl"
-    )
+    if output_file.endswith(".pkl"):
+        incremental_path = output_file.replace(".pkl", "_incremental.pkl")
+    elif output_file.endswith(".jsonl"):
+        incremental_path = output_file.replace(".jsonl", "_incremental.jsonl")
+    elif output_file.endswith(".json"):
+        incremental_path = output_file.replace(".json", "_incremental.json")
+    else:
+        # Fallback: append _incremental before the extension or at the end
+        if "." in output_file:
+            name, ext = output_file.rsplit(".", 1)
+            incremental_path = f"{name}_incremental.{ext}"
+        else:
+            incremental_path = f"{output_file}_incremental"
 
     # Load existing results if available (resume from incremental list file)
     results, num_existing = _load_existing_results(incremental_path)
@@ -1462,8 +1520,6 @@ def process_file(
     dataset_path: str,
     output_file: str,
     batch_size: int = 1,
-    policy: str = "on_policy",
-    behaviour: str = "refusal",
     sample: int = 0,
     layers_str: str = "auto",
 ):
@@ -1497,9 +1553,9 @@ def process_file(
     human_input_column = "human_inputs"
 
     # Process incrementally
-    # Build deterministic output path under datasets/<behaviour>/<model>__<policy>/
-    final_out_path = _build_output_path(
-        output_file, model.config._name_or_path, policy, behaviour, default_ext=".pkl"
+    # Use simple output path (same directory as input)
+    final_out_path = _build_simple_output_path(
+        output_file, model.config._name_or_path, default_ext=".pkl"
     )
     print(f"Processing data and saving to {final_out_path}...")
 
@@ -1542,6 +1598,7 @@ def process_file_outputs_only(
 
     # Load data from file
     human_list, assistant_list, full_list = load_jsonl_data(dataset_path)
+    print("json laoaded!")
 
     # Optional sampling for quick tests
     if sample and sample > 0:

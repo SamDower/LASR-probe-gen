@@ -21,7 +21,6 @@ def main():
     parser = argparse.ArgumentParser(description="Activation extraction")
     parser.add_argument("--model", default="meta-llama/Llama-3.2-3B-Instruct")
     parser.add_argument("--data", default="data/refusal/anthropic_raw_apr_23.jsonl")
-    parser.add_argument("--out", default="my_activations.pkl")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--sample", type=int, default=0, help="If >0, run on N samples")
     parser.add_argument(
@@ -30,32 +29,22 @@ def main():
         default="auto",
         help="Which layers to extract activations from. Options: 'all' (all layers), 'auto' (65%% through), comma-separated indices '0,5,10', ranges '5-10', or mixed '0,5-8,15'",
     )
-    parser.add_argument(
-        "--policy",
-        type=str,
-        default="on_policy",
-        choices=["on_policy", "off_policy_prompt", "off_policy_other_model"],
-        help="Activation policy: generate (on_policy) or teacher-forced (off_policy_*)",
-    )
-    parser.add_argument(
-        "--behaviour",
-        type=str,
-        default="refusal",
-        help="Name of the behaviour bucket; outputs saved under datasets/<behaviour>/",
-    )
     args = parser.parse_args()
 
     print(f"Loading model: {args.model}")
     model, tokenizer = get_model(args.model)
 
+    # Generate output filename automatically in the same directory as input
+    input_dir = os.path.dirname(args.data)
+    input_basename = os.path.splitext(os.path.basename(args.data))[0]
+    output_file = os.path.join(input_dir, f"{input_basename}_activations.pkl")
+
     process_file(
         model,
         tokenizer,
         dataset_path=args.data,
-        output_file=args.out,
+        output_file=output_file,
         batch_size=args.batch_size,
-        policy=args.policy,
-        behaviour=args.behaviour,
         sample=args.sample,
         layers_str=args.layers,
     )

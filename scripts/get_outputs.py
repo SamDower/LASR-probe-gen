@@ -21,7 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description="Output generation (no activations)")
     parser.add_argument("--model", default="meta-llama/Llama-3.2-3B-Instruct")
     parser.add_argument("--data", default="data/refusal/anthropic_raw_apr_23.jsonl")
-    parser.add_argument("--out", default="my_outputs.jsonl")
+    parser.add_argument("--out", default="outputs.jsonl")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--sample", type=int, default=0, help="If >0, run on N samples")
     parser.add_argument(
