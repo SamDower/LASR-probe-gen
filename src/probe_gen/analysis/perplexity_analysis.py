@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 import wandb
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def save_perplexities(perplexities, model_name, dataset_name):
@@ -25,8 +27,6 @@ def load_perplexities(model_name, dataset_name):
 
 
 
-import matplotlib.pyplot as plt
-import numpy as np
 
 def plot_perplexities(perplexities_list, labels, use_log_scale=True, remove_outliers=False):
 
