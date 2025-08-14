@@ -1618,37 +1618,26 @@ def process_file_outputs_only(
         prompt_column = "human_inputs"
         do_generation = True
         human_input_column = "human_inputs"
-    # elif policy == "off_policy_prompt":
-    #     # Add extra prompt to human inputs for off_policy_prompt
-    #     if extra_prompt:
-    #         print(f"Adding extra prompt: '{extra_prompt}'")
-    #         modified_human_list = [f"{extra_prompt} {human}" for human in human_list]
-    #     else:
-    #         modified_human_list = human_list
-    #     df = pd.DataFrame(
-    #         {"human_inputs": modified_human_list, "original_human_inputs": human_list}
-    #     )
-    #     prompt_column = "human_inputs"
-    #     do_generation = True
-    #     human_input_column = "original_human_inputs"  # Use original for saving
-    elif policy == "off_policy_other_model" or policy == "off_policy_prompt":
-        formatted_pairs = format_prompts_from_pairs(
-            tokenizer, human_list, assistant_list
-        )
-        df = pd.DataFrame(
-            {
-                "full_dialogue": formatted_pairs,
-                "extra_prompt": extra_prompt,
-                "human_inputs": human_list,
-            }
-        )
-        prompt_column = "full_dialogue"
-        do_generation = False
-        human_input_column = "human_inputs"
     else:
-        raise ValueError(
-            f"Unknown policy '{policy}'. Use one of: on_policy, off_policy_prompt, off_policy_other_model"
-        )
+        # For off_policy_prompt, prepend extra_prompt to human inputs and generate new responses
+        if policy == "off_policy_prompt":
+            modified_human_list = [f"{extra_prompt} {human}" for human in human_list]
+            df = pd.DataFrame(
+                {
+                    "human_inputs": modified_human_list,  # Modified inputs for generation
+                    "original_human_inputs": human_list,  # Original inputs for "inputs" field
+                }
+            )
+            prompt_column = "human_inputs"
+            do_generation = True  # Generate new responses based on modified inputs
+            human_input_column = (
+                "original_human_inputs"  # Use original for "inputs" field
+            )
+        else:
+            raise ValueError(
+                "unknown policy"
+                "Please provide an --extra-prompt argument if policy == off_policy_prompt."
+            )
 
     # Process incrementally
     # Build deterministic output path under datasets/<behaviour>/<model>__<policy>/
