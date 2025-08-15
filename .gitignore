@@ -6,9 +6,6 @@ dist/
 wheels/
 *.egg-info
 
-# jupyter checkpoints
-.ipynb_checkpoints/
-
 #.sh scripts
 *.sh
 *.log
