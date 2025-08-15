@@ -1,49 +1,41 @@
 # LASR Probe Gen
-
+See notebooks/DataPipeline.ipynb to get the datasets of inputs, outputs, labels and activations.
+See notebooks/TrainProbes.ipynb to train and evaluate probes on the datasets.
 ```
 git clone https://github.com/SamDower/LASR-probe-gen.git
 cd LASR-probe-gen/
 ```
 
+# Full Dataset Pipeline
+## 1. Sample inputs dataset
+- Samples dataset from hugging face to jsonl file
+- For refusal behaviour can save time by doing labelling and subsamplling of off policy outpus at the same time (set to 'yes')
 
-## 1. Sample and annotate dataset
+```uv run scripts/get_dataset_labelled.py --behaviour refusal --out_path data/refusal/off_policy_raw.jsonl --num_samples 1000 --do_label no --do_subsample no```
 
+## 2. Generate outputs dataset (on-policy)
+- Uses LLM (Llama-3.2-3B-Instruct default) to generate outputs for inputs dataset
+- Takes 10 minutes to do 5k samples with 200 batch size
+- Hardware requirements: high GPU, low RAM, low disk
+- Make sure you have done 'export HF_TOKEN=<key>'
+
+```uv run python scripts/get_outputs.py --data data/refusal/off_policy_raw.jsonl --out on_policy_outputs.jsonl --batch-size 200 --sample 0  --policy on_policy --behaviour refusal```
+
+## 3. Label and balance dataset
 - Uses GPT-4o API to label refusal behaviour
-- Takes 4 minutes to do 10,000 samples
+- Takes 4 minutes to do 10k samples
 - Hardware requirements: None
 - Make sure you have done 'export OPENAI_API_KEY=<key>'
 
-For sampling a new dataset with off-policy outputs:
-```
-uv run src/probe_gen/annotation/refusal_behaviour.py --out_path data/refusal/off_policy_raw.jsonl --num_samples 1000 --do_label True --do_subsample True
-```
-For labelling an existing dataset with on-policy outputs:
-```
-uv run src/probe_gen/annotation/refusal_behaviour.py --out_path data/refusal/on_policy_raw_20k.jsonl --in_path data/refusal/on_policy_unlabelled_20k.jsonl --do_label True --do_subsample True
-```
-Where --do_label and --do_subsample are True by default.
+```uv run scripts/get_dataset_labelled.py --behaviour refusal --out_path data/refusal/on_policy_raw.jsonl --in_path data/refusal/on_policy_outputs.jsonl --do_label True --do_subsample True```
 
+## 4. Get activations dataset
+- Uses LLM (Llama-3.2-3B-Instruct default) to get actviations for datasets
+- Takes 10 minutes to generate output activations for 5k samples with 200 batch size
+- Hardware requirements: high GPU, super high (150 GB) RAM, super high (150 GB) Disk
+- Make sure you have done 'export HF_TOKEN=<key>'
 
-## 2. Get activations for dataset
-
-- Uses meta-llama/Llama-3.2-3B-Instruct to get actviations for on policy data
-- Takes 1-2 hours to generate output activations for 1000 samples
-- Hardware requirements: 60 GB GPU, ??? GB RAM, ??? GB Disk
-
-```
-python get_activations.py \
-  --model "meta-llama/Llama-3.2-3B-Instruct" \
-  --data "/rds/general/user/nk1924/home/LASR-probe-gen/data/refusal/anthropic_raw_apr_23.jsonl" \
-  --out "/rds/general/user/nk1924/home/LASR-probe-gen/my_activations.pkl" \
-  --batch-size 1 \
-  --policy off_policy_other_model \
-  --behaviour refusal
-```
-
-## 3. Train probes on activations dataset
-- Currently just using notebooks/TrainProbe.ipynb and running cells
-- Hardware requirements: 0 GB GPU, ??? GB RAM, ??? GB Disk
-
+```python get_activations.py --model "meta-llama/Llama-3.2-3B-Instruct" --data data/refusal/on_policy_raw.jsonl --out data/refusal/on_policy_raw.pkl --batch-size 1 --layers all```
 
 # Other
 ## Connect vscode to vast.ai
@@ -75,15 +67,4 @@ When not running individual python scripts and want to use JupyterLabs, need to 
 uv sync
 uv run python -m ipykernel install --user --name=uv-env --display-name "Python (uv)"
 ```
-Only now open the notebook and go to Kernel → Change Kernel → Python (uv).
-
-
-## Use autograder on dataset (unused)
-
-- Uses cais/HarmBench-Llama-2-13b-cls to label refusal
-- Takes 5 minutes to do 1000 samples
-- Hardware requirements: 40 GB disk, 30-70 GB RAM, 100 GB GPU
-
-```
-uv run src/probe_gen/annotation/refusal_autograder.py
-```
+Now open the notebook and go to Kernel → Change Kernel → Python (uv). You may need to press the refresh button if it is not showing up.
