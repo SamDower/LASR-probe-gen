@@ -60,8 +60,6 @@ def plot_perplexities(perplexities_list, labels, use_log_scale=True, remove_outl
         else:
             plt.hist(perplexities_list[i], alpha=0.5, label=labels[i], bins=num_bins, range=(min_value, max_value))
 
-    # plt.axvline(x = mean_on_distance, color = 'blue', linestyle='dashed', label = 'on_policy_mean')
-    # plt.axvline(x = mean_off_distance, color = 'orange', linestyle='dashed', label = 'off_policy_mean')
     plt.xlabel('Perplexity')
     plt.ylabel('Count')
     plt.legend()
@@ -132,10 +130,17 @@ def calculate_response_perplexities_sequentially(model, tokenizer, input_text_li
     perplexities = []
     for i in range(len(input_text_list)):
         if verbose and i % 500 == 0: 
-            print(f"processing response {i}")
+            print(f"processing responses {i} to {i+500}")
         perplexity = _calculate_single_response_perplexity(model, tokenizer, input_text_list[i], response_text_list[i])
         perplexities.append(perplexity)
     return perplexities
+
+
+
+
+
+
+
 
 
 
