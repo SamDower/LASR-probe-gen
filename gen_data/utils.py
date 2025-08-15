@@ -99,9 +99,13 @@ def get_model(model_name: str):
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
+    # Set padding side to left for decoder-only models to avoid warnings
+    tokenizer.padding_side = "left"
+
     # Set the pad token using the same logic as control experiments
     tokenizer.pad_token = get_pad_token(model_name, tokenizer)
     print(f"Pad token set to: {tokenizer.pad_token}")
+    print(f"Padding side set to: {tokenizer.padding_side}")
 
     return model, tokenizer
 
@@ -208,28 +212,17 @@ def _generate_sequences(model, tokenizer, inputs, max_new_tokens=75, temperature
 
         # Smart temperature handling with clean parameter passing
         if temperature == 0.0:
-            # Use greedy decoding - only pass necessary parameters
+            # Use greedy decoding - only pass necessary parameters (no temperature/top_p)
             generation_args = {
                 **base_args,
                 "do_sample": False,  # Greedy decoding
             }
-        elif 0.0 < temperature <= 2.0:
-            # Use sampling with temperature
+        else:
+            # Use sampling with temperature - only pass sampling parameters when needed
             generation_args = {
                 **base_args,
                 "do_sample": True,
                 "temperature": temperature,
-            }
-        else:
-            # Temperature too high - clamp and warn
-            clamped_temp = min(temperature, 2.0)
-            print(
-                f"Warning: Temperature {temperature} is very high. Clamping to {clamped_temp}"
-            )
-            generation_args = {
-                **base_args,
-                "do_sample": True,
-                "temperature": clamped_temp,
             }
 
         outputs = model.generate(**generation_args)  # this gives input + output
