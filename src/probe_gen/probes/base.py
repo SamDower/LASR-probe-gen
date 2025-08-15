@@ -66,7 +66,7 @@ class Probe(ABC):
             "accuracy": accuracy,
             "roc_auc": roc_auc,
             "tpr_at_1_fpr": tpr_at_1_fpr,
-        }
+        }, y_pred, y_pred_proba
     
     def _safe_to_numpy(self, data):
         """Convert PyTorch tensor OR numpy array to numpy array"""

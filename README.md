@@ -10,29 +10,25 @@ cd LASR-probe-gen/
 
 - Uses GPT-4o API to label refusal behaviour
 - Takes 4 minutes to do 10,000 samples
+- Hardware requirements: None
+- Make sure you have done 'export OPENAI_API_KEY=<key>'
 
-Hardware requirements:
-- n/a
-
-For off-policy labels:
+For sampling a new dataset with off-policy outputs:
 ```
-uv run src/probe_gen/annotation/refusal_behaviour.py --path data/refusal/off_policy_raw.jsonl --num_samples 1000
+uv run src/probe_gen/annotation/refusal_behaviour.py --out_path data/refusal/off_policy_raw.jsonl --num_samples 1000 --do_label True --do_subsample True
 ```
-For on-policy labels:
+For labelling an existing dataset with on-policy outputs:
 ```
-uv run src/probe_gen/annotation/refusal_behaviour.py --path data/refusal/on_policy_raw.jsonl --num_samples 1000 --outputs_hf NLie2/anthropic-refusal-activations
+uv run src/probe_gen/annotation/refusal_behaviour.py --out_path data/refusal/on_policy_raw_20k.jsonl --in_path data/refusal/on_policy_unlabelled_20k.jsonl --do_label True --do_subsample True
 ```
+Where --do_label and --do_subsample are True by default.
 
 
 ## 2. Get activations for dataset
 
 - Uses meta-llama/Llama-3.2-3B-Instruct to get actviations for on policy data
 - Takes 1-2 hours to generate output activations for 1000 samples
-
-Hardware requirements:
-- Needs 60 GB GPU
-- Needs ??? GB RAM
-
+- Hardware requirements: 60 GB GPU, ??? GB RAM, ??? GB Disk
 
 ```
 python get_activations.py \
@@ -46,9 +42,7 @@ python get_activations.py \
 
 ## 3. Train probes on activations dataset
 - Currently just using notebooks/TrainProbe.ipynb and running cells
-
-Hardware requirements:
-- Needs ??? GB RAM
+- Hardware requirements: 0 GB GPU, ??? GB RAM, ??? GB Disk
 
 
 # Other
@@ -88,12 +82,7 @@ Only now open the notebook and go to Kernel → Change Kernel → Python (uv).
 
 - Uses cais/HarmBench-Llama-2-13b-cls to label refusal
 - Takes 5 minutes to do 1000 samples
-- Specify main function for which file to take in
-
-Hardware requirements:
-- Needs 40 GB disk
-- Needs 30-70 GB RAM
-- Needs 100 GB GPU
+- Hardware requirements: 40 GB disk, 30-70 GB RAM, 100 GB GPU
 
 ```
 uv run src/probe_gen/annotation/refusal_autograder.py
