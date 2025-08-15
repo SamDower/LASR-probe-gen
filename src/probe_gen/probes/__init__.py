@@ -1,5 +1,5 @@
 from .aggregations import MeanAggregation
 from .base import Probe
-from .activation_handlers import *
+from .activation_handlers import load_hf_activations_and_labels_at_layer, load_hf_activations_at_layer, create_activation_datasets
 from .sklearn_probes import SklearnLogisticProbe
 from .wandb_interface import save_probe_dict_results, load_probe_eval_dict_by_dict

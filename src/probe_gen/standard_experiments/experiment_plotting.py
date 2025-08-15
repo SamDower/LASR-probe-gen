@@ -12,7 +12,7 @@ from probes.wandb_interface import load_probe_eval_dict_by_dict, load_probe_eval
 
 
 
-def plot_results_table(dataset_list, metric):
+def plot_results_table(dataset_list, layer, probe_type, use_bias, normalize, metric):
     """
     Plots a grid showing a metric for probes trained and tested on each of the specified datasets in a grid.
 
@@ -30,6 +30,10 @@ def plot_results_table(dataset_list, metric):
             results = load_probe_eval_dict_by_dict({
                 "config.train_dataset": dataset_list[train_index],
                 "config.test_dataset": dataset_list[test_index],
+                "config.layer": layer,
+                "config.probe/type": probe_type,
+                "config.probe/use_bias": use_bias,
+                "config.probe/normalize": normalize,
                 "state": "finished"  # Only completed runs
             })
             results_table[train_index, test_index] = results[metric]
@@ -42,8 +46,8 @@ def plot_results_table(dataset_list, metric):
             yticklabels=dataset_list,
             annot=True,  # This adds the text annotations
             fmt='.3f',   # Format numbers to 3 decimal places
-            #cmap='viridis',  # You can change the colormap
-            vmin=0,
+            cmap='Greens',  # You can change the colormap
+            vmin=0.5,
             vmax=1,
             ax=ax,
             annot_kws={"size": 20})
@@ -154,7 +158,6 @@ def plot_layer_experiment(layers_list, dataset_name):
         "config.test_dataset": dataset_name,
         "state": "finished"  # Only completed runs
     })
-    print(df.columns)
 
 
     for use_bias in [True, False]:
@@ -166,7 +169,7 @@ def plot_layer_experiment(layers_list, dataset_name):
                 filtered_df = filtered_df[filtered_df['config_probe_normalize'] == normalize_inputs]
                 filtered_df = filtered_df[filtered_df['config_probe_use_bias'] == use_bias]
                 filtered_df = filtered_df[filtered_df['config_layer'] == layer]
-                if filtered_df.shape[0] == 1:
+                if filtered_df.shape[0] >= 1:
                     accuracies.append(filtered_df['metric_accuracy'].iloc[0])
                     roc_aucs.append(filtered_df['metric_roc_auc'].iloc[0])
 
