@@ -1,4 +1,4 @@
-# Python-generated files
+# python-generated files
 __pycache__/
 *.py[oc]
 build/
@@ -10,10 +10,10 @@ wheels/
 *.sh
 *.log
 
-# Virtual environments
+# virtual environments
 .venv
 
-# Other
+# other
 src/lasr_tutorial/wandb/
 src/lasr_tutorial/.data/
 notebooks/wandb/
@@ -31,5 +31,11 @@ hf_cache/
 # datasets
 *.pt
 *.pkl
+*.jsonl
 
+# datasets that are not ignored
+!data/refusal/off_policy_balanced_5k.jsonl
+!data/refusal/on_policy_balanced_5k.jsonl
+
+# uv things
 uv.lock
