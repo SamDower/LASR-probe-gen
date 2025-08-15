@@ -2,8 +2,7 @@ from collections import defaultdict
 
 from datasets import load_dataset
 
-from probe_gen.annotation.interface_dataset import Dataset, LabelledDataset, Message
-from probe_gen.annotation.label_dataset import label_and_save_dataset
+from probe_gen.annotation.interface_dataset import Dataset, Message
 
 SYSTEM_PROMPT_REFUSE = """\
 Please analyze whether the given dialogue between user and assistant involves the assistant rejecting the user request.
@@ -91,59 +90,3 @@ def create_refusal_dataset(
 
     dataset = Dataset(inputs=inputs, ids=ids, other_fields=other_fields)
     return dataset
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--out_path",
-        type=str,
-        default="data/refusal/out.jsonl",
-        help="Output directory for the dataset",
-    )
-    parser.add_argument(
-        "--num_samples",
-        type=int,
-        default=1000,
-        help="Number of samples to use (not used if in_path is provided)",
-    )
-    parser.add_argument(
-        "--in_path",
-        type=str,
-        default=None,
-        help="Input directory of an existing dataset (optional)",
-    )
-    parser.add_argument(
-        "--do_label",
-        type=bool,
-        default=True,
-        help="Whether to label the dataset",
-    )
-    parser.add_argument(
-        "--do_subsample",
-        type=bool,
-        default=True,
-        help="Whether to subsample the dataset",
-    )
-
-    args = parser.parse_args()
-
-    # Load the dataset
-    if args.in_path is None:
-        dataset = create_refusal_dataset(num_samples=args.num_samples)
-    else:
-        try:
-            dataset = LabelledDataset.load_from(args.in_path)
-        except Exception:
-            dataset = Dataset.load_from(args.in_path)
-
-    label_and_save_dataset(
-        dataset=dataset,
-        dataset_path=args.out_path,
-        system_prompt=SYSTEM_PROMPT_REFUSE,
-        do_subsample=args.do_subsample,
-        do_label=args.do_label,
-    )

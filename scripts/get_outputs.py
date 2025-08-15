@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Third-party imports
 from huggingface_hub import login
 
-from gen_data.utils import get_model, process_file_outputs_only
+from probe_gen.gen_data.utils import get_model, process_file_outputs_only
 
 hf_token = os.getenv("HF_TOKEN")
 if hf_token:
