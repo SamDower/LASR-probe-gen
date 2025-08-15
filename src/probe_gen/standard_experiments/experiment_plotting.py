@@ -8,11 +8,11 @@ import sys
 from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
-from probes.wandb_interface import load_probe_eval_dict_by_datasets
+from probes.wandb_interface import load_probe_eval_dict_by_dict, load_probe_eval_dicts_as_df
 
 
 
-def plot_results_table(dataset_list, metric):
+def plot_results_table(dataset_list, layer, probe_type, use_bias, normalize, metric):
     """
     Plots a grid showing a metric for probes trained and tested on each of the specified datasets in a grid.
 
@@ -27,7 +27,15 @@ def plot_results_table(dataset_list, metric):
     results_table = np.full((len(dataset_list), len(dataset_list)), -1, dtype=float)
     for train_index in range(len(dataset_list)):
         for test_index in range(len(dataset_list)):
-            results = load_probe_eval_dict_by_datasets(dataset_list[train_index], dataset_list[test_index])
+            results = load_probe_eval_dict_by_dict({
+                "config.train_dataset": dataset_list[train_index],
+                "config.test_dataset": dataset_list[test_index],
+                "config.layer": layer,
+                "config.probe/type": probe_type,
+                "config.probe/use_bias": use_bias,
+                "config.probe/normalize": normalize,
+                "state": "finished"  # Only completed runs
+            })
             results_table[train_index, test_index] = results[metric]
     
     fig, ax = plt.subplots()
@@ -38,8 +46,8 @@ def plot_results_table(dataset_list, metric):
             yticklabels=dataset_list,
             annot=True,  # This adds the text annotations
             fmt='.3f',   # Format numbers to 3 decimal places
-            #cmap='viridis',  # You can change the colormap
-            vmin=0,
+            cmap='Greens',  # You can change the colormap
+            vmin=0.5,
             vmax=1,
             ax=ax,
             annot_kws={"size": 20})
@@ -124,4 +132,53 @@ def plot_per_class_prediction_distributions(y, y_pred_proba):
     plt.title('Prediction Distribution')
 
     plt.tight_layout()
+    plt.show()
+
+
+
+
+
+
+def plot_layer_experiment(layers_list, dataset_name):
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+    ax1.set_title('Accuracy')
+    ax1.set_xlabel('Layer')
+    ax1.set_ylabel('Accuracy')
+    ax1.grid(True, alpha=0.3)
+    
+    ax2.set_title('ROC AUC')
+    ax2.set_xlabel('Layer')
+    ax2.set_ylabel('ROC AUC')
+    ax2.grid(True, alpha=0.3)
+
+    df = load_probe_eval_dicts_as_df({
+        "config.train_dataset": dataset_name,
+        "config.test_dataset": dataset_name,
+        "state": "finished"  # Only completed runs
+    })
+
+
+    for use_bias in [True, False]:
+        for normalize_inputs in [True, False]:
+            accuracies = []
+            roc_aucs = []
+            for layer in layers_list:
+                filtered_df = df
+                filtered_df = filtered_df[filtered_df['config_probe_normalize'] == normalize_inputs]
+                filtered_df = filtered_df[filtered_df['config_probe_use_bias'] == use_bias]
+                filtered_df = filtered_df[filtered_df['config_layer'] == layer]
+                if filtered_df.shape[0] >= 1:
+                    accuracies.append(filtered_df['metric_accuracy'].iloc[0])
+                    roc_aucs.append(filtered_df['metric_roc_auc'].iloc[0])
+
+            # Plot accuracies
+            ax1.plot(layers_list, accuracies, marker='o', linewidth=2, markersize=6, label=f'use_bias={use_bias}, normalize={normalize_inputs}')
+
+            # Plot ROC AUCs
+            ax2.plot(layers_list, roc_aucs, marker='s', linewidth=2, markersize=6, label=f'use_bias={use_bias}, normalize={normalize_inputs}')
+
+    plt.tight_layout()
+    plt.legend()
     plt.show()
