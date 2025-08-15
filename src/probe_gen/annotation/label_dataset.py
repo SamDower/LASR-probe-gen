@@ -10,6 +10,7 @@ from probe_gen.annotation.interface_dataset import (
     Dataset,
     LabelledDataset,
     Record,
+    subsample_balanced_subset,
 )
 
 
@@ -150,31 +151,27 @@ async def label_dataset_async(
             f"{prefix}_model": [model for _ in range(len(filtered_labels))],
         }
     )
-    if "labels" not in other_fields:
-        # In this case the labels field is not populated yet
-        other_fields["labels"] = []
-        other_fields["label_explanation"] = []
+    other_fields["labels"] = []
+    other_fields["label_explanation"] = []
 
-        for score, conf in zip(
-            other_fields["scale_labels"], other_fields["scale_label_confidence"]
-        ):
-            try:
-                score_float = float(score)
-                if score_float <= positive_threshold and conf >= confidence_threshold:
-                    label = "positive"
-                elif score_float >= negative_threshold and conf >= confidence_threshold:
-                    label = "negative"
-                else:
-                    label = "ambiguous"
-                explanation = (
-                    "Filled in based on scale_labels and scale_label_confidence"
-                )
-            except (ValueError, TypeError):
-                # If score cannot be converted to float, mark as ambiguous
+    for score, conf in zip(
+        other_fields["scale_labels"], other_fields["scale_label_confidence"]
+    ):
+        try:
+            score_float = float(score)
+            if score_float <= positive_threshold and conf >= confidence_threshold:
+                label = "positive"
+            elif score_float >= negative_threshold and conf >= confidence_threshold:
+                label = "negative"
+            else:
                 label = "ambiguous"
-                explanation = "Couldn't convert scale_labels to float"
-            other_fields["labels"].append(label)
-            other_fields["label_explanation"].append(explanation)
+            explanation = "Filled in based on scale_labels and scale_label_confidence"
+        except (ValueError, TypeError):
+            # If score cannot be converted to float, mark as ambiguous
+            label = "ambiguous"
+            explanation = "Couldn't convert scale_labels to float"
+        other_fields["labels"].append(label)
+        other_fields["label_explanation"].append(explanation)
 
     return LabelledDataset(
         inputs=filtered_inputs,
@@ -183,30 +180,58 @@ async def label_dataset_async(
     )
 
 
-def label_dataset(
+def label_and_save_dataset(
     dataset: Dataset,
     dataset_path: str,
     system_prompt: str,
     model: str = "gpt-4o",
     max_concurrent: int = 50,
-) -> LabelledDataset:
-    """Synchronous wrapper for the async label_dataset function"""
+    do_subsample: bool = True,
+    do_label: bool = True,
+) -> None:
+    """
+    Label a dataset if needed and save it to a file.
+
+    Args:
+        dataset: The dataset to label
+        dataset_path: The path to save the dataset
+        system_prompt: The system prompt to use for labeling
+        model: The model to use for labeling
+        max_concurrent: Maximum number of concurrent API calls
+        do_subsample: Whether to subsample the dataset
+    """
     if os.path.exists(dataset_path):
         raise ValueError(
             f"Dataset already exists at {dataset_path}. Please remove it or use a different path."
         )
 
-    labelled_dataset = asyncio.run(
-        label_dataset_async(
-            dataset=dataset,
-            dataset_path=dataset_path,
-            system_prompt=system_prompt,
-            model=model,
-            max_concurrent=max_concurrent,
+    if do_label:
+        labelled_dataset = asyncio.run(
+            label_dataset_async(
+                dataset=dataset,
+                dataset_path=dataset_path,
+                system_prompt=system_prompt,
+                model=model,
+                max_concurrent=max_concurrent,
+            )
         )
-    )
-    labelled_dataset.print_label_distribution()
+        labelled_dataset.print_label_distribution()
+    else:
+        labelled_dataset = dataset
 
     # Save the data
     print(f"Saving the data to {dataset_path}")
     labelled_dataset.save_to(dataset_path, overwrite=True)
+
+    if do_subsample:
+        # Subsample the data
+        print("Subsampling the data to get a balanced dataset")
+        subsampled_dataset = subsample_balanced_subset(labelled_dataset)
+
+        # Save the balanced data
+        if "raw" in dataset_path:
+            new_dataset_path = dataset_path.replace("raw", "balanced")
+        else:
+            new_dataset_path = dataset_path.replace(".jsonl", "_balanced.jsonl")
+        print(f"Saving the balanced data to {new_dataset_path}")
+        subsampled_dataset.save_to(new_dataset_path, overwrite=True)
