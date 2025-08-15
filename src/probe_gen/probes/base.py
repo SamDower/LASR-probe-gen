@@ -11,8 +11,8 @@ class Probe(ABC):
         Fits the probe to training data.
 
         Args:
-            train_dataset (dict): train_dataset['X'] has shape [batch_size, dim], train_dataset['y'] has shape [batch_size].
-            val_dataset (dict): val_dataset['X'] has shape [batch_size, dim], val_dataset['y'] has shape [batch_size].
+            train_dataset (dict): train_dataset['X'] has shape [batch_size, seq_len, dim], train_dataset['y'] has shape [batch_size].
+            val_dataset (dict): val_dataset['X'] has shape [batch_size, seq_len, dim], val_dataset['y'] has shape [batch_size].
             normalize (bool): should the activations be normalized before fitting. 
         
         Returns:
@@ -21,12 +21,13 @@ class Probe(ABC):
         pass
 
     @abstractmethod
-    def predict(self, X):
+    def predict(self, X, attention_mask):
         """
         Get prediction labels (0 or 1) for the dataset.
 
         Args:
-            X (tensor): tensor of aggregated activations with shape [batch_size, dim].
+            X (tensor): tensor of activations with shape [batch_size, seq_len, dim].
+            attention_mask (tensor): tensor indicating which tokens are real [batch_size, seq_len]
         
         Returns:
             y_pred (tensor): predicted labels of shape [batch_size].
@@ -34,12 +35,13 @@ class Probe(ABC):
         pass
 
     @abstractmethod
-    def predict_proba(self, X):
+    def predict_proba(self, X, attention_mask):
         """
         Get prediction probabilities of each point being class 1 for the dataset.
 
         Args:
-            X (tensor): tensor of aggregated activations with shape [batch_size, dim].
+            X (tensor): tensor of activations with shape [batch_size, seq_len, dim].
+            attention_mask (tensor): tensor indicating which tokens are real [batch_size, seq_len]
         
         Returns:
             y_pred_proba (tensor): predicted probabilities of shape [batch_size].
@@ -49,8 +51,8 @@ class Probe(ABC):
     def eval(self, test_dataset):
 
         y = self._safe_to_numpy(test_dataset['y'])
-        y_pred = self._safe_to_numpy(self.predict(test_dataset['X']))
-        y_pred_proba = self._safe_to_numpy(self.predict_proba(test_dataset['X']))
+        y_pred = self._safe_to_numpy(self.predict(test_dataset['X'], test_dataset['attention_mask']))
+        y_pred_proba = self._safe_to_numpy(self.predict_proba(test_dataset['X'], test_dataset['attention_mask']))
 
         # Evaluate the model
         accuracy = accuracy_score(y, y_pred)

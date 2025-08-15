@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+# Currently inactive module, but we might want it later
 
 class Aggregation(ABC):
     @abstractmethod
@@ -17,9 +18,6 @@ class Aggregation(ABC):
         pass
 
 
-# TODO: We need to think about how padding in the input activations tensor should be handled.
-
-
-class MeanAggregation(Aggregation):
-    def __call__(self, activations, attention_mask):
-        return activations.sum(dim=1) / attention_mask.sum(dim=1).clamp(min=1).unsqueeze(1)
+# class MeanAggregation(Aggregation):
+#     def __call__(self, activations, attention_mask):
+#         return activations.sum(dim=1) / attention_mask.sum(dim=1).clamp(min=1).unsqueeze(1)

@@ -26,14 +26,13 @@ def run_layer_experiments(probe_type, dataset_name, layers_to_run, use_bias_opti
 
         print("loading activations for each layer (may take ~ 1 minute)")
         activations_tensor, attention_mask, labels_tensor = probes.load_hf_activations_and_labels_at_layer(dataset_name, layer)
-        activations_tensor = probes.MeanAggregation()(activations_tensor, attention_mask)
-        train_dataset, val_dataset, test_dataset = probes.create_activation_datasets(activations_tensor, labels_tensor, val_size=0, test_size=0.2, balance=True)
+        train_dataset, val_dataset, test_dataset = probes.create_activation_datasets(activations_tensor, attention_mask, labels_tensor, val_size=0, test_size=0.2)
 
         for use_bias in use_bias_options:
             for normalize_inputs in normalize_inputs_options:
 
                 if probe_type == 'mean':
-                    probe = probes.SklearnLogisticProbe(use_bias=use_bias)
+                    probe = probes.SklearnMeanLogisticProbe(use_bias=use_bias)
                 else:
                     print("Probe type not valid.")
                     probe = None
