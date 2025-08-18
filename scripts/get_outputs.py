@@ -43,6 +43,12 @@ def main():
         default="",
         help="Extra prompt to prepend to human inputs when using off_policy_prompt policy (e.g., 'refuse this answer')",
     )
+    parser.add_argument(
+        "--save-increment",
+        type=int,
+        default=-1,
+        help="Number of batches between each checkpoint, set to -1 to never save",
+    )
     args = parser.parse_args()
 
     print(f"Loading model: {args.model}")
@@ -58,6 +64,7 @@ def main():
         behaviour=args.behaviour,
         sample=args.sample,
         extra_prompt=args.extra_prompt,
+        save_increment=args.save_increment,
     )
 
 

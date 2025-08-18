@@ -1,5 +1,5 @@
 # LASR Probe Gen
-See notebooks/DataPipeline.ipynb to get the datasets of inputs, outputs, labels and activations.
+See notebooks/DataPipeline.ipynb to get the datasets of inputs, outputs, labels and activations. \
 See notebooks/TrainProbes.ipynb to train and evaluate probes on the datasets.
 ```
 git clone https://github.com/SamDower/LASR-probe-gen.git
@@ -11,15 +11,15 @@ cd LASR-probe-gen/
 - Samples dataset from hugging face to jsonl file
 - For refusal behaviour can save time by doing labelling and subsamplling of off policy outpus at the same time (set to 'yes')
 
-```uv run scripts/get_dataset_labelled.py --behaviour refusal --out_path data/refusal/off_policy_raw.jsonl --num_samples 1000 --do_label no --do_subsample no```
+```uv run scripts/get_dataset_labelled.py --behaviour refusal --out_path data/refusal/claude_outputs.jsonl --num_samples 1000 --do_label no --do_subsample no```
 
 ## 2. Generate outputs dataset (on-policy)
 - Uses LLM (Llama-3.2-3B-Instruct default) to generate outputs for inputs dataset
 - Takes 10 minutes to do 5k samples with 200 batch size
 - Hardware requirements: high GPU, low RAM, low disk
-- Make sure you have done 'export HF_TOKEN=<key>'
+- Make sure you have done 'export HF_TOKEN=<key>' or just paste it here but cant push to git
 
-```uv run python scripts/get_outputs.py --data data/refusal/off_policy_raw.jsonl --out on_policy_outputs.jsonl --batch-size 200 --sample 0  --policy on_policy --behaviour refusal```
+```uv run python scripts/get_outputs.py --data data/refusal/claude_outputs.jsonl --out llama_3b_outputs.jsonl --batch-size 200 --sample 0  --policy on_policy --behaviour refusal --save_increment -1```
 
 ## 3. Label and balance dataset
 - Uses GPT-4o API to label refusal behaviour
@@ -27,15 +27,17 @@ cd LASR-probe-gen/
 - Hardware requirements: None
 - Make sure you have done 'export OPENAI_API_KEY=<key>'
 
-```uv run scripts/get_dataset_labelled.py --behaviour refusal --out_path data/refusal/on_policy_raw.jsonl --in_path data/refusal/on_policy_outputs.jsonl --do_label True --do_subsample True```
+```uv run scripts/get_dataset_labelled.py --behaviour refusal --out_path data/refusal/llama_3b_raw.jsonl --in_path data/refusal/llama_3b_outputs.jsonl --do_label True --do_subsample True```
 
 ## 4. Get activations dataset
 - Uses LLM (Llama-3.2-3B-Instruct default) to get actviations for datasets
 - Takes 10 minutes to generate output activations for 5k samples with 200 batch size
 - Hardware requirements: high GPU, super high (150 GB) RAM, super high (150 GB) Disk
-- Make sure you have done 'export HF_TOKEN=<key>'
+- Make sure you have done 'export HF_TOKEN=<key>' or just paste it here but cant push to git
 
-```python get_activations.py --model "meta-llama/Llama-3.2-3B-Instruct" --data data/refusal/on_policy_raw.jsonl --out data/refusal/on_policy_raw.pkl --batch-size 1 --layers all```
+```python get_activations.py --model "meta-llama/Llama-3.2-3B-Instruct" --data data/refusal/llama_3b_balanced_5k.jsonl --out data/refusal/llama_3b_balanced_5k.pkl --batch-size 1 --layers all --save_increment -1```
+
+Upload the activations to hugging face using notebooks/DataPipeline.ipynb
 
 # Other
 ## Connect vscode to vast.ai
