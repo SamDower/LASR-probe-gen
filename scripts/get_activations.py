@@ -29,6 +29,12 @@ def main():
         default="auto",
         help="Which layers to extract activations from. Options: 'all' (all layers), 'auto' (65%% through), comma-separated indices '0,5,10', ranges '5-10', or mixed '0,5-8,15'",
     )
+    parser.add_argument(
+        "--save-increment",
+        type=int,
+        default=-1,
+        help="Number of batches between each checkpoint, set to -1 to never save",
+    )
     args = parser.parse_args()
 
     print(f"Loading model: {args.model}")
@@ -47,6 +53,7 @@ def main():
         batch_size=args.batch_size,
         sample=args.sample,
         layers_str=args.layers,
+        save_increment=args.save_increment,
     )
 
 

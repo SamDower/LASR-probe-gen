@@ -71,8 +71,6 @@ def _cleanup_gpu_memory():
 
 
 # * model utils
-
-
 def get_pad_token(model_id, tokenizer):
     if tokenizer.pad_token is not None:
         return tokenizer.pad_token
@@ -83,7 +81,7 @@ def get_pad_token(model_id, tokenizer):
         "meta-llama/Llama-3.1-8B-Instruct": "<|finetune_right_pad_id|>",
     }
     pad_token = model_to_pad_token[model_id]
-    print(f"Using pad token for {model_id}: {pad_token}")
+    # print(f"Using pad token for {model_id}: {pad_token}")
     return pad_token
 
 
@@ -104,8 +102,8 @@ def get_model(model_name: str):
 
     # Set the pad token using the same logic as control experiments
     tokenizer.pad_token = get_pad_token(model_name, tokenizer)
-    print(f"Pad token set to: {tokenizer.pad_token}")
-    print(f"Padding side set to: {tokenizer.padding_side}")
+    # print(f"Pad token set to: {tokenizer.pad_token}")
+    # print(f"Padding side set to: {tokenizer.padding_side}")
 
     return model, tokenizer
 
@@ -186,7 +184,7 @@ def _prepare_batch_inputs(tokenizer, prompts, max_length=512):
 
 
 # * hook utils
-def _generate_sequences(model, tokenizer, inputs, max_new_tokens=75, temperature=0.0):
+def _generate_sequences(model, tokenizer, inputs, max_new_tokens=75, temperature=1.0):
     """
     Generate sequences from inputs with smart temperature handling.
 
@@ -303,7 +301,7 @@ def get_batch_outputs_only(
     verbose=False,
     max_length=512,
     max_new_tokens=75,
-    temperature=0.0,
+    temperature=1.0,
     do_generation=True,
 ):
     """
@@ -381,7 +379,7 @@ def get_batch_res_activations_with_generation(
     verbose=False,
     max_length=512,
     max_new_tokens=75,
-    temperature=0.0,
+    temperature=1.0,
     do_generation=True,
     layers_str="auto",
 ):
@@ -564,7 +562,7 @@ def _build_output_path(
     behaviour: str,
     default_ext: str = ".jsonl",
 ) -> str:
-    """Construct the final output path under datasets/<behaviour>/<model>__<policy>/.
+    """Construct the final output path under data/<behaviour>/.
 
     Appends policy to the provided base filename to avoid accidental overrides.
 
@@ -575,15 +573,15 @@ def _build_output_path(
         behaviour: Behaviour name
         default_ext: Default file extension if none provided (default: ".jsonl")
     """
-    safe_model = _sanitize_for_path(model_name)
-    safe_policy = _sanitize_for_path(policy)
+    # safe_model = _sanitize_for_path(model_name)
+    # safe_policy = _sanitize_for_path(policy)
     safe_behaviour = _sanitize_for_path(behaviour)
-    base_dir = os.path.join("datasets", safe_behaviour, f"{safe_model}/__{safe_policy}")
+    base_dir = os.path.join("../data", safe_behaviour)
     os.makedirs(base_dir, exist_ok=True)
 
     root, ext = os.path.splitext(os.path.basename(base_out))
     ext = ext if ext else default_ext
-    final_name = f"{_sanitize_for_path(root)}__{safe_policy}{ext}"
+    final_name = f"{_sanitize_for_path(root)}{ext}"
     return os.path.join(base_dir, final_name)
 
 
@@ -925,8 +923,8 @@ def save_results_as_dataframe(
     # Save the DataFrame
     final_df.to_pickle(df_output_file)
     print(f"DataFrame saved to: {df_output_file}")
-    print(f"DataFrame shape: {final_df.shape}")
-    print(f"Columns: {list(final_df.columns)}")
+    # print(f"DataFrame shape: {final_df.shape}")
+    # print(f"Columns: {list(final_df.columns)}")
 
     return final_df
 
@@ -965,6 +963,7 @@ def process_batched_dataframe_outputs_only(
     output_file="outputs_incremental.pkl",
     human_input_column=None,
     do_generation=True,
+    save_increment=-1,
 ):
     """
     Process a pandas DataFrame and save outputs incrementally after each batch (no activations).
@@ -991,7 +990,7 @@ def process_batched_dataframe_outputs_only(
         # Fallback to using the original dataset as human input
         human_inputs = dataset
 
-    print("Formatting prompts...")
+    # print("Formatting prompts...")
     if do_generation:
         # For on-policy, format as user-only prompts with generation prompt
         formatted_prompts = format_prompts_from_strings(tokenizer, dataset)
@@ -1064,53 +1063,56 @@ def process_batched_dataframe_outputs_only(
 
         # Add batch results and save incremental checkpoints separately
         results.extend(batch_results)
-        _save_results_to_file(results, incremental_path)
-        # Also save a partial DataFrame table to the final --out path
-        # Handle backwards compatibility for old results without new keys
-        inputs_list = []
-        ids_list = []
-        for i, r in enumerate(results):
-            if "inputs" in r:
-                inputs_list.append(r["inputs"])
-                ids_list.append(r["ids"])
-            else:
-                # Create new format for old results
-                import json
 
-                # Extract just the assistant response from the full model output
-                clean_assistant_response = _extract_assistant_response(
-                    r["model_outputs"]
-                )
-                conversation = [
-                    {"role": "user", "content": r["input"]},
-                    {"role": "assistant", "content": clean_assistant_response},
-                ]
-                inputs_list.append(json.dumps(conversation))
-                ids_list.append(f"generated_{r.get('original_index', i)}")
+        if save_increment > 0 and batch_idx % save_increment == 0:
+            _save_results_to_file(results, incremental_path)
 
-        partial_df = pd.DataFrame(
-            {
-                "inputs": inputs_list,  # JSON string of conversation
-                "ids": ids_list,  # Unique identifiers
-                "input_formatted": [
-                    r["input_formatted"] for r in results
-                ],  # Keep for backwards compatibility
-                "input": [
-                    r["input"] for r in results
-                ],  # Keep for backwards compatibility
-                "model_outputs": [
-                    r["model_outputs"] for r in results
-                ],  # Keep for backwards compatibility
-            }
-        )
-        _save_dataframe_atomic(partial_df, output_file)
+            # Also save a partial DataFrame table to the final --out path
+            # Handle backwards compatibility for old results without new keys
+            inputs_list = []
+            ids_list = []
+            for i, r in enumerate(results):
+                if "inputs" in r:
+                    inputs_list.append(r["inputs"])
+                    ids_list.append(r["ids"])
+                else:
+                    # Create new format for old results
+                    import json
 
-        print(
-            f"Saved batch {batch_idx + 1}/{num_batches} - Total processed: {len(results)} examples"
-        )
+                    # Extract just the assistant response from the full model output
+                    clean_assistant_response = _extract_assistant_response(
+                        r["model_outputs"]
+                    )
+                    conversation = [
+                        {"role": "user", "content": r["input"]},
+                        {"role": "assistant", "content": clean_assistant_response},
+                    ]
+                    inputs_list.append(json.dumps(conversation))
+                    ids_list.append(f"generated_{r.get('original_index', i)}")
 
-    print(f"Completed processing {len(results)} examples")
-    print(f"Incremental checkpoints saved to: {incremental_path}")
+            partial_df = pd.DataFrame(
+                {
+                    "inputs": inputs_list,  # JSON string of conversation
+                    "ids": ids_list,  # Unique identifiers
+                    "input_formatted": [
+                        r["input_formatted"] for r in results
+                    ],  # Keep for backwards compatibility
+                    "input": [
+                        r["input"] for r in results
+                    ],  # Keep for backwards compatibility
+                    "model_outputs": [
+                        r["model_outputs"] for r in results
+                    ],  # Keep for backwards compatibility
+                }
+            )
+            _save_dataframe_atomic(partial_df, output_file)
+            # print(
+            #     f"Saved batch {batch_idx + 1}/{num_batches} - Total processed: {len(results)} examples"
+            # )
+
+    # print(f"Completed processing {len(results)} examples")
+    if save_increment > 0:
+        print(f"Incremental checkpoints saved to: {incremental_path}")
 
     # Build and save final DataFrame with schema (no activations column)
     # Handle backwards compatibility for old results without new keys
@@ -1156,141 +1158,6 @@ def process_batched_dataframe_outputs_only(
     return len(results)
 
 
-# def process_batched_dataframe_incremental(
-#     model,
-#     tokenizer,
-#     df,
-#     prompt_column,
-#     batch_size=1,
-#     output_file="activations_incremental.pkl",
-#     human_input_column=None,
-#     do_generation=True,
-# ):
-#     """
-#     Process a pandas DataFrame and save activations incrementally after each batch.
-
-#     Args:
-#         model: The model to get activations from
-#         tokenizer: Tokenizer for the model
-#         df: pandas DataFrame containing the prompts
-#         prompt_column: Name of the column containing the formatted prompt strings
-#         batch_size: Number of examples to process at once
-#         output_file: File to save results incrementally
-#         human_input_column: Name of the column containing the original human input (for input_filtered)
-
-#     Returns:
-#         int: Number of processed examples
-#     """
-#     # Extract raw prompts (will be formatted exactly once below)
-#     dataset = df[prompt_column].tolist()
-
-#     # Extract human inputs if specified
-#     if human_input_column and human_input_column in df.columns:
-#         human_inputs = df[human_input_column].tolist()
-#     else:
-#         # Fallback to using the original dataset as human input
-#         human_inputs = dataset
-
-#     print("Formatting prompts...")
-#     if do_generation:
-#         # For on-policy, format as user-only prompts with generation prompt
-#         formatted_prompts = format_prompts_from_strings(tokenizer, dataset)
-#     else:
-#         # For off-policy, prompts are already full sequences in df[prompt_column]
-#         formatted_prompts = dataset
-
-#     # Calculate processing parameters
-#     num_batches = (len(formatted_prompts) + batch_size - 1) // batch_size
-#     print(
-#         f"Processing {len(formatted_prompts)} examples in {num_batches} batches of size {batch_size}"
-#     )
-
-#     # Define incremental checkpoint path (list of dicts)
-#     incremental_path = (
-#         output_file.replace(".pkl", "_incremental.pkl")
-#         if output_file.endswith(".pkl")
-#         else f"{output_file}_incremental.pkl"
-#     )
-
-#     # Load existing results if available (resume from incremental list file)
-#     results, num_existing = _load_existing_results(incremental_path)
-#     start_batch = num_existing // batch_size
-
-#     if num_existing > 0:
-#         print(
-#             f"Resuming from batch {start_batch} (already processed {num_existing} examples)"
-#         )
-
-#     # Process batches
-#     for batch_idx in tqdm(range(start_batch, num_batches), desc="Processing batches"):
-#         start_idx = batch_idx * batch_size
-#         end_idx = min(start_idx + batch_size, len(formatted_prompts))
-#         batch_prompts = formatted_prompts[start_idx:end_idx]
-
-#         try:
-#             # Clear GPU memory and get activations
-#             _cleanup_gpu_memory()
-#             batch_activations, batch_outputs, input_length = get_batch_res_activations(
-#                 model,
-#                 tokenizer,
-#                 batch_prompts,
-#                 verbose=False,
-#                 do_generation=do_generation,
-#             )
-
-#             # Process successful batch
-#             batch_results = _process_successful_batch(
-#                 batch_activations, batch_outputs, batch_prompts, human_inputs, start_idx
-#             )
-
-#             # Clean up GPU memory
-#             del batch_activations
-#             _cleanup_gpu_memory()
-#             gc.collect()
-
-#         except Exception as e:
-#             print(f"Error processing batch {batch_idx}: {e}")
-#             # Process failed batch
-#             batch_results = _process_failed_batch(
-#                 batch_prompts, human_inputs, start_idx
-#             )
-
-#         # Add batch results and save incremental checkpoints separately
-#         results.extend(batch_results)
-#         _save_results_to_file(results, incremental_path)
-#         # Also save a partial DataFrame table to the final --out path
-#         partial_df = pd.DataFrame(
-#             {
-#                 "input_formatted": [r["input_formatted"] for r in results],
-#                 "input": [r["input"] for r in results],
-#                 "model_outputs": [r["model_outputs"] for r in results],
-#                 "activations": [r["activations"] for r in results],
-#             }
-#         )
-#         _save_dataframe_atomic(partial_df, output_file)
-
-#         print(
-#             f"Saved batch {batch_idx + 1}/{num_batches} - Total processed: {len(results)} examples"
-#         )
-
-#     print(f"Completed processing {len(results)} examples")
-#     print(f"Incremental checkpoints saved to: {incremental_path}")
-
-#     # Build and save final DataFrame with new schema directly to --out
-#     final_df = pd.DataFrame(
-#         {
-#             "input_formatted": [r["input_formatted"] for r in results],
-#             "input": [r["input"] for r in results],
-#             "model_outputs": [r["model_outputs"] for r in results],
-#             "activations": [r["activations"] for r in results],
-#         }
-#     )
-#     final_df.to_pickle(output_file)
-#     print(f"Final DataFrame saved to: {output_file}")
-#     print(f"DataFrame shape: {final_df.shape}")
-#     return len(results)
-
-
 def process_batched_dataframe_incremental(
     model,
     tokenizer,
@@ -1300,6 +1167,7 @@ def process_batched_dataframe_incremental(
     output_file="activations_incremental.pkl",
     human_input_column=None,
     layers_str="auto",
+    save_increment=-1,
 ):
     """
     Process a pandas DataFrame and save activations incrementally after each batch.
@@ -1394,24 +1262,27 @@ def process_batched_dataframe_incremental(
 
         # Add batch results and save incremental checkpoints separately
         results.extend(batch_results)
-        _save_results_to_file(results, incremental_path)
-        # Also save a partial DataFrame table to the final --out path
-        partial_df = pd.DataFrame(
-            {
-                "input_formatted": [r["input_formatted"] for r in results],
-                "input": [r["input"] for r in results],
-                "model_outputs": [r["model_outputs"] for r in results],
-                "activations": [r["activations"] for r in results],
-            }
-        )
-        _save_dataframe_atomic(partial_df, output_file)
 
-        print(
-            f"Saved batch {batch_idx + 1}/{num_batches} - Total processed: {len(results)} examples"
-        )
+        if save_increment > 0 and batch_idx % save_increment == 0:
+            _save_results_to_file(results, incremental_path)
 
-    print(f"Completed processing {len(results)} examples")
-    print(f"Incremental checkpoints saved to: {incremental_path}")
+            # Also save a partial DataFrame table to the final --out path
+            partial_df = pd.DataFrame(
+                {
+                    "input_formatted": [r["input_formatted"] for r in results],
+                    "input": [r["input"] for r in results],
+                    "model_outputs": [r["model_outputs"] for r in results],
+                    "activations": [r["activations"] for r in results],
+                }
+            )
+            _save_dataframe_atomic(partial_df, output_file)
+            # print(
+            #     f"Saved batch {batch_idx + 1}/{num_batches} - Total processed: {len(results)} examples"
+            # )
+
+    # print(f"Completed processing {len(results)} examples")
+    if save_increment > 0:
+        print(f"Incremental checkpoints saved to: {incremental_path}")
 
     # Build and save final DataFrame with new schema directly to --out
     final_df = pd.DataFrame(
@@ -1422,89 +1293,22 @@ def process_batched_dataframe_incremental(
             "activations": [r["activations"] for r in results],
         }
     )
-    final_df.to_pickle(output_file)
-    print(f"Final DataFrame saved to: {output_file}")
-    print(f"DataFrame shape: {final_df.shape}")
+    # # Can save all layers in one file
+    # final_df.to_pickle(output_file)
+    # print(f"Final DataFrame saved to: {output_file}")
+
+    # Can save each layer in a separate file
+    keys = final_df['activations'].iloc[0].keys()
+    for key in tqdm(keys, desc="Saving layers"):
+        # Create a *view-like* new DataFrame using other columns as-is
+        cols_except_activations = [c for c in final_df.columns if c != 'activations']
+        df_split = final_df[cols_except_activations].copy(deep=False)  # shallow copy only column metadata
+        df_split['activations'] = final_df['activations'].map(lambda d: d[key])
+        layer_output_file = output_file.replace(".pkl", f"_layer_{key}.pkl")
+        with open(layer_output_file, "wb") as f:
+            pickle.dump(df_split, f, protocol=pickle.HIGHEST_PROTOCOL)
+    # print(f"DataFrame shape: {final_df.shape}")
     return len(results)
-
-
-# def process_file(
-#     model,
-#     tokenizer,
-#     dataset_path: str,
-#     output_file: str,
-#     batch_size: int = 1,
-#     policy: str = "on_policy",
-#     behaviour: str = "refusal",
-#     sample: int = 0,
-# ):
-#     """Process data from a JSONL file and save results.
-
-#     policy options:
-#       - on_policy: feed human prompts and generate model outputs
-#       - off_policy_prompt: alias of off_policy_other_model (teacher forcing)
-#       - off_policy_other_model: feed human+assistant as fixed targets (no generation)
-#     """
-#     print("\n=== File Processing ===")
-
-#     # Load data from file
-#     human_list, assistant_list, full_list = load_jsonl_data(dataset_path, policy)
-
-#     # Optional sampling for quick tests
-#     if sample and sample > 0:
-#         human_list = human_list[:sample]
-#         assistant_list = assistant_list[:sample]
-#         full_list = full_list[:sample]
-
-#     if not human_list:
-#         print(f"No data loaded from {dataset_path}")
-#         return
-
-#     print(f"Loaded {len(human_list)} examples")
-
-#     # Build DataFrame and controls based on policy
-#     if policy == "on_policy":
-#         df = pd.DataFrame({"human_inputs": human_list})
-#         prompt_column = "human_inputs"
-#         do_generation = True
-#         human_input_column = "human_inputs"
-#     elif policy in ("off_policy_other_model", "off_policy_prompt"):
-#         formatted_pairs = format_prompts_from_pairs(
-#             tokenizer, human_list, assistant_list
-#         )
-#         df = pd.DataFrame(
-#             {
-#                 "full_dialogue": formatted_pairs,
-#                 "human_inputs": human_list,
-#             }
-#         )
-#         prompt_column = "full_dialogue"
-#         do_generation = False
-#         human_input_column = "human_inputs"
-#     else:
-#         raise ValueError(
-#             f"Unknown policy '{policy}'. Use one of: on_policy, off_policy_prompt, off_policy_other_model"
-#         )
-
-#     # Process incrementally
-#     # Build deterministic output path under datasets/<behaviour>/<model>__<policy>/
-#     final_out_path = _build_output_path(
-#         output_file, model.config._name_or_path, policy, behaviour
-#     )
-#     print(f"Processing data and saving to {final_out_path}...")
-
-#     num_processed = process_batched_dataframe_incremental(
-#         model,
-#         tokenizer,
-#         df,
-#         prompt_column,
-#         batch_size=batch_size,
-#         output_file=final_out_path,
-#         human_input_column=human_input_column,
-#         do_generation=do_generation,
-#     )
-
-#     print(f"Processed {num_processed} examples")
 
 
 def process_file(
@@ -1515,9 +1319,10 @@ def process_file(
     batch_size: int = 1,
     sample: int = 0,
     layers_str: str = "auto",
+    save_increment: int = -1,
 ):
     """Process data from a JSONL file and save results."""
-    print("\n=== File Processing ===")
+    # print("\n=== File Processing ===")
 
     # Load data from file
     human_list, assistant_list, full_list = load_jsonl_data(dataset_path)
@@ -1532,7 +1337,7 @@ def process_file(
         print(f"No data loaded from {dataset_path}")
         return
 
-    print(f"Loaded {len(human_list)} examples")
+    # print(f"Loaded {len(human_list)} examples")
 
     # For all policies, we format the complete conversations and extract activations
     formatted_pairs = format_prompts_from_pairs(tokenizer, human_list, assistant_list)
@@ -1550,7 +1355,7 @@ def process_file(
     final_out_path = _build_simple_output_path(
         output_file, model.config._name_or_path, default_ext=".pkl"
     )
-    print(f"Processing data and saving to {final_out_path}...")
+    # print(f"Processing data and saving to {final_out_path}...")
 
     num_processed = process_batched_dataframe_incremental(
         model,
@@ -1561,9 +1366,9 @@ def process_file(
         output_file=final_out_path,
         human_input_column=human_input_column,
         layers_str=layers_str,
+        save_increment=save_increment,
     )
-
-    print(f"Processed {num_processed} examples")
+    # print(f"Processed {num_processed} examples")
 
 
 def process_file_outputs_only(
@@ -1576,6 +1381,7 @@ def process_file_outputs_only(
     behaviour: str = "refusal",
     sample: int = 0,
     extra_prompt: str = "",
+    save_increment: int = -1,
 ):
     """Process data from a JSONL file and save outputs only (no activations).
 
@@ -1587,11 +1393,11 @@ def process_file_outputs_only(
       - off_policy_prompt: feed human prompts with extra_prompt prepended and generate model outputs
       - off_policy_other_model: feed human+assistant as fixed targets (no generation)
     """
-    print("\n=== File Processing (Outputs Only) ===")
+    # print("\n=== File Processing (Outputs Only) ===")
 
     # Load data from file
     human_list, assistant_list, full_list = load_jsonl_data(dataset_path)
-    print("json laoaded!")
+    # print("json loaded!")
 
     # Optional sampling for quick tests
     if sample and sample > 0:
@@ -1603,7 +1409,7 @@ def process_file_outputs_only(
         print(f"No data loaded from {dataset_path}")
         return
 
-    print(f"Loaded {len(human_list)} examples")
+    # print(f"Loaded {len(human_list)} examples")
 
     # Build DataFrame and controls based on policy
     if policy == "on_policy":
@@ -1633,11 +1439,11 @@ def process_file_outputs_only(
             )
 
     # Process incrementally
-    # Build deterministic output path under datasets/<behaviour>/<model>__<policy>/
+    # Build deterministic output path under data/<behaviour>/
     final_out_path = _build_output_path(
         output_file, model.config._name_or_path, policy, behaviour
     )
-    print(f"Processing data and saving to {final_out_path}...")
+    # print(f"Processing data and saving to {final_out_path}...")
 
     num_processed = process_batched_dataframe_outputs_only(
         model,
@@ -1648,6 +1454,7 @@ def process_file_outputs_only(
         output_file=final_out_path,
         human_input_column=human_input_column,
         do_generation=do_generation,
+        save_increment=save_increment,
     )
 
-    print(f"Processed {num_processed} examples")
+    # print(f"Processed {num_processed} examples")
