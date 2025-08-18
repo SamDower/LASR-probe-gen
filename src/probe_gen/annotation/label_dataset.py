@@ -55,10 +55,14 @@ async def analyze_input_str(
         messages.append({"role": "system", "content": prompt_template})
     messages.append({"role": "user", "content": input_str})
 
-    response = await call_llm_async(
-        messages=messages,
-        model=model,
-    )
+    try:
+        response = await call_llm_async(
+            messages=messages,
+            model=model,
+        )
+    except Exception as e:
+        print(e)
+        response = {}
     return response
 
 
@@ -66,8 +70,8 @@ async def label_dataset_async(
     dataset: Dataset,
     dataset_path: str,
     system_prompt: str,
-    model: str = "gpt-4o",
-    max_concurrent: int = 50,
+    model: str = "gpt-5-nano",
+    max_concurrent: int = 200,
     confidence_threshold: int = 7,
     negative_threshold: int = 8,
     positive_threshold: int = 3,
@@ -184,8 +188,8 @@ def label_and_save_dataset(
     dataset: Dataset,
     dataset_path: str,
     system_prompt: str,
-    model: str = "gpt-4o",
-    max_concurrent: int = 50,
+    model: str = "gpt-5-nano",
+    max_concurrent: int = 200,
     do_subsample: bool = True,
     do_label: bool = True,
 ) -> None:
