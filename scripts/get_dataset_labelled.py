@@ -12,6 +12,10 @@ from probe_gen.annotation.refusal_behaviour import (
     SYSTEM_PROMPT_REFUSE,
     create_refusal_dataset,
 )
+from probe_gen.annotation.ultrachat_behaviour import (
+    create_ultrachat_dataset,
+    SYSTEM_PROMPT_LIST
+)
 
 
 def yes_no_str(v):
@@ -79,6 +83,23 @@ def main():
             dataset=dataset,
             dataset_path=args.out_path,
             system_prompt=SYSTEM_PROMPT_REFUSE,
+            do_subsample=args.do_subsample,
+            do_label=args.do_label,
+        )
+    elif args.behaviour == "ultrachat":
+        # Load the dataset
+        if args.in_path is None:
+            dataset = create_ultrachat_dataset(num_samples=args.num_samples)
+        else:
+            try:
+                dataset = LabelledDataset.load_from(args.in_path)
+            except Exception:
+                dataset = Dataset.load_from(args.in_path)
+
+        label_and_save_dataset(
+            dataset=dataset,
+            dataset_path=args.out_path,
+            system_prompt=SYSTEM_PROMPT_LIST,
             do_subsample=args.do_subsample,
             do_label=args.do_label,
         )
