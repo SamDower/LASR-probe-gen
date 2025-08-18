@@ -76,7 +76,7 @@ def plot_activations_mean_line_projections(activations_1, activations_2, labels,
 
 
 
-def plot_activations_pca(dataset1, dataset2, n_components=2, dataset1_name="Dataset 1", dataset2_name="Dataset 2", figsize=(10, 8), alpha=0.7):
+def plot_activations_pca(dataset1, dataset2, labels_1, labels_2, n_components=2, dataset1_name="Dataset 1", dataset2_name="Dataset 2", figsize=(10, 8), alpha=0.7):
     """
     Perform PCA on combined datasets and visualize with different colors for each dataset.
     
@@ -115,16 +115,26 @@ def plot_activations_pca(dataset1, dataset2, n_components=2, dataset1_name="Data
     # Split back into separate datasets for plotting
     dataset1_pca = transformed_data[:n1]
     dataset2_pca = transformed_data[n1:]
+
+    dataset1_pca_pos = dataset1_pca[torch.tensor(labels_1, dtype=torch.bool)]
+    dataset1_pca_neg = dataset1_pca[~torch.tensor(labels_1, dtype=torch.bool)]
+    dataset2_pca_pos = dataset2_pca[torch.tensor(labels_2, dtype=torch.bool)]
+    dataset2_pca_neg = dataset2_pca[~torch.tensor(labels_2, dtype=torch.bool)]
+
     
     # Create the plot
     if n_components == 2:
         fig, ax = plt.subplots(figsize=figsize)
         
-        # Plot both datasets with different colors
-        scatter1 = ax.scatter(dataset1_pca[:, 0], dataset1_pca[:, 1], 
-                             alpha=alpha, label=dataset1_name, s=50)
-        scatter2 = ax.scatter(dataset2_pca[:, 0], dataset2_pca[:, 1], 
-                             alpha=alpha, label=dataset2_name, s=50)
+        ax.scatter(dataset1_pca_pos[:, 0], dataset1_pca_pos[:, 1], 
+                             alpha=alpha, label=f"{dataset1_name} - Positive", s=50, color="red")
+        ax.scatter(dataset1_pca_neg[:, 0], dataset1_pca_neg[:, 1], 
+                             alpha=alpha, label=f"{dataset1_name} - Negative", s=50, color="orange")
+        
+        ax.scatter(dataset2_pca_pos[:, 0], dataset2_pca_pos[:, 1], 
+                             alpha=alpha, label=f"{dataset2_name} - Positive", s=50, color="blue")
+        ax.scatter(dataset2_pca_neg[:, 0], dataset2_pca_neg[:, 1], 
+                             alpha=alpha, label=f"{dataset2_name} - Negative", s=50, color="cyan")
         
         ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%} variance)')
         ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.1%} variance)')
