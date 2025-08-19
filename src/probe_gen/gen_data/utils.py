@@ -338,7 +338,7 @@ def get_batch_outputs_only(
         sequences = outputs
     elif do_generation:
         sequences = _generate_sequences(
-            model, tokenizer, inputs, max_new_tokens, temperature
+            model, tokenizer, inputs, max_new_tokens, temperature=temperature
         )  # tensor shape: [batch, input_len + new_len]
     else:
         sequences = inputs.input_ids
@@ -421,7 +421,7 @@ def get_batch_res_activations_with_generation(
         sequences = outputs
     elif do_generation:
         sequences = _generate_sequences(
-            model, tokenizer, inputs, max_new_tokens, temperature
+            model, tokenizer, inputs, max_new_tokens, temperature=temperature
         )  # tensor shape: [batch, input_len + new_len]
     else:
         sequences = inputs.input_ids
@@ -576,7 +576,7 @@ def _build_output_path(
     # safe_model = _sanitize_for_path(model_name)
     # safe_policy = _sanitize_for_path(policy)
     safe_behaviour = _sanitize_for_path(behaviour)
-    base_dir = os.path.join("../data", safe_behaviour)
+    base_dir = os.path.join("data", safe_behaviour)
     os.makedirs(base_dir, exist_ok=True)
 
     root, ext = os.path.splitext(os.path.basename(base_out))
@@ -964,6 +964,7 @@ def process_batched_dataframe_outputs_only(
     human_input_column=None,
     do_generation=True,
     save_increment=-1,
+    temperature: float = 1.0,
 ):
     """
     Process a pandas DataFrame and save outputs incrementally after each batch (no activations).
@@ -1043,6 +1044,7 @@ def process_batched_dataframe_outputs_only(
                 batch_prompts,
                 verbose=False,
                 do_generation=do_generation,
+                temperature=temperature,
             )
 
             # Process successful batch (no activations)
@@ -1298,12 +1300,14 @@ def process_batched_dataframe_incremental(
     # print(f"Final DataFrame saved to: {output_file}")
 
     # Can save each layer in a separate file
-    keys = final_df['activations'].iloc[0].keys()
+    keys = final_df["activations"].iloc[0].keys()
     for key in tqdm(keys, desc="Saving layers"):
         # Create a *view-like* new DataFrame using other columns as-is
-        cols_except_activations = [c for c in final_df.columns if c != 'activations']
-        df_split = final_df[cols_except_activations].copy(deep=False)  # shallow copy only column metadata
-        df_split['activations'] = final_df['activations'].map(lambda d: d[key])
+        cols_except_activations = [c for c in final_df.columns if c != "activations"]
+        df_split = final_df[cols_except_activations].copy(
+            deep=False
+        )  # shallow copy only column metadata
+        df_split["activations"] = final_df["activations"].map(lambda d: d[key])
         layer_output_file = output_file.replace(".pkl", f"_layer_{key}.pkl")
         with open(layer_output_file, "wb") as f:
             pickle.dump(df_split, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -1382,6 +1386,7 @@ def process_file_outputs_only(
     sample: int = 0,
     extra_prompt: str = "",
     save_increment: int = -1,
+    temperature: float = 1.0,
 ):
     """Process data from a JSONL file and save outputs only (no activations).
 
@@ -1455,6 +1460,7 @@ def process_file_outputs_only(
         human_input_column=human_input_column,
         do_generation=do_generation,
         save_increment=save_increment,
+        temperature=temperature,
     )
 
     # print(f"Processed {num_processed} examples")

@@ -24,6 +24,8 @@ notebooks/artifacts/
 
 # logs
 logs/
+artifacts/
+wandb/
 
 #hf cache   
 hf_cache/
@@ -32,6 +34,8 @@ hf_cache/
 *.pt
 *.pkl
 *.jsonl
+*.json
+*.npy
 
 # datasets that are not ignored
 !data/refusal/off_policy_balanced_5k.jsonl

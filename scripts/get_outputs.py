@@ -20,6 +20,7 @@ def main():
     """CLI entrypoint for output generation without activation extraction."""
     parser = argparse.ArgumentParser(description="Output generation (no activations)")
     parser.add_argument("--model", default="meta-llama/Llama-3.2-3B-Instruct")
+    parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--data", default="data/refusal/anthropic_raw_apr_23.jsonl")
     parser.add_argument("--out", default="outputs.jsonl")
     parser.add_argument("--batch-size", type=int, default=1)
@@ -57,6 +58,7 @@ def main():
     process_file_outputs_only(
         model,
         tokenizer,
+        temperature=args.temperature,
         dataset_path=args.data,
         output_file=args.out,
         batch_size=args.batch_size,
