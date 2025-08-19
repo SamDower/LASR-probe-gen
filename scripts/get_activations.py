@@ -43,7 +43,7 @@ def main():
     # Generate output filename automatically in the same directory as input
     input_dir = os.path.dirname(args.data)
     input_basename = os.path.splitext(os.path.basename(args.data))[0]
-    output_file = os.path.join(input_dir, f"{input_basename}_activations.pkl")
+    output_file = os.path.join(input_dir, f"{input_basename}.pkl")
 
     process_file(
         model,

@@ -6,13 +6,13 @@ MODELS = {
 
 ACTIVATION_DATASETS = {
     "refusal_5k_on": {
-        "repo_id": "AdrSkapars/anthropic-refusal-activations", 
+        "repo_id": "lasrprobegen/anthropic-refusal-activations", 
         "activations_filename_prefix": "on_policy_balanced_5k_layer_", 
         "labels_filename": "../data/refusal/on_policy_balanced_5k.jsonl",
     },
 
     "refusal_5k_off_other_model": {
-        "repo_id": "AdrSkapars/anthropic-refusal-activations", 
+        "repo_id": "lasrprobegen/anthropic-refusal-activations", 
         "activations_filename_prefix": "off_policy_balanced_5k_layer_", 
         "labels_filename": "../data/refusal/off_policy_balanced_5k.jsonl",
     },

@@ -519,6 +519,15 @@ def get_batch_res_activations(
                     sequences.ne(tokenizer.pad_token_id).long().to(sequences.device)
                 )
                 model(input_ids=sequences, attention_mask=attention_mask)
+                
+                # Want to discard activations for the padding tokens
+                for layer, acts in activations.items():
+                    batch_list = []
+                    for b in range(acts.size(0)):
+                        valid_len = attention_mask[b].sum().item()  # number of real tokens
+                        batch_list.append(acts[b, -valid_len:])     # left-pad => take last valid_len
+                    activations[layer] = batch_list
+                
             else:
                 # Fallback for unexpected type (should not happen)
                 model(sequences)

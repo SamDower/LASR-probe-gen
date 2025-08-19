@@ -39,7 +39,7 @@ hf_cache/
 
 # datasets that are not ignored
 !data/refusal/off_policy_balanced_5k.jsonl
-!data/refusal/on_policy_balanced_5k.jsonl
+!data/refusal/llama_3b_balanced_5k.jsonl
 
 # uv things
 uv.lock
