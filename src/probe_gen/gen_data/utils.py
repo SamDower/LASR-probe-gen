@@ -969,209 +969,209 @@ def load_jsonl_data(file_path):
     return human_list, assistant_list, full_list
 
 
-# # * process batched dataframe to extract activations
-# def process_batched_dataframe_outputs_only(
-#     model,
-#     tokenizer,
-#     df,
-#     prompt_column,
-#     batch_size=1,
-#     output_file="outputs_incremental.pkl",
-#     human_input_column=None,
-#     do_generation=True,
-#     save_increment=-1,
-# ):
-#     """
-#     Process a pandas DataFrame and save outputs incrementally after each batch (no activations).
+# * process batched dataframe to extract activations
+def process_batched_dataframe_outputs_only(
+    model,
+    tokenizer,
+    df,
+    prompt_column,
+    batch_size=1,
+    output_file="outputs_incremental.pkl",
+    human_input_column=None,
+    do_generation=True,
+    save_increment=-1,
+):
+    """
+    Process a pandas DataFrame and save outputs incrementally after each batch (no activations).
 
-#     Args:
-#         model: The model to get outputs from
-#         tokenizer: Tokenizer for the model
-#         df: pandas DataFrame containing the prompts
-#         prompt_column: Name of the column containing the formatted prompt strings
-#         batch_size: Number of examples to process at once
-#         output_file: File to save results incrementally
-#         human_input_column: Name of the column containing the original human input
+    Args:
+        model: The model to get outputs from
+        tokenizer: Tokenizer for the model
+        df: pandas DataFrame containing the prompts
+        prompt_column: Name of the column containing the formatted prompt strings
+        batch_size: Number of examples to process at once
+        output_file: File to save results incrementally
+        human_input_column: Name of the column containing the original human input
 
-#     Returns:
-#         int: Number of processed examples
-#     """
-#     # Extract raw prompts (will be formatted exactly once below)
-#     dataset = df[prompt_column].tolist()
+    Returns:
+        int: Number of processed examples
+    """
+    # Extract raw prompts (will be formatted exactly once below)
+    dataset = df[prompt_column].tolist()
 
-#     # Extract human inputs if specified
-#     if human_input_column and human_input_column in df.columns:
-#         human_inputs = df[human_input_column].tolist()
-#     else:
-#         # Fallback to using the original dataset as human input
-#         human_inputs = dataset
+    # Extract human inputs if specified
+    if human_input_column and human_input_column in df.columns:
+        human_inputs = df[human_input_column].tolist()
+    else:
+        # Fallback to using the original dataset as human input
+        human_inputs = dataset
 
-#     # print("Formatting prompts...")
-#     if do_generation:
-#         # For on-policy, format as user-only prompts with generation prompt
-#         formatted_prompts = format_prompts_from_strings(tokenizer, dataset)
-#     else:
-#         # For off-policy, prompts are already full sequences in df[prompt_column]
-#         formatted_prompts = dataset
+    # print("Formatting prompts...")
+    if do_generation:
+        # For on-policy, format as user-only prompts with generation prompt
+        formatted_prompts = format_prompts_from_strings(tokenizer, dataset)
+    else:
+        # For off-policy, prompts are already full sequences in df[prompt_column]
+        formatted_prompts = dataset
 
-#     # Calculate processing parameters
-#     num_batches = (len(formatted_prompts) + batch_size - 1) // batch_size
-#     print(
-#         f"Processing {len(formatted_prompts)} examples in {num_batches} batches of size {batch_size}"
-#     )
+    # Calculate processing parameters
+    num_batches = (len(formatted_prompts) + batch_size - 1) // batch_size
+    print(
+        f"Processing {len(formatted_prompts)} examples in {num_batches} batches of size {batch_size}"
+    )
 
-#     # Define incremental checkpoint path (list of dicts)
-#     if output_file.endswith(".pkl"):
-#         incremental_path = output_file.replace(".pkl", "_incremental.pkl")
-#     elif output_file.endswith(".jsonl"):
-#         incremental_path = output_file.replace(".jsonl", "_incremental.jsonl")
-#     elif output_file.endswith(".json"):
-#         incremental_path = output_file.replace(".json", "_incremental.json")
-#     else:
-#         # Fallback: append _incremental before the extension or at the end
-#         if "." in output_file:
-#             name, ext = output_file.rsplit(".", 1)
-#             incremental_path = f"{name}_incremental.{ext}"
-#         else:
-#             incremental_path = f"{output_file}_incremental"
+    # Define incremental checkpoint path (list of dicts)
+    if output_file.endswith(".pkl"):
+        incremental_path = output_file.replace(".pkl", "_incremental.pkl")
+    elif output_file.endswith(".jsonl"):
+        incremental_path = output_file.replace(".jsonl", "_incremental.jsonl")
+    elif output_file.endswith(".json"):
+        incremental_path = output_file.replace(".json", "_incremental.json")
+    else:
+        # Fallback: append _incremental before the extension or at the end
+        if "." in output_file:
+            name, ext = output_file.rsplit(".", 1)
+            incremental_path = f"{name}_incremental.{ext}"
+        else:
+            incremental_path = f"{output_file}_incremental"
 
-#     # Load existing results if available (resume from incremental list file)
-#     results, num_existing = _load_existing_results(incremental_path)
-#     start_batch = num_existing // batch_size
+    # Load existing results if available (resume from incremental list file)
+    results, num_existing = _load_existing_results(incremental_path)
+    start_batch = num_existing // batch_size
 
-#     if num_existing > 0:
-#         print(
-#             f"Resuming from batch {start_batch} (already processed {num_existing} examples)"
-#         )
+    if num_existing > 0:
+        print(
+            f"Resuming from batch {start_batch} (already processed {num_existing} examples)"
+        )
 
-#     # Process batches
-#     for batch_idx in tqdm(range(start_batch, num_batches), desc="Processing batches"):
-#         start_idx = batch_idx * batch_size
-#         end_idx = min(start_idx + batch_size, len(formatted_prompts))
-#         batch_prompts = formatted_prompts[start_idx:end_idx]
+    # Process batches
+    for batch_idx in tqdm(range(start_batch, num_batches), desc="Processing batches"):
+        start_idx = batch_idx * batch_size
+        end_idx = min(start_idx + batch_size, len(formatted_prompts))
+        batch_prompts = formatted_prompts[start_idx:end_idx]
 
-#         try:
-#             # Clear GPU memory and get outputs only
-#             _cleanup_gpu_memory()
-#             batch_outputs, input_length = get_batch_outputs_only(
-#                 model,
-#                 tokenizer,
-#                 batch_prompts,
-#                 verbose=False,
-#                 do_generation=do_generation,
-#             )
+        try:
+            # Clear GPU memory and get outputs only
+            _cleanup_gpu_memory()
+            batch_outputs, input_length = get_batch_outputs_only(
+                model,
+                tokenizer,
+                batch_prompts,
+                verbose=False,
+                do_generation=do_generation,
+            )
 
-#             # Process successful batch (no activations)
-#             batch_results = _process_successful_batch_outputs_only(
-#                 batch_outputs, batch_prompts, human_inputs, start_idx
-#             )
+            # Process successful batch (no activations)
+            batch_results = _process_successful_batch_outputs_only(
+                batch_outputs, batch_prompts, human_inputs, start_idx
+            )
 
-#             # Clean up GPU memory
-#             _cleanup_gpu_memory()
-#             gc.collect()
+            # Clean up GPU memory
+            _cleanup_gpu_memory()
+            gc.collect()
 
-#         except Exception as e:
-#             print(f"Error processing batch {batch_idx}: {e}")
-#             # Process failed batch
-#             batch_results = _process_failed_batch_outputs_only(
-#                 batch_prompts, human_inputs, start_idx
-#             )
+        except Exception as e:
+            print(f"Error processing batch {batch_idx}: {e}")
+            # Process failed batch
+            batch_results = _process_failed_batch_outputs_only(
+                batch_prompts, human_inputs, start_idx
+            )
 
-#         # Add batch results and save incremental checkpoints separately
-#         results.extend(batch_results)
+        # Add batch results and save incremental checkpoints separately
+        results.extend(batch_results)
 
-#         if save_increment > 0 and batch_idx % save_increment == 0:
-#             _save_results_to_file(results, incremental_path)
+        if save_increment > 0 and batch_idx % save_increment == 0:
+            _save_results_to_file(results, incremental_path)
 
-#             # Also save a partial DataFrame table to the final --out path
-#             # Handle backwards compatibility for old results without new keys
-#             inputs_list = []
-#             ids_list = []
-#             for i, r in enumerate(results):
-#                 if "inputs" in r:
-#                     inputs_list.append(r["inputs"])
-#                     ids_list.append(r["ids"])
-#                 else:
-#                     # Create new format for old results
-#                     import json
+            # Also save a partial DataFrame table to the final --out path
+            # Handle backwards compatibility for old results without new keys
+            inputs_list = []
+            ids_list = []
+            for i, r in enumerate(results):
+                if "inputs" in r:
+                    inputs_list.append(r["inputs"])
+                    ids_list.append(r["ids"])
+                else:
+                    # Create new format for old results
+                    import json
 
-#                     # Extract just the assistant response from the full model output
-#                     clean_assistant_response = _extract_assistant_response(
-#                         r["model_outputs"]
-#                     )
-#                     conversation = [
-#                         {"role": "user", "content": r["input"]},
-#                         {"role": "assistant", "content": clean_assistant_response},
-#                     ]
-#                     inputs_list.append(json.dumps(conversation))
-#                     ids_list.append(f"generated_{r.get('original_index', i)}")
+                    # Extract just the assistant response from the full model output
+                    clean_assistant_response = _extract_assistant_response(
+                        r["model_outputs"]
+                    )
+                    conversation = [
+                        {"role": "user", "content": r["input"]},
+                        {"role": "assistant", "content": clean_assistant_response},
+                    ]
+                    inputs_list.append(json.dumps(conversation))
+                    ids_list.append(f"generated_{r.get('original_index', i)}")
 
-#             partial_df = pd.DataFrame(
-#                 {
-#                     "inputs": inputs_list,  # JSON string of conversation
-#                     "ids": ids_list,  # Unique identifiers
-#                     "input_formatted": [
-#                         r["input_formatted"] for r in results
-#                     ],  # Keep for backwards compatibility
-#                     "input": [
-#                         r["input"] for r in results
-#                     ],  # Keep for backwards compatibility
-#                     "model_outputs": [
-#                         r["model_outputs"] for r in results
-#                     ],  # Keep for backwards compatibility
-#                 }
-#             )
-#             _save_dataframe_atomic(partial_df, output_file)
-#             # print(
-#             #     f"Saved batch {batch_idx + 1}/{num_batches} - Total processed: {len(results)} examples"
-#             # )
+            partial_df = pd.DataFrame(
+                {
+                    "inputs": inputs_list,  # JSON string of conversation
+                    "ids": ids_list,  # Unique identifiers
+                    "input_formatted": [
+                        r["input_formatted"] for r in results
+                    ],  # Keep for backwards compatibility
+                    "input": [
+                        r["input"] for r in results
+                    ],  # Keep for backwards compatibility
+                    "model_outputs": [
+                        r["model_outputs"] for r in results
+                    ],  # Keep for backwards compatibility
+                }
+            )
+            _save_dataframe_atomic(partial_df, output_file)
+            # print(
+            #     f"Saved batch {batch_idx + 1}/{num_batches} - Total processed: {len(results)} examples"
+            # )
 
-#     # print(f"Completed processing {len(results)} examples")
-#     if save_increment > 0:
-#         print(f"Incremental checkpoints saved to: {incremental_path}")
+    # print(f"Completed processing {len(results)} examples")
+    if save_increment > 0:
+        print(f"Incremental checkpoints saved to: {incremental_path}")
 
-#     # Build and save final DataFrame with schema (no activations column)
-#     # Handle backwards compatibility for old results without new keys
-#     inputs_list = []
-#     ids_list = []
-#     for i, r in enumerate(results):
-#         if "inputs" in r:
-#             inputs_list.append(r["inputs"])
-#             ids_list.append(r["ids"])
-#         else:
-#             # Create new format for old results
-#             import json
+    # Build and save final DataFrame with schema (no activations column)
+    # Handle backwards compatibility for old results without new keys
+    inputs_list = []
+    ids_list = []
+    for i, r in enumerate(results):
+        if "inputs" in r:
+            inputs_list.append(r["inputs"])
+            ids_list.append(r["ids"])
+        else:
+            # Create new format for old results
+            import json
 
-#             # Extract just the assistant response from the full model output
-#             clean_assistant_response = _extract_assistant_response(r["model_outputs"])
-#             conversation = [
-#                 {"role": "user", "content": r["input"]},
-#                 {"role": "assistant", "content": clean_assistant_response},
-#             ]
-#             inputs_list.append(json.dumps(conversation))
-#             ids_list.append(f"generated_{r.get('original_index', i)}")
+            # Extract just the assistant response from the full model output
+            clean_assistant_response = _extract_assistant_response(r["model_outputs"])
+            conversation = [
+                {"role": "user", "content": r["input"]},
+                {"role": "assistant", "content": clean_assistant_response},
+            ]
+            inputs_list.append(json.dumps(conversation))
+            ids_list.append(f"generated_{r.get('original_index', i)}")
 
-#     final_df = pd.DataFrame(
-#         {
-#             "inputs": inputs_list,  # JSON string of conversation
-#             "ids": ids_list,  # Unique identifiers
-#             "input_formatted": [
-#                 r["input_formatted"] for r in results
-#             ],  # Keep for backwards compatibility
-#             "input": [r["input"] for r in results],  # Keep for backwards compatibility
-#             "model_outputs": [
-#                 r["model_outputs"] for r in results
-#             ],  # Keep for backwards compatibility
-#         }
-#     )
+    final_df = pd.DataFrame(
+        {
+            "inputs": inputs_list,  # JSON string of conversation
+            "ids": ids_list,  # Unique identifiers
+            "input_formatted": [
+                r["input_formatted"] for r in results
+            ],  # Keep for backwards compatibility
+            "input": [r["input"] for r in results],  # Keep for backwards compatibility
+            "model_outputs": [
+                r["model_outputs"] for r in results
+            ],  # Keep for backwards compatibility
+        }
+    )
 
-#     if output_file.endswith(".pkl"):
-#         final_df.to_pickle(output_file)
-#     else:
-#         final_df.to_json(output_file, orient="records", lines=True)
-#     print(f"Final DataFrame saved to: {output_file}")
-#     print(f"DataFrame shape: {final_df.shape}")
-#     return len(results)
+    if output_file.endswith(".pkl"):
+        final_df.to_pickle(output_file)
+    else:
+        final_df.to_json(output_file, orient="records", lines=True)
+    print(f"Final DataFrame saved to: {output_file}")
+    print(f"DataFrame shape: {final_df.shape}")
+    return len(results)
 
 
 def process_batched_dataframe_incremental(
