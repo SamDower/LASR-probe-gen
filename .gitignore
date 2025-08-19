@@ -35,8 +35,13 @@ hf_cache/
 *.jsonl
 
 # datasets that are not ignored
-!data/refusal/off_policy_balanced_5k.jsonl
+!data/refusal/minstral_8b_balanced_5k.jsonl
 !data/refusal/llama_3b_balanced_5k.jsonl
+!data/refusal/llama_3b_prompted_balanced_5k.jsonl
+
+!data/lists/qwen_3b_balanced_5k.jsonl
+!data/lists/llama_3b_balanced_5k.jsonl
+!data/lists/llama_3b_prompted_balanced_5k.jsonl
 
 # uv things
 uv.lock
