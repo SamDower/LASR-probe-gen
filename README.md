@@ -35,7 +35,7 @@ cd LASR-probe-gen/
 - Hardware requirements: high GPU, super high (150 GB) RAM, super high (150 GB) Disk
 - Make sure you have done 'export HF_TOKEN=<key>' or just paste it here but cant push to git
 
-```uv run scripts/get_activations.py --model "meta-llama/Llama-3.2-3B-Instruct" --data data/refusal/llama_3b_balanced_5k.jsonl --batch-size 1 --layers all --save-increment -1```
+```uv run scripts/get_activations.py --model "meta-llama/Llama-3.2-3B-Instruct" --data data/refusal/llama_3b_balanced_5k.jsonl --batch-size 1 --layers "0,3,6,9,12,15,18,21,24,27" --save-increment -1```
 
 Upload the activations to hugging face using notebooks/DataPipeline.ipynb
 
