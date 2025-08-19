@@ -27,6 +27,7 @@ logs/
 
 #hf cache   
 hf_cache/
+.cache/
 
 # datasets
 *.pt
