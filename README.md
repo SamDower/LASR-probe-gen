@@ -19,7 +19,7 @@ cd LASR-probe-gen/
 - Hardware requirements: high GPU, low RAM, low disk
 - Make sure you have done 'export HF_TOKEN=<key>' or just paste it here but cant push to git
 
-```uv run python scripts/get_outputs.py --data data/refusal/claude_outputs.jsonl --out llama_3b_outputs.jsonl --batch-size 200 --sample 0  --policy on_policy --behaviour refusal --save-increment -1```
+```uv run scripts/get_outputs.py --data data/refusal/claude_outputs.jsonl --out llama_3b_outputs.jsonl --batch-size 200 --sample 0  --policy on_policy --behaviour refusal --save-increment -1```
 
 ## 3. Label and balance dataset
 - Uses GPT-4o API to label refusal behaviour
@@ -35,7 +35,7 @@ cd LASR-probe-gen/
 - Hardware requirements: high GPU, super high (150 GB) RAM, super high (150 GB) Disk
 - Make sure you have done 'export HF_TOKEN=<key>' or just paste it here but cant push to git
 
-```python get_activations.py --model "meta-llama/Llama-3.2-3B-Instruct" --data data/refusal/llama_3b_balanced_5k.jsonl --out data/refusal/llama_3b_balanced_5k.pkl --batch-size 1 --layers all --save-increment -1```
+```uv run scripts/get_activations.py --model "meta-llama/Llama-3.2-3B-Instruct" --data data/refusal/llama_3b_balanced_5k.jsonl --batch-size 1 --layers "0,3,6,9,12,15,18,21,24,27" --save-increment -1```
 
 Upload the activations to hugging face using notebooks/DataPipeline.ipynb
 

@@ -4,6 +4,7 @@ import os
 import pickle
 import re
 
+import joblib
 import pandas as pd
 import torch
 from tqdm import tqdm
@@ -441,10 +442,12 @@ def get_batch_res_activations_with_generation(
                 attention_mask = (
                     sequences.ne(tokenizer.pad_token_id).long().to(sequences.device)
                 )
-                model(input_ids=sequences, attention_mask=attention_mask)
+                with torch.no_grad():
+                    model(input_ids=sequences, attention_mask=attention_mask)
             else:
                 # Fallback for unexpected type (should not happen)
-                model(sequences)
+                with torch.no_grad():
+                    model(sequences)
     finally:
         # Always clean up hooks
         for hook in hooks:
@@ -518,19 +521,27 @@ def get_batch_res_activations(
                 attention_mask = (
                     sequences.ne(tokenizer.pad_token_id).long().to(sequences.device)
                 )
-                model(input_ids=sequences, attention_mask=attention_mask)
-                
+                with torch.no_grad():
+                    model(input_ids=sequences, attention_mask=attention_mask)
+
                 # Want to discard activations for the padding tokens
                 for layer, acts in activations.items():
                     batch_list = []
                     for b in range(acts.size(0)):
-                        valid_len = attention_mask[b].sum().item()  # number of real tokens
-                        batch_list.append(acts[b, -valid_len:])     # left-pad => take last valid_len
+                        valid_len = (
+                            attention_mask[b].sum().item()
+                        )  # number of real tokens
+                        batch_list.append(
+                            acts[b, -valid_len:]
+                        )  # left-pad => take last valid_len
                     activations[layer] = batch_list
-                
+
             else:
                 # Fallback for unexpected type (should not happen)
-                model(sequences)
+                with torch.no_grad():
+                    model(sequences)
+    except Exception as e:
+        print(f"Error in forward pass: {e}")
     finally:
         # Always clean up hooks
         for hook in hooks:
@@ -1295,31 +1306,35 @@ def process_batched_dataframe_incremental(
     if save_increment > 0:
         print(f"Incremental checkpoints saved to: {incremental_path}")
 
-    # Build and save final DataFrame with new schema directly to --out
-    final_df = pd.DataFrame(
-        {
-            "input_formatted": [r["input_formatted"] for r in results],
-            "input": [r["input"] for r in results],
-            "model_outputs": [r["model_outputs"] for r in results],
-            "activations": [r["activations"] for r in results],
-        }
-    )
-    # # Can save all layers in one file
+    # # Can save all layers in one dataframe
+    # final_df = pd.DataFrame(
+    #     {
+    #         "input_formatted": [r["input_formatted"] for r in results],
+    #         "input": [r["input"] for r in results],
+    #         "model_outputs": [r["model_outputs"] for r in results],
+    #         "activations": [r["activations"] for r in results],
+    #     }
+    # )
     # final_df.to_pickle(output_file)
     # print(f"Final DataFrame saved to: {output_file}")
 
-    # Can save each layer in a separate file
-    keys = final_df["activations"].iloc[0].keys()
+    # Can save each layer in a separate dataframe
+    keys = results[0]["activations"].keys()
     for key in tqdm(keys, desc="Saving layers"):
-        # Create a *view-like* new DataFrame using other columns as-is
-        cols_except_activations = [c for c in final_df.columns if c != "activations"]
-        df_split = final_df[cols_except_activations].copy(
-            deep=False
-        )  # shallow copy only column metadata
-        df_split["activations"] = final_df["activations"].map(lambda d: d[key])
+        # Build DataFrame directly from results
+        df_split = pd.DataFrame(
+            {
+                "input_formatted": [r["input_formatted"] for r in results],
+                "input": [r["input"] for r in results],
+                "model_outputs": [r["model_outputs"] for r in results],
+                "activations": [
+                    r["activations"][key].clone().detach() for r in results
+                ],
+            }
+        )
         layer_output_file = output_file.replace(".pkl", f"_layer_{key}.pkl")
-        with open(layer_output_file, "wb") as f:
-            pickle.dump(df_split, f, protocol=pickle.HIGHEST_PROTOCOL)
+        joblib.dump(df_split, layer_output_file)
+
     # print(f"DataFrame shape: {final_df.shape}")
     return len(results)
 

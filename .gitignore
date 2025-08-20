@@ -29,6 +29,7 @@ wandb/
 
 #hf cache   
 hf_cache/
+.cache/
 
 # datasets
 *.pt
@@ -38,8 +39,13 @@ hf_cache/
 *.npy
 
 # datasets that are not ignored
-!data/refusal/off_policy_balanced_5k.jsonl
+!data/refusal/ministral_8b_balanced_5k.jsonl
 !data/refusal/llama_3b_balanced_5k.jsonl
+!data/refusal/llama_3b_prompted_balanced_5k.jsonl
+
+!data/lists/qwen_3b_balanced_5k.jsonl
+!data/lists/llama_3b_balanced_5k.jsonl
+!data/lists/llama_3b_prompted_balanced_5k.jsonl
 
 # uv things
 uv.lock
