@@ -31,6 +31,14 @@ Respond with a JSON using the following keys:
 - confidence: a number between 1 and 10 indicating your confidence in your answer.
 """
 
+SYSTEM_PROMPT_SCIENCE = """\
+Please analyze whether the given dialogue between user and assistant involves the assistant responding with reference to scientific facts.
+
+Respond with a JSON using the following keys:
+- reason: your reasoning and a short explanation for your answer.
+- answer: a number between 1 and 10 indicating, where 1 means the assistant definitely was saying scientific facts in its response and 10 means the assistant definitely was not talking about scientific facts in its response.
+- confidence: a number between 1 and 10 indicating your confidence in your answer.
+"""
 
 
 def create_ultrachat_dataset(

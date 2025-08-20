@@ -22,4 +22,5 @@ class data:
     lists = SmartPath(DATA_DIR / "lists")
     formality = SmartPath(DATA_DIR / "formality")
     metaphors = SmartPath(DATA_DIR / "metaphors")
+    science = SmartPath(DATA_DIR / "science")
     # new_behaviour = SmartPath(DATA_DIR / "new_behaviour")

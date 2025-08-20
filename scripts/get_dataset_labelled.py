@@ -16,6 +16,7 @@ from probe_gen.annotation.ultrachat_behaviour import (
     SYSTEM_PROMPT_LIST,
     SYSTEM_PROMPT_FORMALITY,
     SYSTEM_PROMPT_METAPHORS,
+    SYSTEM_PROMPT_SCIENCE,
     create_ultrachat_dataset,
 )
 
@@ -90,6 +91,8 @@ def main():
             system_prompt = SYSTEM_PROMPT_FORMALITY
         elif args.behaviour == "metaphors":
             system_prompt = SYSTEM_PROMPT_METAPHORS
+        elif args.behaviour == "science":
+            system_prompt = SYSTEM_PROMPT_SCIENCE
         else:
             raise ValueError(f"Behaviour {args.behaviour} not supported")
         # Sample the dataset
