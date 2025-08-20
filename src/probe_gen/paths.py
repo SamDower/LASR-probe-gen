@@ -19,4 +19,5 @@ class SmartPath:
 class data:
     data = SmartPath(DATA_DIR)
     refusal = SmartPath(DATA_DIR / "refusal")
+    lists = SmartPath(DATA_DIR / "lists")
     # new_behaviour = SmartPath(DATA_DIR / "new_behaviour")
