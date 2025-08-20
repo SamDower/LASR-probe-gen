@@ -11,7 +11,7 @@ cd LASR-probe-gen/
 - Samples dataset from hugging face to jsonl file
 - For refusal behaviour can save time by doing labelling and subsamplling of off policy outpus at the same time (set to 'yes')
 
-```uv run scripts/get_dataset_labelled.py --behaviour refusal --out_path data/refusal/claude_outputs.jsonl --num_samples 1000 --do_label no --do_subsample no```
+```uv run scripts/get_dataset_labelled.py --behaviour refusal --out-path data/refusal/claude_outputs.jsonl --num-samples 1000 --do-label no --do-subsample no```
 
 ## 2. Generate outputs dataset (on-policy)
 - Uses LLM (Llama-3.2-3B-Instruct default) to generate outputs for inputs dataset
@@ -27,7 +27,7 @@ cd LASR-probe-gen/
 - Hardware requirements: None
 - Make sure you have done 'export OPENAI_API_KEY=<key>'
 
-```uv run scripts/get_dataset_labelled.py --behaviour refusal --out_path data/refusal/llama_3b_raw.jsonl --in_path data/refusal/llama_3b_outputs.jsonl --do_label True --do_subsample True```
+```uv run scripts/get_dataset_labelled.py --behaviour refusal --out-path data/refusal/llama_3b_raw.jsonl --in-path data/refusal/llama_3b_outputs.jsonl --do-label yes --do-subsample yes --num-balanced 5000```
 
 ## 4. Get activations dataset
 - Uses LLM (Llama-3.2-3B-Instruct default) to get actviations for datasets
