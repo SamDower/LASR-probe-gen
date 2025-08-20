@@ -329,9 +329,9 @@ def label_and_save_dataset(
     else:
         labelled_dataset = dataset
 
-    # Save the data
-    print(f"Saving the data to {dataset_path}")
-    labelled_dataset.save_to(dataset_path, overwrite=True)
+    # # Save the data
+    # print(f"Saving the data to {dataset_path}")
+    # labelled_dataset.save_to(dataset_path, overwrite=True)
 
     if do_subsample:
         # Subsample the data
@@ -362,7 +362,7 @@ def label_and_save_dataset(
                 new_dataset_path = new_dataset_path.replace(old_k, new_k)
         if "raw" in dataset_path:
             new_dataset_path = new_dataset_path.replace("raw", "balanced")
-        else:
+        elif "balanced" not in new_dataset_path:
             new_dataset_path = new_dataset_path.replace(".jsonl", "_balanced.jsonl")
         print(f"Saving the balanced data to {new_dataset_path}")
         subsampled_dataset.save_to(new_dataset_path, overwrite=True)
