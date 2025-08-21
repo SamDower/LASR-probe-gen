@@ -25,7 +25,7 @@ def run_grid_experiment(dataset_names, layer, use_bias_list, normalize_list, C_l
         for test_dataset_name in dataset_names:
 
             eval_dict, _, _ = probe.eval(test_datasets[test_dataset_name])
-            save_probe_dict_results(eval_dict, "mean", use_bias, normalize, C, layer, train_dataset_name, test_dataset_name, activations_model)
+            save_probe_dict_results(eval_dict, "mean", use_bias_list[train_index], normalize_list[train_index], C_list[train_index], layer, train_dataset_name, test_dataset_name, activations_model)
 
     
 
