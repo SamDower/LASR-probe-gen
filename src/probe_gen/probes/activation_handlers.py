@@ -4,6 +4,7 @@ from torch.nn.utils.rnn import pad_sequence
 import pandas as pd
 from huggingface_hub import hf_hub_download
 from probe_gen.config import ACTIVATION_DATASETS
+import joblib
 
 
 def _load_labels_from_local_jsonl(labels_filename, verbose):
@@ -23,7 +24,7 @@ def _load_labels_from_local_jsonl(labels_filename, verbose):
 def _load_activations_from_hf(repo_id, filename, verbose):
     # Load activations
     file_path = hf_hub_download(repo_id=repo_id, filename=filename, repo_type="dataset")
-    df = pd.read_pickle(file_path)
+    df = joblib.load(file_path)
 
     # Extract all activations
     all_activations = []
@@ -73,7 +74,7 @@ def load_hf_activations_and_labels_at_layer(dataset_name, layer, verbose=False):
     labels_filename = ACTIVATION_DATASETS[dataset_name]['labels_filename']
 
     labels_tensor = _load_labels_from_local_jsonl(labels_filename, verbose)
-    activations_tensor, attention_mask = _load_activations_from_hf(repo_id, f"{activations_filename_prefix}{layer}", verbose)
+    activations_tensor, attention_mask = _load_activations_from_hf(repo_id, f"{activations_filename_prefix}{layer}.pkl", verbose)
 
     return activations_tensor, attention_mask, labels_tensor
 
@@ -97,7 +98,7 @@ def load_hf_activations_at_layer(dataset_name, layer, verbose=False):
     repo_id = ACTIVATION_DATASETS[dataset_name]['repo_id']
     activations_filename_prefix = ACTIVATION_DATASETS[dataset_name]['activations_filename_prefix']
 
-    activations_tensor, attention_mask = _load_activations_from_hf(repo_id, f"{activations_filename_prefix}{layer}", verbose)
+    activations_tensor, attention_mask = _load_activations_from_hf(repo_id, f"{activations_filename_prefix}{layer}.pkl", verbose)
 
     return activations_tensor, attention_mask
 

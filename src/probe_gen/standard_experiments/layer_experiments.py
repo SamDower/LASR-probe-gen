@@ -7,7 +7,7 @@ sys.path.append(str(project_root))
 import probes
 
 
-def run_layer_experiments(probe_type, dataset_name, layers_to_run, use_bias_options=[True,False], normalize_inputs_options=[True,False]):
+def run_layer_experiments(probe_type, dataset_name, activations_model, probe_C, layers_to_run, use_bias_options=[True,False], normalize_inputs_options=[True,False]):
     """
     Trains a probe on each layer's activations and plots accuracy and roc_auc for each layer.
 
@@ -33,13 +33,13 @@ def run_layer_experiments(probe_type, dataset_name, layers_to_run, use_bias_opti
             for normalize_inputs in normalize_inputs_options:
 
                 if probe_type == 'mean':
-                    probe = probes.SklearnLogisticProbe(use_bias=use_bias)
+                    probe = probes.SklearnLogisticProbe(use_bias=use_bias, C=probe_C, normalize=normalize_inputs)
                 else:
                     print("Probe type not valid.")
                     probe = None
 
                 # Fit the probe with the datasets
-                probe.fit(train_dataset, val_dataset, normalize=normalize_inputs)
+                probe.fit(train_dataset, val_dataset)
 
                 # Evaluate the model
                 eval_dict, _, _ = probe.eval(test_dataset)
@@ -49,7 +49,9 @@ def run_layer_experiments(probe_type, dataset_name, layers_to_run, use_bias_opti
                     probe_type, 
                     use_bias, 
                     normalize_inputs, 
+                    probe_C,
                     layer, 
                     dataset_name,
-                    dataset_name
+                    dataset_name,
+                    activations_model
                 )
