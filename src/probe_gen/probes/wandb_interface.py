@@ -1,5 +1,6 @@
 import wandb
 import pandas as pd
+import os
 
 def save_probe_dict_results(eval_dict, probe_type, probe_use_bias, probe_normalize, probe_C, layer, train_set_name, test_set_name, activations_model):
     """
@@ -17,6 +18,8 @@ def save_probe_dict_results(eval_dict, probe_type, probe_use_bias, probe_normali
     Returns:
         None
     """
+    os.environ["WANDB_SILENT"] = "true"
+
     # Initialize wandb run
     wandb.init(
         project="LASR_probe_gen",
@@ -40,6 +43,7 @@ def save_probe_dict_results(eval_dict, probe_type, probe_use_bias, probe_normali
     })
     # Finish the run
     wandb.finish()
+    print("Saved run")
 
 
 def load_probe_eval_dict_by_dict(lookup_dict):
@@ -53,6 +57,8 @@ def load_probe_eval_dict_by_dict(lookup_dict):
     Returns:
         eval_dict (dict): evalualtion dictionary.
     """
+    os.environ["WANDB_SILENT"] = "true"
+
     api = wandb.Api()
     
     # Query runs with specific config filters
@@ -143,7 +149,7 @@ def load_probe_eval_dicts_as_df(lookup_dict):
     
     # Query runs with specific config filters
     runs = api.runs(
-        "samdower/LASR_probe_gen",
+        "LasrProbeGen/LASR_probe_gen",
         filters=lookup_dict
     )
     
