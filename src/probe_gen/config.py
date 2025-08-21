@@ -28,10 +28,12 @@ GENERAL_DATASETS = {
 ACTIVATION_DATASETS = {
     # Refusal
     "refusal_llama_3b_5k": {
+    "refusal_llama_3b_5k": {
         "repo_id": "lasrprobegen/anthropic-refusal-activations", 
         "activations_filename_prefix": "llama_3b_balanced_5k_layer_", 
         "labels_filename": data.refusal / "llama_3b_balanced_5k.jsonl",
     },
+    "refusal_llama_3b_prompted_5k": {
     "refusal_llama_3b_prompted_5k": {
         "repo_id": "lasrprobegen/anthropic-refusal-activations", 
         "activations_filename_prefix": "llama_3b_prompted_balanced_5k_layer_", 
@@ -45,15 +47,18 @@ ACTIVATION_DATASETS = {
     
     # Lists
     "lists_llama_3b_5k": {
+    "lists_llama_3b_5k": {
         "repo_id": "lasrprobegen/ultrachat-lists-activations", 
         "activations_filename_prefix": "llama_3b_balanced_5k_layer_", 
         "labels_filename": data.lists / "llama_3b_balanced_5k.jsonl",
     },
     "lists_llama_3b_prompted_5k": {
+    "lists_llama_3b_prompted_5k": {
         "repo_id": "lasrprobegen/ultrachat-lists-activations", 
         "activations_filename_prefix": "llama_3b_prompted_balanced_5k_layer_", 
         "labels_filename": data.lists / "llama_3b_prompted_balanced_5k.jsonl",
     },
+    "lists_qwen_3b_5k": {
     "lists_qwen_3b_5k": {
         "repo_id": "lasrprobegen/ultrachat-lists-activations", 
         "activations_filename_prefix": "qwen_3b_balanced_5k_layer_", 
@@ -62,32 +67,39 @@ ACTIVATION_DATASETS = {
     
     # Metaphors
     "metaphors_llama_3b_5k": {
+    "metaphors_llama_3b_5k": {
         "repo_id": "lasrprobegen/ultrachat-metaphors-activations", 
         "activations_filename_prefix": "llama_3b_balanced_5k_layer_", 
         "labels_filename": data.metaphors / "llama_3b_balanced_5k.jsonl",
     },
+    "metaphors_llama_3b_prompted_5k": {
     "metaphors_llama_3b_prompted_5k": {
         "repo_id": "lasrprobegen/ultrachat-metaphors-activations", 
         "activations_filename_prefix": "llama_3b_prompted_balanced_5k_layer_", 
         "labels_filename": data.metaphors / "llama_3b_prompted_balanced_5k.jsonl",
     },
     "metaphors_qwen_3b_5k": {
+    "metaphors_qwen_3b_5k": {
         "repo_id": "lasrprobegen/ultrachat-metaphors-activations", 
+        "activations_filename_prefix": "qwen_3b_balanced_5k_layer_", 
         "activations_filename_prefix": "qwen_3b_balanced_5k_layer_", 
         "labels_filename": data.metaphors / "qwen_3b_balanced_5k.jsonl",
     },
     
     # Science
     "science_llama_3b_5k": {
+    "science_llama_3b_5k": {
         "repo_id": "lasrprobegen/ultrachat-science-activations", 
         "activations_filename_prefix": "llama_3b_balanced_5k_layer_", 
         "labels_filename": data.science / "llama_3b_balanced_5k.jsonl",
     },
     "science_llama_3b_prompted_5k": {
+    "science_llama_3b_prompted_5k": {
         "repo_id": "lasrprobegen/ultrachat-science-activations", 
         "activations_filename_prefix": "llama_3b_prompted_balanced_5k_layer_", 
         "labels_filename": data.science / "llama_3b_prompted_balanced_5k.jsonl",
     },  
+    "science_qwen_3b_5k": {
     "science_qwen_3b_5k": {
         "repo_id": "lasrprobegen/ultrachat-science-activations", 
         "activations_filename_prefix": "qwen_3b_balanced_5k_layer_", 
