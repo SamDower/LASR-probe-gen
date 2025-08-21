@@ -20,7 +20,7 @@ def save_probe_dict_results(eval_dict, probe_type, probe_use_bias, probe_normali
     # Initialize wandb run
     wandb.init(
         project="LASR_probe_gen",
-        entity="samdower",
+        entity="LasrProbeGen",
         config={
             "probe/type": probe_type,
             "probe/use_bias": probe_use_bias,
@@ -57,7 +57,7 @@ def load_probe_eval_dict_by_dict(lookup_dict):
     
     # Query runs with specific config filters
     runs = api.runs(
-        "samdower/LASR_probe_gen",
+        "LasrProbeGen/LASR_probe_gen",
         filters=lookup_dict
     )
     
