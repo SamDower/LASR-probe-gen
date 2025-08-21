@@ -3,29 +3,25 @@ import numpy as np
 import wandb
 import matplotlib.pyplot as plt
 import numpy as np
+from torch.nn import CrossEntropyLoss
+from tqdm import tqdm
 
 
-def save_perplexities(perplexities, model_name, dataset_name):
-    wandb.init(project="LASR_probe_gen", entity="samdower")
+def save_perplexities(perplexities, behaviour, model_name, dataset_name):
+    wandb.init(project="LASR_probe_gen", entity="LasrProbeGen")
     np.save("perplexities.npy", perplexities)
-    artifact = wandb.Artifact(f"perplexities-{model_name}-{dataset_name}", type="results")
+    artifact = wandb.Artifact(f"perplexities-{behaviour}-{model_name}-{dataset_name}", type="results")
     artifact.add_file("perplexities.npy")
     wandb.log_artifact(artifact)
     wandb.finish()
 
-def load_perplexities(model_name, dataset_name):
+
+def load_perplexities(behaviour, model_name, dataset_name):
     api = wandb.Api()
-    artifact = api.artifact(f'samdower/LASR_probe_gen/perplexities-{model_name}-{dataset_name}:latest')
+    artifact = api.artifact(f'LasrProbeGen/LASR_probe_gen/perplexities-{behaviour}-{model_name}-{dataset_name}:latest')
     artifact_dir = artifact.download()
     arr = np.load(f"{artifact_dir}/perplexities.npy")
     return arr
-
-
-
-
-
-
-
 
 
 def plot_perplexities(perplexities_list, labels, use_log_scale=True, remove_outliers=False, num_bins=40):
@@ -67,14 +63,6 @@ def plot_perplexities(perplexities_list, labels, use_log_scale=True, remove_outl
 
     plt.tight_layout()
     plt.show()
-
-
-
-
-
-
-
-
 
 
 def _calculate_single_response_perplexity(model, tokenizer, input_text, response_text):
@@ -126,97 +114,91 @@ def _calculate_single_response_perplexity(model, tokenizer, input_text, response
     
     return perplexity
 
-def calculate_response_perplexities_sequentially(model, tokenizer, input_text_list, response_text_list, verbose=False):
+
+def calculate_response_perplexities_sequentially(model, tokenizer, input_texts, response_texts, verbose=False):
     perplexities = []
-    for i in range(len(input_text_list)):
+    for i in range(len(input_texts)):
         if verbose and i % 500 == 0: 
             print(f"processing responses {i} to {i+500}")
-        perplexity = _calculate_single_response_perplexity(model, tokenizer, input_text_list[i], response_text_list[i])
+        perplexity = _calculate_single_response_perplexity(model, tokenizer, input_texts[i], response_texts[i])
         perplexities.append(perplexity)
     return perplexities
 
 
-
-
-
-
-
-
-
-
-def calculate_response_perplexities_batched(model, tokenizer, input_texts, response_texts):
+def calculate_response_perplexities_batched(model, tokenizer, input_texts, response_texts, batch_size=32):
     """
-    Calculate perplexities for a batch of responses using padding.
-    This is the most straightforward but potentially less efficient approach.
+    Calculate perplexities for a list of input-response pairs in batches.
     
     Args:
         model: The language model
         tokenizer: The tokenizer
         input_texts: List of input texts
-        response_texts: List of corresponding response texts
+        response_texts: List of response texts
+        batch_size: Batch size to process at once
     
     Returns:
         List[float]: Perplexities for each response
     """
-    
-    batch_size = len(input_texts)
-    assert len(response_texts) == batch_size
-    
-    # Tokenize all sequences
-    full_sequences = []
-    input_lengths = []
-    response_lengths = []
-    
-    for input_text, response_text in zip(input_texts, response_texts):
-        input_ids = tokenizer(input_text, add_special_tokens=True)["input_ids"]
-        response_ids = tokenizer(response_text, add_special_tokens=False)["input_ids"]
-        full_seq = input_ids + response_ids
-        
-        full_sequences.append(full_seq)
-        input_lengths.append(len(input_ids))
-        response_lengths.append(len(response_ids))
-    
-    # Pad sequences to the same length
-    max_length = max(len(seq) for seq in full_sequences)
-    
-    padded_sequences = []
-    attention_masks = []
-    
-    for seq in full_sequences:
-        padded = seq + [tokenizer.pad_token_id] * (max_length - len(seq))
-        mask = [1] * len(seq) + [0] * (max_length - len(seq))
-        
-        padded_sequences.append(padded)
-        attention_masks.append(mask)
-    
-    # Convert to tensors
-    input_ids = torch.tensor(padded_sequences).to(model.device)
-    attention_mask = torch.tensor(attention_masks).to(model.device)
-    
-    # Get model outputs
-    with torch.no_grad():
-        outputs = model(input_ids, attention_mask=attention_mask)
-        logits = outputs.logits  # [batch_size, seq_len, vocab_size]
-    
-    # Calculate perplexities for each sequence
+    assert len(input_texts) == len(response_texts)
+    n = len(input_texts)
     perplexities = []
-    
-    for i in range(batch_size):
-        input_len = input_lengths[i]
-        response_len = response_lengths[i]
-        
-        if response_len == 0:
-            perplexities.append(float('inf'))
-            continue
-        
-        # Get logits and targets for this response
-        response_logits = logits[i, input_len-1:input_len+response_len-1, :]
-        response_targets = input_ids[i, input_len:input_len+response_len]
-        
-        # Calculate loss
-        loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
-        loss = loss_fn(response_logits, response_targets)
-        perplexity = torch.exp(loss).item()
-        perplexities.append(perplexity)
-    
+
+    loss_fn = CrossEntropyLoss(reduction='mean')
+
+    for start in tqdm(range(0, n, batch_size)):
+        end = min(start + batch_size, n)
+        batch_inputs = input_texts[start:end]
+        batch_responses = response_texts[start:end]
+
+        # tokenize each pair
+        full_sequences = []
+        input_lengths = []
+        response_lengths = []
+
+        for input_text, response_text in zip(batch_inputs, batch_responses):
+            input_ids = tokenizer(input_text, add_special_tokens=True)["input_ids"]
+            response_ids = tokenizer(response_text, add_special_tokens=False)["input_ids"]
+            full_seq = input_ids + response_ids
+
+            full_sequences.append(full_seq)
+            input_lengths.append(len(input_ids))
+            response_lengths.append(len(response_ids))
+
+        # Pad sequences in the batch
+        max_length = max(len(seq) for seq in full_sequences)
+        padded_sequences = []
+        attention_masks = []
+
+        for seq in full_sequences:
+            padded = seq + [tokenizer.pad_token_id] * (max_length - len(seq))
+            mask = [1] * len(seq) + [0] * (max_length - len(seq))
+            padded_sequences.append(padded)
+            attention_masks.append(mask)
+
+        # Move tensors to device
+        input_ids = torch.tensor(padded_sequences, device=model.device)
+        attention_mask = torch.tensor(attention_masks, device=model.device)
+
+        # Forward pass
+        with torch.no_grad():
+            outputs = model(input_ids, attention_mask=attention_mask)
+            logits = outputs.logits  # [batch_size, seq_len, vocab_size]
+
+        # Compute perplexity per sequence
+        for i in range(len(batch_inputs)):
+            input_len = input_lengths[i]
+            response_len = response_lengths[i]
+
+            if response_len == 0:
+                perplexities.append(float('inf'))
+                continue
+
+            # shift: predict response tokens based on context
+            response_logits = logits[i, input_len-1:input_len+response_len-1, :]
+            response_targets = input_ids[i, input_len:input_len+response_len]
+
+            loss = loss_fn(response_logits, response_targets)
+            perplexity = torch.exp(loss).item()
+            perplexities.append(perplexity)
+
     return perplexities
