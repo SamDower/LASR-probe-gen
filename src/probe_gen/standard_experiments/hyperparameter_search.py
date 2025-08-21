@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
-from notebooks.TrainProbe import best_roc
 import probes
 from probes.wandb_interface import load_probe_eval_dict_by_dict, load_probe_eval_dicts_as_df
 

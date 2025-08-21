@@ -24,10 +24,13 @@ def run_layer_experiments(probe_type, dataset_name, activations_model, probe_C, 
     for layer in layers_to_run:
         print(f"######################### Evaluating layer {layer} #############################")
 
-        print("loading activations for each layer (may take ~ 1 minute)")
+        print("Loading from HuggingFace...")
         activations_tensor, attention_mask, labels_tensor = probes.load_hf_activations_and_labels_at_layer(dataset_name, layer)
+        print("Aggregating activations...")
         activations_tensor = probes.MeanAggregation()(activations_tensor, attention_mask)
-        train_dataset, val_dataset, test_dataset = probes.create_activation_datasets(activations_tensor, labels_tensor, val_size=0, test_size=0.2, balance=True)
+        print("Constructing datasets...")
+        train_dataset, val_dataset, test_dataset = probes.create_activation_datasets(activations_tensor, labels_tensor, val_size=0.1, test_size=0.2, balance=True)
+        print("Complete.")
 
         for use_bias in use_bias_options:
             for normalize_inputs in normalize_inputs_options:
@@ -39,10 +42,10 @@ def run_layer_experiments(probe_type, dataset_name, activations_model, probe_C, 
                     probe = None
 
                 # Fit the probe with the datasets
-                probe.fit(train_dataset, val_dataset)
+                probe.fit(train_dataset, None)
 
                 # Evaluate the model
-                eval_dict, _, _ = probe.eval(test_dataset)
+                eval_dict, _, _ = probe.eval(val_dataset)
 
                 probes.wandb_interface.save_probe_dict_results(
                     eval_dict, 
