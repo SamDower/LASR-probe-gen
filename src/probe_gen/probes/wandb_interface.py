@@ -1,19 +1,19 @@
 import wandb
 import pandas as pd
 
-def save_probe_dict_results(eval_dict, probe_type, probe_use_bias, probe_normalize, layer, train_set_name, test_set_name):
+def save_probe_dict_results(eval_dict, probe_type, probe_use_bias, probe_normalize, probe_C, layer, train_set_name, test_set_name, activations_model):
     """
     Saves the evaluation dict to wandb as a single run.
-
     Args:
         eval_dict (dict): evalualtion dictionary obtained from `probe.eval(test_dataset)`.
         probe_type (str): The type of probe trained (e.g. 'mean', 'attention').
         probe_use_bias (bool): Whether use_bias is turned on for the probe.
-        probe_normalize (bool): Whether the inputs to the probe are normalized or not. 
+        probe_normalize (bool): Whether the inputs to the probe are normalized or not.
+        probe_C (float): The inverse of the regularization strength that was used to train the probe.
         layer (int): The layer of the activations the probe was trained on.
         train_set_name (str): An identifiable name for the data the probe was trained on (e.g. refusal_off_other_model).
         test_set_name (str): An identifiable name for the data the probe was tested on (e.g. refusal_on).
-    
+        activations_model (str): The model the activations came from.
     Returns:
         None
     """
@@ -25,19 +25,19 @@ def save_probe_dict_results(eval_dict, probe_type, probe_use_bias, probe_normali
             "probe/type": probe_type,
             "probe/use_bias": probe_use_bias,
             "probe/normalize": probe_normalize,
+            "probe/C": probe_C,
             "layer": layer,
             "train_dataset": train_set_name,
-            "test_dataset": test_set_name
+            "test_dataset": test_set_name,
+            "activations_model": activations_model
         }
     )
-
     # Log metrics
     wandb.log({
         "accuracy": eval_dict['accuracy'],
         "roc_auc": eval_dict['roc_auc'],
         "tpr_at_1_fpr": eval_dict['tpr_at_1_fpr'],
     })
-
     # Finish the run
     wandb.finish()
 

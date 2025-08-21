@@ -2,7 +2,7 @@ import probe_gen.probes as probes
 from probe_gen.probes import save_probe_dict_results
 
 
-def run_grid_experiment(dataset_names, layer, use_bias, normalize):
+def run_grid_experiment(dataset_names, layer, use_bias_list, normalize_list, C_list, activations_model):
 
     train_datasets = {}
     val_datasets = {}
@@ -16,15 +16,16 @@ def run_grid_experiment(dataset_names, layer, use_bias, normalize):
         test_datasets[dataset_name] = test_dataset
 
 
-    for train_dataset_name in dataset_names:
+    for train_index in len(dataset_names):
+        train_dataset_name = dataset_names[train_index]
         # Initialise and fit a probe with the dataset
-        probe = probes.SklearnLogisticProbe(use_bias=use_bias)
-        probe.fit(train_datasets[train_dataset_name], val_datasets[train_dataset_name], normalize=normalize)
+        probe = probes.SklearnLogisticProbe(use_bias=use_bias_list[train_index], normalize=normalize_list[train_index], C=C_list[train_index])
+        probe.fit(train_datasets[train_dataset_name], val_datasets[train_dataset_name])
 
         for test_dataset_name in dataset_names:
 
             eval_dict, _, _ = probe.eval(test_datasets[test_dataset_name])
-            save_probe_dict_results(eval_dict, "mean", use_bias, normalize, layer, train_dataset_name, test_dataset_name)
+            save_probe_dict_results(eval_dict, "mean", use_bias, normalize, C, layer, train_dataset_name, test_dataset_name, activations_model)
 
     
 
