@@ -117,7 +117,7 @@ def _train_val_test_split_torch(X, y, val_size=0.1, test_size=0.2):
     """
     Helper function to split data into train, validation, and test sets
     """
-
+    torch.manual_seed(0)
     n_samples = X.shape[0]
     n_test = int(n_samples * test_size)
     n_val = int(n_samples * val_size)
@@ -146,6 +146,7 @@ def create_activation_datasets(activations_tensor, labels_tensor, val_size=0.1, 
         labels_tensor (tensor): tensor of ground truth labels of shape [batch_size]
         verbose (bool): Should the function output to console. 
     """
+    torch.manual_seed(0)
     if balance:
         # Get indices for each label and subsample both classes to same size
         label_0_indices = (labels_tensor == 0.0).nonzero(as_tuple=True)[0]
