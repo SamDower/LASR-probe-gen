@@ -66,12 +66,14 @@ def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, l
 def load_best_params_from_search(probe_type, dataset_name, activations_model, layers_list):
 
     df = load_probe_eval_dicts_as_df({
-        "config.probe_type": probe_type,
+        "config.probe/type": probe_type,
         "config.train_dataset": dataset_name,
         "config.test_dataset": dataset_name,
         "config.activations_model": activations_model,
         "state": "finished"  # Only completed runs
     })
+
+    print(df)
 
     best_roc_auc = 0
     best_roc_auc_params = {}
