@@ -11,15 +11,15 @@ GENERAL_DATASETS = {
         "repo_id": "lasrprobegen/ultrachat-lists-activations", 
         "filename": data.data / "ultrachat_40k.jsonl",
     },
-    "ultrachat_40k_on": {
+    "ultrachat_llama_3b_40k": {
         "repo_id": "lasrprobegen/ultrachat-lists-activations", 
         "filename": data.data / "llama_3b_ultrachat_40k.jsonl",
     },
-    "ultrachat_40k_off_other_model": {
+    "ultrachat_qwen_3b_40k": {
         "repo_id": "lasrprobegen/ultrachat-lists-activations", 
         "filename": data.data / "qwen_3b_ultrachat_40k.jsonl",
     },
-    "ultrachat_40k_off_other_model_2": {
+    "ultrachat_ministral_8b_40k": {
         "repo_id": "lasrprobegen/ultrachat-lists-activations", 
         "filename": data.data / "ministral_8b_ultrachat_40k.jsonl",
     },
@@ -48,6 +48,11 @@ ACTIVATION_DATASETS = {
         "repo_id": "lasrprobegen/ultrachat-lists-activations", 
         "activations_filename_prefix": "llama_3b_balanced_5k_layer_", 
         "labels_filename": data.lists / "llama_3b_balanced_5k.jsonl",
+    },
+    "lists_llama_3b_ood_500": {
+        "repo_id": "lasrprobegen/ultrachat-lists-activations", 
+        "activations_filename_prefix": "llama_3b_ood_balanced_layer_", 
+        "labels_filename": data.lists / "llama_3b_ood_balanced.jsonl",
     },
     "lists_llama_3b_prompted_5k": {
         "repo_id": "lasrprobegen/ultrachat-lists-activations", 

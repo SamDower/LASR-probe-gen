@@ -18,6 +18,7 @@ from probe_gen.annotation.ultrachat_behaviour import (
     SYSTEM_PROMPT_METAPHORS,
     SYSTEM_PROMPT_SCIENCE,
     create_ultrachat_dataset,
+    create_ultrachat_dataset_brazilian,
 )
 
 
@@ -98,6 +99,7 @@ def main():
         # Sample the dataset
         if args.in_path is None:
             dataset = create_ultrachat_dataset(num_samples=args.num_samples)
+            # dataset = create_ultrachat_dataset_brazilian(num_samples=args.num_samples)
 
     # If didnt sample, load the dataset
     if dataset is None:

@@ -316,9 +316,9 @@ def label_and_save_dataset(
     else:
         labelled_dataset = dataset
 
-    # # Save the data
-    # print(f"Saving the data to {dataset_path}")
-    # labelled_dataset.save_to(dataset_path, overwrite=True)
+    # Save the data
+    print(f"Saving the data to {dataset_path}")
+    labelled_dataset.save_to(dataset_path, overwrite=True)
 
     if do_subsample:
         # Subsample the data

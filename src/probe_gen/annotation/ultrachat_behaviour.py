@@ -1,4 +1,5 @@
 from collections import defaultdict
+import json
 
 from datasets import load_dataset
 
@@ -52,11 +53,10 @@ def create_ultrachat_dataset(
     inputs = []
     other_fields = defaultdict(list)
 
-    ix = 0
     for real_ix, sample in enumerate(hf_dataset):
         prompt = sample['prompt']
 
-        # Skip samples with multiple assistant responses
+        # Skip samples with long inputs
         if len(prompt) > 500:
             continue
         
@@ -68,7 +68,47 @@ def create_ultrachat_dataset(
         if len(ids) >= num_samples:
             break
 
-        ix += 1  # Only increment if not skipped
+    if len(ids) < num_samples:
+        raise ValueError(
+            f"Not enough samples found in the dataset. Found {len(ids)}, expected {num_samples}."
+        )
+
+    dataset = Dataset(inputs=inputs, ids=ids, other_fields=other_fields)
+    return dataset
+
+
+def create_ultrachat_dataset_brazilian(
+    num_samples: int = 1000,
+) -> Dataset:
+    # Stream the hf dataset
+    split = "train"
+    hf_dataset = load_dataset("recogna-nlp/UltrachatBR", split=split, streaming=True)
+
+    ids = []
+    inputs = []
+    other_fields = defaultdict(list)
+
+    for real_ix, sample in enumerate(hf_dataset):
+        if "[{'humano': '" not in sample['conversa'] or "', 'assistente': '" not in sample['conversa']:
+            continue
+
+        prompt = sample['conversa'].split("[{'humano': '")[1]
+        human_message = prompt.split("', 'assistente': '")[0]
+        prompt = prompt.split("', 'assistente': '")[1]
+        assistant_message = prompt.split("'}")[0]
+
+        # Skip samples with long inputs
+        if len(human_message) < 500:
+            messages = [Message(role="user", content=human_message), Message(role="assistant", content=assistant_message)]
+        else:
+            continue
+        
+        ids.append(f"{split}_{real_ix}_conversa")
+        inputs.append(messages)
+
+        # Stop if we have enough samples
+        if len(ids) >= num_samples:
+            break
 
     if len(ids) < num_samples:
         raise ValueError(
