@@ -215,25 +215,12 @@ async def label_dataset_async(
         task = asyncio.create_task(worker(idx, item))
         tasks.append(task)
 
-    # Wait for all active tasks to complete, but with timeout for stragglers
-    try:
-        # Wait up to 30 seconds for remaining tasks after target is reached
-        if tasks:
-            await asyncio.wait_for(
-                asyncio.gather(*tasks, return_exceptions=True),
-                timeout=30.0 if stop_processing else None,
-            )
-    except asyncio.TimeoutError:
-        print(
-            f"Timeout waiting for remaining tasks. Proceeding with {positive_count} positive and {negative_count} negative labels."
-        )
-        # Cancel remaining tasks
-        for task in tasks:
-            if not task.done():
-                task.cancel()
-
+    # Cancel remaining tasks
+    for task in tasks:
+        if not task.done():
+            task.cancel()
+            
     pbar.close()
-
     print(
         f"Completed labeling. Final counts - Positive: {positive_count}, Negative: {negative_count}, Total processed: {completed_count}"
     )
