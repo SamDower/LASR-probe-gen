@@ -1,4 +1,5 @@
 from probe_gen.paths import data
+from probe_gen.annotation import SYSTEM_PROMPT_REFUSAL, SYSTEM_PROMPT_LISTS, SYSTEM_PROMPT_METAPHORS, SYSTEM_PROMPT_SCIENCE
 
 MODELS = {
     "llama_3b": "meta-llama/Llama-3.2-3B-Instruct",
@@ -99,4 +100,11 @@ ACTIVATION_DATASETS = {
         "activations_filename_prefix": "qwen_3b_balanced_5k_layer_", 
         "labels_filename": data.science / "qwen_3b_balanced_5k.jsonl",
     },
+}
+
+SYSTEM_PROMPTS = {
+    "refusal": SYSTEM_PROMPT_REFUSAL,
+    "lists": SYSTEM_PROMPT_LISTS,
+    "metaphors": SYSTEM_PROMPT_METAPHORS,
+    "science": SYSTEM_PROMPT_SCIENCE,
 }
