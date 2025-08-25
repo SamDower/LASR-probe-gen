@@ -69,7 +69,7 @@ def plot_activations_mean_line_projections(activations_1, activations_2, labels,
     plt.show()
 
 
-def plot_activations_pca(dataset1=None, dataset2=None, dataset3=None, labels_1=None, labels_2=None, labels_3=None, n_components=2, dataset1_name="Dataset 1", dataset2_name="Dataset 2", dataset3_name="Dataset 3", figsize=(10, 8), alpha=0.7):
+def plot_activations_pca(activation_datasets=None, labels_list=None, dataset_names=None, figsize=(10, 8), alpha=0.7):
     """
     Perform PCA on combined datasets and visualize with different colors for each dataset.
     
@@ -93,110 +93,154 @@ def plot_activations_pca(dataset1=None, dataset2=None, dataset3=None, labels_1=N
         labels: numpy array indicating which dataset each point belongs to
     """
     
-    # Convert to numpy if needed and combine datasets
-    if isinstance(dataset1, torch.Tensor):
-        dataset1 = dataset1.detach().cpu().numpy()
-    if isinstance(dataset2, torch.Tensor):
-        dataset2 = dataset2.detach().cpu().numpy()
-    if dataset3 is not None and isinstance(dataset3, torch.Tensor):
-        dataset3 = dataset3.detach().cpu().numpy()
+    # Convert to numpy if needed and combine datasets#
+    for i in range(len(activation_datasets)):
+        if isinstance(activation_datasets[i], torch.Tensor):
+            activation_datasets[i] = activation_datasets[i].detach().cpu().numpy()
 
-    # Combine the datasets
-    n1, n2 = len(dataset1), len(dataset2)
-    if dataset3 is not None:
-        combined_data = np.vstack([dataset1, dataset2, dataset3])
-    else:
-        combined_data = np.vstack([dataset1, dataset2])
-    
-    # Perform PCA on combined data
-    pca = PCA(n_components=n_components)
-    transformed_data = pca.fit_transform(combined_data)
-    
-    # Split back into separate datasets for plotting
-    dataset1_pca = transformed_data[:n1]
-    dataset2_pca = transformed_data[n1:n1+n2]
-    if dataset3 is not None:
-        dataset3_pca = transformed_data[n1+n2:]
+    # Fit PCA on combined data
+    combined_data = np.vstack(activation_datasets)
+    pca = PCA(n_components=2)
+    pca.fit(combined_data)
 
-    dataset1_pca_pos = dataset1_pca[torch.tensor(labels_1, dtype=torch.bool)]
-    dataset1_pca_neg = dataset1_pca[~torch.tensor(labels_1, dtype=torch.bool)]
-    dataset2_pca_pos = dataset2_pca[torch.tensor(labels_2, dtype=torch.bool)]
-    dataset2_pca_neg = dataset2_pca[~torch.tensor(labels_2, dtype=torch.bool)]
-    if dataset3 is not None:
-        dataset3_pca_pos = dataset3_pca[torch.tensor(labels_3, dtype=torch.bool)]
-        dataset3_pca_neg = dataset3_pca[~torch.tensor(labels_3, dtype=torch.bool)]
-    
-    for graph_type in ['all', 'one', 'two', 'three']:
-        if graph_type == 'three' and dataset3 is None:
-            continue
-        
-        # Create the plot
-        if n_components == 2:
-            fig, ax = plt.subplots(figsize=figsize)
-            
-            if graph_type == 'all' or graph_type == 'one':
-                colours = ["red", "orange"] if graph_type == 'all' else ["orange", "cyan"]
-                ax.scatter(dataset1_pca_pos[:, 0], dataset1_pca_pos[:, 1], 
-                                    alpha=alpha, label=f"{dataset1_name} - Positive", s=50, color=colours[0])
-                ax.scatter(dataset1_pca_neg[:, 0], dataset1_pca_neg[:, 1], 
-                                    alpha=alpha, label=f"{dataset1_name} - Negative", s=50, color=colours[1])
-            
-            if graph_type == 'all' or graph_type == 'two':
-                colours = ["purple", "hotpink"] if graph_type == 'all' else ["orange", "cyan"]
-                ax.scatter(dataset2_pca_pos[:, 0], dataset2_pca_pos[:, 1], 
-                                    alpha=alpha, label=f"{dataset2_name} - Positive", s=50, color=colours[0])
-                ax.scatter(dataset2_pca_neg[:, 0], dataset2_pca_neg[:, 1], 
-                                    alpha=alpha, label=f"{dataset2_name} - Negative", s=50, color=colours[1])
-            
-            if dataset3 is not None:
-                if graph_type == 'all' or graph_type == 'three':
-                    colours = ["darkolivegreen", "lime"] if graph_type == 'all' else ["orange", "cyan"]
-                    ax.scatter(dataset3_pca_pos[:, 0], dataset3_pca_pos[:, 1], 
-                                    alpha=alpha, label=f"{dataset3_name} - Positive", s=50, color=colours[0])
-                    ax.scatter(dataset3_pca_neg[:, 0], dataset3_pca_neg[:, 1], 
-                                    alpha=alpha, label=f"{dataset3_name} - Negative", s=50, color=colours[1])
-            
-            ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%} variance)')
-            ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.1%} variance)')
-            ax.set_title('PCA Visualization of Datasets')
-            ax.legend()
-            ax.grid(True, alpha=alpha)
-            
-        elif n_components == 3:
-            fig = plt.figure(figsize=figsize)
-            ax = fig.add_subplot(111, projection='3d')
-            
-            # Plot both datasets with different colors
-            if graph_type == 'all' or graph_type == 'one':
-                ax.scatter(dataset1_pca[:, 0], dataset1_pca[:, 1], dataset1_pca[:, 2],
-                        alpha=alpha, label=dataset1_name, s=50)
-            if graph_type == 'all' or graph_type == 'two':
-                ax.scatter(dataset2_pca[:, 0], dataset2_pca[:, 1], dataset2_pca[:, 2],
-                        alpha=alpha, label=dataset2_name, s=50)
-            if dataset3 is not None:
-                if graph_type == 'all' or graph_type == 'three':
-                    ax.scatter(dataset3_pca[:, 0], dataset3_pca[:, 1], dataset3_pca[:, 2],
-                            alpha=alpha, label=dataset3_name, s=50)
-            
-            ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%})')
-            ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.1%})')
-            ax.set_zlabel(f'PC3 ({pca.explained_variance_ratio_[2]:.1%})')
-            ax.set_title('3D PCA Visualization of Datasets')
-            ax.legend()
-            
-        else:
-            raise ValueError("n_components must be 2 or 3 for visualization")
-        
+
+    # Plot all datasets on one graph
+    fig, ax = plt.subplots(figsize=figsize)
+    for i in range(len(activation_datasets)):
+        transformed_data = pca.transform(activation_datasets[i])
+        ax.scatter(transformed_data[:, 0], transformed_data[:, 1], alpha=alpha, label=dataset_names[i], s=50)
+    ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%} variance)')
+    ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.1%} variance)')
+    ax.set_title('PCA Visualization of Datasets')
+    legend = ax.legend()
+    for handle in legend.legend_handles:
+        handle.set_alpha(1.0)
+    ax.grid(True, alpha=alpha)
+    plt.tight_layout()
+    plt.show()
+
+    # Plot individual datasets on seperate graphs
+    for i in range(len(activation_datasets)):
+        transformed_data = pca.transform(activation_datasets[i])
+        transformed_data_pos = transformed_data[torch.tensor(labels_list[i], dtype=torch.bool)]
+        transformed_data_neg = transformed_data[~torch.tensor(labels_list[i], dtype=torch.bool)]
+
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.scatter(transformed_data_pos[:, 0], transformed_data_pos[:, 1], alpha=alpha, label=f"{dataset_names[i]} - Positive", s=50, color='red')
+        ax.scatter(transformed_data_neg[:, 0], transformed_data_neg[:, 1], alpha=alpha, label=f"{dataset_names[i]} - Negative", s=50, color='orange')
+        ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%} variance)')
+        ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.1%} variance)')
+        ax.set_title('PCA Visualization of Datasets')
+        legend = ax.legend()
+        for handle in legend.legend_handles:
+            handle.set_alpha(1.0)
+        ax.grid(True, alpha=alpha)
         plt.tight_layout()
         plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # pca_datasets = []
+    # start_index = 0
+    # for i in range(len(activation_datasets)):
+    #     pca_datasets.append(transformed_data)
     
-    # Print some useful information
-    print(f"Dataset 1 shape: {dataset1.shape}")
-    print(f"Dataset 2 shape: {dataset2.shape}")
-    if dataset3 is not None:
-        print(f"Dataset 3 shape: {dataset3.shape}")
-    print(f"Combined dataset shape: {combined_data.shape}")
-    print(f"PCA explained variance ratio: {pca.explained_variance_ratio_}")
-    print(f"Total explained variance: {pca.explained_variance_ratio_.sum():.1%}")
+    # # Split back into separate datasets for plotting
+    # dataset1_pca = transformed_data[:n1]
+    # dataset2_pca = transformed_data[n1:n1+n2]
+    # if dataset3 is not None:
+    #     dataset3_pca = transformed_data[n1+n2:]
+
+    # dataset1_pca_pos = dataset1_pca[torch.tensor(labels_1, dtype=torch.bool)]
+    # dataset1_pca_neg = dataset1_pca[~torch.tensor(labels_1, dtype=torch.bool)]
+    # dataset2_pca_pos = dataset2_pca[torch.tensor(labels_2, dtype=torch.bool)]
+    # dataset2_pca_neg = dataset2_pca[~torch.tensor(labels_2, dtype=torch.bool)]
+    # if dataset3 is not None:
+    #     dataset3_pca_pos = dataset3_pca[torch.tensor(labels_3, dtype=torch.bool)]
+    #     dataset3_pca_neg = dataset3_pca[~torch.tensor(labels_3, dtype=torch.bool)]
     
-    return pca, transformed_data
+    # for graph_type in ['all', 'one', 'two', 'three']:
+    #     if graph_type == 'three' and dataset3 is None:
+    #         continue
+        
+    #     # Create the plot
+    #     if n_components == 2:
+    #         fig, ax = plt.subplots(figsize=figsize)
+            
+    #         if graph_type == 'all' or graph_type == 'one':
+    #             colours = ["red", "orange"] if graph_type == 'all' else ["orange", "cyan"]
+    #             ax.scatter(dataset1_pca_pos[:, 0], dataset1_pca_pos[:, 1], 
+    #                                 alpha=alpha, label=f"{dataset1_name} - Positive", s=50, color=colours[0])
+    #             ax.scatter(dataset1_pca_neg[:, 0], dataset1_pca_neg[:, 1], 
+    #                                 alpha=alpha, label=f"{dataset1_name} - Negative", s=50, color=colours[1])
+            
+    #         if graph_type == 'all' or graph_type == 'two':
+    #             colours = ["purple", "hotpink"] if graph_type == 'all' else ["orange", "cyan"]
+    #             ax.scatter(dataset2_pca_pos[:, 0], dataset2_pca_pos[:, 1], 
+    #                                 alpha=alpha, label=f"{dataset2_name} - Positive", s=50, color=colours[0])
+    #             ax.scatter(dataset2_pca_neg[:, 0], dataset2_pca_neg[:, 1], 
+    #                                 alpha=alpha, label=f"{dataset2_name} - Negative", s=50, color=colours[1])
+            
+    #         if dataset3 is not None:
+    #             if graph_type == 'all' or graph_type == 'three':
+    #                 colours = ["darkolivegreen", "lime"] if graph_type == 'all' else ["orange", "cyan"]
+    #                 ax.scatter(dataset3_pca_pos[:, 0], dataset3_pca_pos[:, 1], 
+    #                                 alpha=alpha, label=f"{dataset3_name} - Positive", s=50, color=colours[0])
+    #                 ax.scatter(dataset3_pca_neg[:, 0], dataset3_pca_neg[:, 1], 
+    #                                 alpha=alpha, label=f"{dataset3_name} - Negative", s=50, color=colours[1])
+            
+    #         ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%} variance)')
+    #         ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.1%} variance)')
+    #         ax.set_title('PCA Visualization of Datasets')
+    #         ax.legend()
+    #         ax.grid(True, alpha=alpha)
+            
+        # elif n_components == 3:
+        #     fig = plt.figure(figsize=figsize)
+        #     ax = fig.add_subplot(111, projection='3d')
+            
+        #     # Plot both datasets with different colors
+        #     if graph_type == 'all' or graph_type == 'one':
+        #         ax.scatter(dataset1_pca[:, 0], dataset1_pca[:, 1], dataset1_pca[:, 2],
+        #                 alpha=alpha, label=dataset1_name, s=50)
+        #     if graph_type == 'all' or graph_type == 'two':
+        #         ax.scatter(dataset2_pca[:, 0], dataset2_pca[:, 1], dataset2_pca[:, 2],
+        #                 alpha=alpha, label=dataset2_name, s=50)
+        #     if dataset3 is not None:
+        #         if graph_type == 'all' or graph_type == 'three':
+        #             ax.scatter(dataset3_pca[:, 0], dataset3_pca[:, 1], dataset3_pca[:, 2],
+        #                     alpha=alpha, label=dataset3_name, s=50)
+            
+        #     ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%})')
+        #     ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.1%})')
+        #     ax.set_zlabel(f'PC3 ({pca.explained_variance_ratio_[2]:.1%})')
+        #     ax.set_title('3D PCA Visualization of Datasets')
+        #     ax.legend()
+            
+    #     else:
+    #         raise ValueError("n_components must be 2 or 3 for visualization")
+        
+    #     plt.tight_layout()
+    #     plt.show()
+    
+    # # Print some useful information
+    # print(f"Dataset 1 shape: {dataset1.shape}")
+    # print(f"Dataset 2 shape: {dataset2.shape}")
+    # if dataset3 is not None:
+    #     print(f"Dataset 3 shape: {dataset3.shape}")
+    # print(f"Combined dataset shape: {combined_data.shape}")
+    # print(f"PCA explained variance ratio: {pca.explained_variance_ratio_}")
+    # print(f"Total explained variance: {pca.explained_variance_ratio_.sum():.1%}")
+    
+    # return pca, transformed_data
