@@ -26,13 +26,6 @@ def main():
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--sample", type=int, default=0, help="If >0, run on N samples")
     parser.add_argument(
-        "--policy",
-        type=str,
-        default="on_policy",
-        choices=["on_policy", "off_policy_prompt", "off_policy_other_model"],
-        help="Output policy: generate (on_policy) or teacher-forced (off_policy_*)",
-    )
-    parser.add_argument(
         "--behaviour",
         type=str,
         default="refusal",
@@ -62,7 +55,6 @@ def main():
         dataset_path=args.data,
         output_file=args.out,
         batch_size=args.batch_size,
-        policy=args.policy,
         behaviour=args.behaviour,
         sample=args.sample,
         extra_prompt=args.extra_prompt,

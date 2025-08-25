@@ -294,7 +294,6 @@ def label_and_save_dataset(
     model: str = "gpt-5-nano",
     max_concurrent: int = 50,
     do_subsample: bool = True,
-    do_label: bool = True,
     num_balanced: int = 5000,
 ) -> None:
     """
@@ -313,20 +312,17 @@ def label_and_save_dataset(
             f"Dataset already exists at {dataset_path}. Please remove it or use a different path."
         )
 
-    if do_label:
-        labelled_dataset = asyncio.run(
-            label_dataset_async(
-                dataset=dataset,
-                dataset_path=dataset_path,
-                system_prompt=system_prompt,
-                model=model,
-                max_concurrent=max_concurrent,
-                num_balanced=num_balanced,
-            )
+    labelled_dataset = asyncio.run(
+        label_dataset_async(
+            dataset=dataset,
+            dataset_path=dataset_path,
+            system_prompt=system_prompt,
+            model=model,
+            max_concurrent=max_concurrent,
+            num_balanced=num_balanced,
         )
-        labelled_dataset.print_label_distribution()
-    else:
-        labelled_dataset = dataset
+    )
+    labelled_dataset.print_label_distribution()
 
     # Save the data
     print(f"Saving the data to {dataset_path}")

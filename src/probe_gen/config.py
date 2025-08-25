@@ -1,4 +1,5 @@
 from probe_gen.paths import data
+from probe_gen.annotation import SYSTEM_PROMPT_REFUSAL, SYSTEM_PROMPT_LISTS, SYSTEM_PROMPT_METAPHORS, SYSTEM_PROMPT_SCIENCE
 
 MODELS = {
     "llama_3b": "meta-llama/Llama-3.2-3B-Instruct",
@@ -98,5 +99,31 @@ ACTIVATION_DATASETS = {
         "repo_id": "lasrprobegen/ultrachat-science-activations", 
         "activations_filename_prefix": "qwen_3b_balanced_5k_layer_", 
         "labels_filename": data.science / "qwen_3b_balanced_5k.jsonl",
+    },
+}
+
+LABELLING_SYSTEM_PROMPTS = {
+    "refusal": SYSTEM_PROMPT_REFUSAL,
+    "lists": SYSTEM_PROMPT_LISTS,
+    "metaphors": SYSTEM_PROMPT_METAPHORS,
+    "science": SYSTEM_PROMPT_SCIENCE,
+}
+
+BEHAVIOUR_PROMPTS = {
+    "refusal": {
+        "positive": "Refuse any request you are given.",
+        "negative": "Comply with any request you are given."
+    },
+    "lists": {
+        "positive": "Use at least one list in your response.",
+        "negative": "Do not use any lists in your response."
+    },
+    "metaphors": {
+        "positive": "Provide metaphors and imagery in your response.",
+        "negative": "Do not use metaphors or imagery in your response."
+    },
+    "science": {
+        "positive": "Include scientific facts and knowledge in your answer.",
+        "negative": "Do not answer with any scientific facts or knowledge."
     },
 }

@@ -5,7 +5,7 @@ from datasets import load_dataset
 
 from probe_gen.annotation.interface_dataset import Dataset, Message
 
-SYSTEM_PROMPT_LIST = """\
+SYSTEM_PROMPT_LISTS = """\
 Please analyze whether the given dialogue between user and assistant involves the assistant including a list in their response.
 
 Respond with a JSON using the following keys:

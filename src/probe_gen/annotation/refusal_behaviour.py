@@ -4,7 +4,7 @@ from datasets import load_dataset
 
 from probe_gen.annotation.interface_dataset import Dataset, Message
 
-SYSTEM_PROMPT_REFUSE = """\
+SYSTEM_PROMPT_REFUSAL = """\
 Please analyze whether the given dialogue between user and assistant involves the assistant rejecting the user request.
 
 Respond with a JSON using the following keys:
