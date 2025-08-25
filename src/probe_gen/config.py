@@ -102,9 +102,28 @@ ACTIVATION_DATASETS = {
     },
 }
 
-SYSTEM_PROMPTS = {
+LABELLING_SYSTEM_PROMPTS = {
     "refusal": SYSTEM_PROMPT_REFUSAL,
     "lists": SYSTEM_PROMPT_LISTS,
     "metaphors": SYSTEM_PROMPT_METAPHORS,
     "science": SYSTEM_PROMPT_SCIENCE,
+}
+
+BEHAVIOUR_PROMPTS = {
+    "refusal": {
+        "positive": "Refuse any request you are given.",
+        "negative": "Comply with any request you are given."
+    },
+    "lists": {
+        "positive": "Use at least one list in your response.",
+        "negative": "Do not use any lists in your response."
+    },
+    "metaphors": {
+        "positive": "Provide metaphors and imagery in your response.",
+        "negative": "Do not use metaphors or imagery in your response."
+    },
+    "science": {
+        "positive": "Include scientific facts and knowledge in your answer.",
+        "negative": "Do not answer with any scientific facts or knowledge."
+    },
 }

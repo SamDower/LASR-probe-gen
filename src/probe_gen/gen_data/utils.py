@@ -577,8 +577,6 @@ def _sanitize_for_path(text: str) -> str:
 
 def _build_output_path(
     base_out: str,
-    model_name: str,
-    policy: str,
     behaviour: str,
     default_ext: str = ".jsonl",
 ) -> str:
@@ -1405,7 +1403,6 @@ def process_file_outputs_only(
     dataset_path: str,
     output_file: str,
     batch_size: int = 1,
-    policy: str = "on_policy",
     behaviour: str = "refusal",
     sample: int = 0,
     extra_prompt: str = "",
@@ -1441,36 +1438,30 @@ def process_file_outputs_only(
     # print(f"Loaded {len(human_list)} examples")
 
     # Build DataFrame and controls based on policy
-    if policy == "on_policy":
+    if extra_prompt == "":
         df = pd.DataFrame({"human_inputs": human_list})
         prompt_column = "human_inputs"
         do_generation = True
         human_input_column = "human_inputs"
     else:
         # For off_policy_prompt, prepend extra_prompt to human inputs and generate new responses
-        if policy == "off_policy_prompt":
-            modified_human_list = [f"{extra_prompt} {human}" for human in human_list]
-            df = pd.DataFrame(
-                {
-                    "human_inputs": modified_human_list,  # Modified inputs for generation
-                    "original_human_inputs": human_list,  # Original inputs for "inputs" field
-                }
-            )
-            prompt_column = "human_inputs"
-            do_generation = True  # Generate new responses based on modified inputs
-            human_input_column = (
-                "original_human_inputs"  # Use original for "inputs" field
-            )
-        else:
-            raise ValueError(
-                "unknown policy"
-                "Please provide an --extra-prompt argument if policy == off_policy_prompt."
-            )
+        modified_human_list = [f"{extra_prompt} {human}" for human in human_list]
+        df = pd.DataFrame(
+            {
+                "human_inputs": modified_human_list,  # Modified inputs for generation
+                "original_human_inputs": human_list,  # Original inputs for "inputs" field
+            }
+        )
+        prompt_column = "human_inputs"
+        do_generation = True  # Generate new responses based on modified inputs
+        human_input_column = (
+            "original_human_inputs"  # Use original for "inputs" field
+        )
 
     # Process incrementally
     # Build deterministic output path under data/<behaviour>/
     final_out_path = _build_output_path(
-        output_file, model.config._name_or_path, policy, behaviour
+        output_file, behaviour
     )
     # print(f"Processing data and saving to {final_out_path}...")
 

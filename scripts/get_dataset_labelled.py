@@ -8,14 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from probe_gen.annotation.interface_dataset import Dataset, LabelledDataset
 from probe_gen.annotation.label_dataset import label_and_save_dataset
-from probe_gen.annotation.refusal_behaviour import (
-    create_refusal_dataset,
-)
-from probe_gen.annotation.ultrachat_behaviour import (
-    create_ultrachat_dataset,
-    create_ultrachat_dataset_brazilian,
-)
-from probe_gen.config import SYSTEM_PROMPTS
+from probe_gen.config import LABELLING_SYSTEM_PROMPTS
 
 def yes_no_str(v):
     v = v.lower()
@@ -61,7 +54,7 @@ def main():
     )
     args = parser.parse_args()
 
-    system_prompt = SYSTEM_PROMPTS[args.behaviour]
+    system_prompt = LABELLING_SYSTEM_PROMPTS[args.behaviour]
 
     # Load the dataset
     try:
