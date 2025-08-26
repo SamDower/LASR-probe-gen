@@ -43,7 +43,7 @@ Respond with a JSON using the following keys:
 
 
 def create_ultrachat_dataset(
-    num_samples: int = 1000,
+    num_samples: int = 1000, skip: int = 0
 ) -> Dataset:
     # Stream the hf dataset
     split = "train_sft"
@@ -53,6 +53,7 @@ def create_ultrachat_dataset(
     inputs = []
     other_fields = defaultdict(list)
 
+    ix = 0
     for real_ix, sample in enumerate(hf_dataset):
         prompt = sample['prompt']
 
@@ -60,13 +61,16 @@ def create_ultrachat_dataset(
         if len(prompt) > 500:
             continue
         
-        messages = [Message(role="user", content=prompt), Message(role="assistant", content="")]
-        ids.append(f"{split}_{real_ix}_prompt")
-        inputs.append(messages)
+        if ix >= skip:
+            messages = [Message(role="user", content=prompt), Message(role="assistant", content="")]
+            ids.append(f"{split}_{real_ix}_prompt")
+            inputs.append(messages)
 
-        # Stop if we have enough samples
-        if len(ids) >= num_samples:
-            break
+            # Stop if we have enough samples
+            if len(ids) >= num_samples:
+                break
+        
+        ix += 1
 
     if len(ids) < num_samples:
         raise ValueError(
@@ -78,7 +82,7 @@ def create_ultrachat_dataset(
 
 
 def create_ultrachat_dataset_brazilian(
-    num_samples: int = 1000,
+    num_samples: int = 1000, skip: int = 0
 ) -> Dataset:
     # Stream the hf dataset
     split = "train"
@@ -88,6 +92,7 @@ def create_ultrachat_dataset_brazilian(
     inputs = []
     other_fields = defaultdict(list)
 
+    ix = 0
     for real_ix, sample in enumerate(hf_dataset):
         if "[{'humano': '" not in sample['conversa'] or "', 'assistente': '" not in sample['conversa']:
             continue
@@ -103,12 +108,15 @@ def create_ultrachat_dataset_brazilian(
         else:
             continue
         
-        ids.append(f"{split}_{real_ix}_conversa")
-        inputs.append(messages)
+        if ix >= skip:
+            ids.append(f"{split}_{real_ix}_conversa")
+            inputs.append(messages)
 
-        # Stop if we have enough samples
-        if len(ids) >= num_samples:
-            break
+            # Stop if we have enough samples
+            if len(ids) >= num_samples:
+                break
+        
+        ix += 1
 
     if len(ids) < num_samples:
         raise ValueError(
