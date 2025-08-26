@@ -49,14 +49,23 @@ hf_cache/
 !data/lists/qwen_3b_balanced_5k.jsonl
 !data/lists/llama_3b_balanced_5k.jsonl
 !data/lists/llama_3b_prompted_balanced_5k.jsonl
+!data/lists/qwen_3b_balanced_1k.jsonl
+!data/lists/llama_3b_balanced_1k.jsonl
+!data/lists/llama_3b_prompted_balanced_1k.jsonl
 
 !data/metaphors/qwen_3b_balanced_5k.jsonl
 !data/metaphors/llama_3b_balanced_5k.jsonl
 !data/metaphors/llama_3b_prompted_balanced_5k.jsonl
+!data/metaphors/qwen_3b_balanced_1k.jsonl
+!data/metaphors/llama_3b_balanced_1k.jsonl
+!data/metaphors/llama_3b_prompted_balanced_1k.jsonl
 
 !data/science/qwen_3b_balanced_5k.jsonl
 !data/science/llama_3b_balanced_5k.jsonl
 !data/science/llama_3b_prompted_balanced_5k.jsonl
+!data/science/qwen_3b_balanced_1k.jsonl
+!data/science/llama_3b_balanced_1k.jsonl
+!data/science/llama_3b_prompted_balanced_1k.jsonl
 
 # uv things
 uv.lock
