@@ -116,8 +116,22 @@ ACTIVATION_DATASETS = {
     "metaphors_qwen_3b_5k": {
         "repo_id": "lasrprobegen/ultrachat-metaphors-activations",
         "activations_filename_prefix": "qwen_3b_balanced_5k_layer_",
-        "activations_filename_prefix": "qwen_3b_balanced_5k_layer_",
         "labels_filename": data.metaphors / "qwen_3b_balanced_5k.jsonl",
+    },
+    "metaphors_llama_3b_1k": {
+        "repo_id": "lasrprobegen/ultrachat-metaphors-activations",
+        "activations_filename_prefix": "llama_3b_balanced_1k_layer_",
+        "labels_filename": data.metaphors / "llama_3b_balanced_1k.jsonl",
+    },
+    "metaphors_llama_3b_prompted_1k": {
+        "repo_id": "lasrprobegen/ultrachat-metaphors-activations",
+        "activations_filename_prefix": "llama_3b_prompted_balanced_1k_layer_",
+        "labels_filename": data.metaphors / "llama_3b_prompted_balanced_1k.jsonl",
+    },
+    "metaphors_qwen_3b_1k": {
+        "repo_id": "lasrprobegen/ultrachat-metaphors-activations",
+        "activations_filename_prefix": "qwen_3b_balanced_1k_layer_",
+        "labels_filename": data.metaphors / "qwen_3b_balanced_1k.jsonl",
     },
     # Metaphors - Brazillian test dataset
     "llama_3b_metaphors_brazilian_1k": {
@@ -146,6 +160,21 @@ ACTIVATION_DATASETS = {
         "repo_id": "lasrprobegen/ultrachat-science-activations",
         "activations_filename_prefix": "qwen_3b_balanced_5k_layer_",
         "labels_filename": data.science / "qwen_3b_balanced_5k.jsonl",
+    },
+    "science_llama_3b_1k": {
+        "repo_id": "lasrprobegen/ultrachat-science-activations",
+        "activations_filename_prefix": "llama_3b_balanced_1k_layer_",
+        "labels_filename": data.science / "llama_3b_balanced_1k.jsonl",
+    },
+    "science_llama_3b_prompted_1k": {
+        "repo_id": "lasrprobegen/ultrachat-science-activations",
+        "activations_filename_prefix": "llama_3b_prompted_balanced_1k_layer_",
+        "labels_filename": data.science / "llama_3b_prompted_balanced_1k.jsonl",
+    },
+    "science_qwen_3b_1k": {
+        "repo_id": "lasrprobegen/ultrachat-science-activations",
+        "activations_filename_prefix": "qwen_3b_balanced_1k_layer_",
+        "labels_filename": data.science / "qwen_3b_balanced_1k.jsonl",
     },
 }
 
