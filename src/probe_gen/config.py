@@ -1,5 +1,10 @@
+from probe_gen.annotation import (
+    SYSTEM_PROMPT_LISTS,
+    SYSTEM_PROMPT_METAPHORS,
+    SYSTEM_PROMPT_REFUSAL,
+    SYSTEM_PROMPT_SCIENCE,
+)
 from probe_gen.paths import data
-from probe_gen.annotation import SYSTEM_PROMPT_REFUSAL, SYSTEM_PROMPT_LISTS, SYSTEM_PROMPT_METAPHORS, SYSTEM_PROMPT_SCIENCE
 
 MODELS = {
     "llama_3b": "meta-llama/Llama-3.2-3B-Instruct",
@@ -9,19 +14,19 @@ MODELS = {
 
 GENERAL_DATASETS = {
     "ultrachat_40k": {
-        "repo_id": "lasrprobegen/ultrachat-lists-activations", 
+        "repo_id": "lasrprobegen/ultrachat-lists-activations",
         "filename": data.data / "ultrachat_40k.jsonl",
     },
     "ultrachat_llama_3b_40k": {
-        "repo_id": "lasrprobegen/ultrachat-lists-activations", 
+        "repo_id": "lasrprobegen/ultrachat-lists-activations",
         "filename": data.data / "llama_3b_ultrachat_40k.jsonl",
     },
     "ultrachat_qwen_3b_40k": {
-        "repo_id": "lasrprobegen/ultrachat-lists-activations", 
+        "repo_id": "lasrprobegen/ultrachat-lists-activations",
         "filename": data.data / "qwen_3b_ultrachat_40k.jsonl",
     },
     "ultrachat_ministral_8b_40k": {
-        "repo_id": "lasrprobegen/ultrachat-lists-activations", 
+        "repo_id": "lasrprobegen/ultrachat-lists-activations",
         "filename": data.data / "ministral_8b_ultrachat_40k.jsonl",
     },
 }
@@ -29,75 +34,84 @@ GENERAL_DATASETS = {
 ACTIVATION_DATASETS = {
     # Refusal
     "refusal_llama_3b_5k": {
-        "repo_id": "lasrprobegen/anthropic-refusal-activations", 
-        "activations_filename_prefix": "llama_3b_balanced_5k_layer_", 
+        "repo_id": "lasrprobegen/anthropic-refusal-activations",
+        "activations_filename_prefix": "llama_3b_balanced_5k_layer_",
         "labels_filename": data.refusal / "llama_3b_balanced_5k.jsonl",
     },
     "refusal_llama_3b_prompted_5k": {
-        "repo_id": "lasrprobegen/anthropic-refusal-activations", 
-        "activations_filename_prefix": "llama_3b_prompted_balanced_5k_layer_", 
+        "repo_id": "lasrprobegen/anthropic-refusal-activations",
+        "activations_filename_prefix": "llama_3b_prompted_balanced_5k_layer_",
         "labels_filename": data.refusal / "llama_3b_prompted_balanced_5k.jsonl",
     },
     "refusal_ministral_8b_5k": {
-        "repo_id": "lasrprobegen/anthropic-refusal-activations", 
-        "activations_filename_prefix": "ministral_8b_balanced_5k_layer_", 
+        "repo_id": "lasrprobegen/anthropic-refusal-activations",
+        "activations_filename_prefix": "ministral_8b_balanced_5k_layer_",
         "labels_filename": data.refusal / "ministral_8b_balanced_5k.jsonl",
     },
-    
     # Lists
     "lists_llama_3b_5k": {
-        "repo_id": "lasrprobegen/ultrachat-lists-activations", 
-        "activations_filename_prefix": "llama_3b_balanced_5k_layer_", 
+        "repo_id": "lasrprobegen/ultrachat-lists-activations",
+        "activations_filename_prefix": "llama_3b_balanced_5k_layer_",
         "labels_filename": data.lists / "llama_3b_balanced_5k.jsonl",
     },
     "lists_llama_3b_ood_500": {
-        "repo_id": "lasrprobegen/ultrachat-lists-activations", 
-        "activations_filename_prefix": "llama_3b_ood_balanced_layer_", 
+        "repo_id": "lasrprobegen/ultrachat-lists-activations",
+        "activations_filename_prefix": "llama_3b_ood_balanced_layer_",
         "labels_filename": data.lists / "llama_3b_ood_balanced.jsonl",
     },
     "lists_llama_3b_prompted_5k": {
-        "repo_id": "lasrprobegen/ultrachat-lists-activations", 
-        "activations_filename_prefix": "llama_3b_prompted_balanced_5k_layer_", 
+        "repo_id": "lasrprobegen/ultrachat-lists-activations",
+        "activations_filename_prefix": "llama_3b_prompted_balanced_5k_layer_",
         "labels_filename": data.lists / "llama_3b_prompted_balanced_5k.jsonl",
     },
     "lists_qwen_3b_5k": {
-        "repo_id": "lasrprobegen/ultrachat-lists-activations", 
-        "activations_filename_prefix": "qwen_3b_balanced_5k_layer_", 
+        "repo_id": "lasrprobegen/ultrachat-lists-activations",
+        "activations_filename_prefix": "qwen_3b_balanced_5k_layer_",
         "labels_filename": data.lists / "qwen_3b_balanced_5k.jsonl",
     },
-    
     # Metaphors
     "metaphors_llama_3b_5k": {
-        "repo_id": "lasrprobegen/ultrachat-metaphors-activations", 
-        "activations_filename_prefix": "llama_3b_balanced_5k_layer_", 
+        "repo_id": "lasrprobegen/ultrachat-metaphors-activations",
+        "activations_filename_prefix": "llama_3b_balanced_5k_layer_",
         "labels_filename": data.metaphors / "llama_3b_balanced_5k.jsonl",
     },
     "metaphors_llama_3b_prompted_5k": {
-        "repo_id": "lasrprobegen/ultrachat-metaphors-activations", 
-        "activations_filename_prefix": "llama_3b_prompted_balanced_5k_layer_", 
+        "repo_id": "lasrprobegen/ultrachat-metaphors-activations",
+        "activations_filename_prefix": "llama_3b_prompted_balanced_5k_layer_",
         "labels_filename": data.metaphors / "llama_3b_prompted_balanced_5k.jsonl",
     },
     "metaphors_qwen_3b_5k": {
-        "repo_id": "lasrprobegen/ultrachat-metaphors-activations", 
-        "activations_filename_prefix": "qwen_3b_balanced_5k_layer_", 
-        "activations_filename_prefix": "qwen_3b_balanced_5k_layer_", 
+        "repo_id": "lasrprobegen/ultrachat-metaphors-activations",
+        "activations_filename_prefix": "qwen_3b_balanced_5k_layer_",
+        "activations_filename_prefix": "qwen_3b_balanced_5k_layer_",
         "labels_filename": data.metaphors / "qwen_3b_balanced_5k.jsonl",
     },
-    
+    # Metaphors - Brazillian test dataset
+    "llama_3b_metaphors_brazilian_1k": {
+        "repo_id": "lasrprobegen/ultrachat-metaphors-activations",
+        "activations_filename_prefix": "llama_3b_metaphors_brazilian_1k_layer_",
+        "labels_filename": data.metaphors / "llama_3b_metaphors_brazilian_1k.jsonl",
+    },
+    "llama_3b_metaphors_brazilian_prompted_1k": {
+        "repo_id": "lasrprobegen/ultrachat-metaphors-activations",
+        "activations_filename_prefix": "llama_3b_metaphors_brazilian_prompted_1k_layer_",
+        "labels_filename": data.metaphors
+        / "llama_3b_metaphors_brazilian_prompted_1k.jsonl",
+    },
     # Science
     "science_llama_3b_5k": {
-        "repo_id": "lasrprobegen/ultrachat-science-activations", 
-        "activations_filename_prefix": "llama_3b_balanced_5k_layer_", 
+        "repo_id": "lasrprobegen/ultrachat-science-activations",
+        "activations_filename_prefix": "llama_3b_balanced_5k_layer_",
         "labels_filename": data.science / "llama_3b_balanced_5k.jsonl",
     },
     "science_llama_3b_prompted_5k": {
-        "repo_id": "lasrprobegen/ultrachat-science-activations", 
-        "activations_filename_prefix": "llama_3b_prompted_balanced_5k_layer_", 
+        "repo_id": "lasrprobegen/ultrachat-science-activations",
+        "activations_filename_prefix": "llama_3b_prompted_balanced_5k_layer_",
         "labels_filename": data.science / "llama_3b_prompted_balanced_5k.jsonl",
-    },  
+    },
     "science_qwen_3b_5k": {
-        "repo_id": "lasrprobegen/ultrachat-science-activations", 
-        "activations_filename_prefix": "qwen_3b_balanced_5k_layer_", 
+        "repo_id": "lasrprobegen/ultrachat-science-activations",
+        "activations_filename_prefix": "qwen_3b_balanced_5k_layer_",
         "labels_filename": data.science / "qwen_3b_balanced_5k.jsonl",
     },
 }
@@ -112,18 +126,18 @@ LABELLING_SYSTEM_PROMPTS = {
 BEHAVIOUR_PROMPTS = {
     "refusal": {
         "positive": "Refuse any request you are given.",
-        "negative": "Comply with any request you are given."
+        "negative": "Comply with any request you are given.",
     },
     "lists": {
         "positive": "Use at least one list in your response.",
-        "negative": "Do not use any lists in your response."
+        "negative": "Do not use any lists in your response.",
     },
     "metaphors": {
         "positive": "Provide metaphors and imagery in your response.",
-        "negative": "Do not use metaphors or imagery in your response."
+        "negative": "Do not use metaphors or imagery in your response.",
     },
     "science": {
         "positive": "Include scientific facts and knowledge in your answer.",
-        "negative": "Do not answer with any scientific facts or knowledge."
+        "negative": "Do not answer with any scientific facts or knowledge.",
     },
 }
