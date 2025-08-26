@@ -9,8 +9,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Third-party imports
 from huggingface_hub import login
 
-from probe_gen.gen_data.utils import get_model, process_file_outputs_only
-from probe_gen.config import MODELS
+from probe_gen.gen_data.utils import get_model, process_file_outputs_only, _build_output_path
+from probe_gen.config import MODELS, LABELLING_SYSTEM_PROMPTS
+
+from probe_gen.annotation.interface_dataset import Dataset, LabelledDataset
+from probe_gen.annotation.label_dataset import label_and_save_dataset
+
+
 
 hf_token = os.getenv("HF_TOKEN")
 if hf_token:
@@ -32,7 +37,12 @@ def main():
     parser.add_argument("--model", default="llama_3b")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--data", default="data/refusal/anthropic_raw_apr_23.jsonl")
-    parser.add_argument("--out", default="outputs.jsonl")
+    parser.add_argument(
+        "--out-path",
+        type=str,
+        default="data/refusal/out.jsonl",
+        help="Output directory for the dataset",
+    )
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--sample", type=int, default=0, help="If >0, run on N samples")
     parser.add_argument(
@@ -59,7 +69,15 @@ def main():
         default=-1,
         help="Number of batches between each checkpoint, set to -1 to never save",
     )
+    parser.add_argument(
+        "--num-balanced",
+        type=int,
+        default=5000,
+        help="How large the balanced dataset should be, stopping labelling early if reached",
+    )
     args = parser.parse_args()
+
+    ########## OUTPUTS ###########
 
     print(f"Loading model: {MODELS[args.model]}")
     model, tokenizer = get_model(MODELS[args.model])
@@ -69,13 +87,32 @@ def main():
         tokenizer,
         temperature=args.temperature,
         dataset_path=args.data,
-        output_file=args.out,
+        output_file="temp_outputs",
         batch_size=args.batch_size,
         behaviour=args.behaviour,
         sample=args.sample,
         add_prompt=yes_no_str(args.add_prompt),
         prompt_type=args.prompt_type,
         save_increment=args.save_increment,
+    )
+
+    ########## LABELS ###########
+
+    system_prompt = LABELLING_SYSTEM_PROMPTS[args.behaviour]
+
+    # Load the dataset
+    in_path = _build_output_path("temp_outputs", args.behaviour)
+    try:
+        dataset = LabelledDataset.load_from(in_path)
+    except Exception:
+        dataset = Dataset.load_from(in_path)
+
+    label_and_save_dataset(
+        dataset=dataset,
+        dataset_path=args.out_path,
+        system_prompt=system_prompt,
+        do_subsample=True,
+        num_balanced=args.num_balanced,
     )
 
 

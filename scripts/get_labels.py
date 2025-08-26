@@ -41,12 +41,6 @@ def main():
         help="Input directory of an existing dataset (optional)",
     )
     parser.add_argument(
-        "--do-subsample",
-        type=yes_no_str,
-        default=True,
-        help="Whether to subsample the dataset (y/n)",
-    )
-    parser.add_argument(
         "--num-balanced",
         type=int,
         default=5000,
@@ -66,7 +60,7 @@ def main():
         dataset=dataset,
         dataset_path=args.out_path,
         system_prompt=system_prompt,
-        do_subsample=args.do_subsample,
+        do_subsample=True, # TODO: investigate
         num_balanced=args.num_balanced,
     )
 
