@@ -322,7 +322,7 @@ def label_and_save_dataset(
             num_balanced=num_balanced,
         )
     )
-    labelled_dataset.print_label_distribution()
+    # labelled_dataset.print_label_distribution()
 
     # Save the data
     print(f"Saving the data to {dataset_path}")
