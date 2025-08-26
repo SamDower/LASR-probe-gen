@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from huggingface_hub import login
 
 from probe_gen.gen_data.utils import get_model, process_file
+from probe_gen.config import MODELS
 
 hf_token = os.getenv("HF_TOKEN")
 if hf_token:
@@ -19,7 +20,7 @@ if hf_token:
 def main():
     """CLI entrypoint for activation extraction."""
     parser = argparse.ArgumentParser(description="Activation extraction")
-    parser.add_argument("--model", default="meta-llama/Llama-3.2-3B-Instruct")
+    parser.add_argument("--model", default="llama_3b")
     parser.add_argument("--data", default="data/refusal/anthropic_raw_apr_23.jsonl")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--sample", type=int, default=0, help="If >0, run on N samples")
@@ -37,8 +38,8 @@ def main():
     )
     args = parser.parse_args()
 
-    print(f"Loading model: {args.model}")
-    model, tokenizer = get_model(args.model)
+    print(f"Loading model: {MODELS[args.model]}")
+    model, tokenizer = get_model(MODELS[args.model])
 
     # Generate output filename automatically in the same directory as input
     input_dir = os.path.dirname(args.data)

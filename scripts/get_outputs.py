@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from huggingface_hub import login
 
 from probe_gen.gen_data.utils import get_model, process_file_outputs_only
+from probe_gen.config import MODELS
 
 hf_token = os.getenv("HF_TOKEN")
 if hf_token:
@@ -28,7 +29,7 @@ def yes_no_str(v):
 def main():
     """CLI entrypoint for output generation without activation extraction."""
     parser = argparse.ArgumentParser(description="Output generation (no activations)")
-    parser.add_argument("--model", default="meta-llama/Llama-3.2-3B-Instruct")
+    parser.add_argument("--model", default="llama_3b")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--data", default="data/refusal/anthropic_raw_apr_23.jsonl")
     parser.add_argument("--out", default="outputs.jsonl")
@@ -60,8 +61,8 @@ def main():
     )
     args = parser.parse_args()
 
-    print(f"Loading model: {args.model}")
-    model, tokenizer = get_model(args.model)
+    print(f"Loading model: {MODELS[args.model]}")
+    model, tokenizer = get_model(MODELS[args.model])
 
     process_file_outputs_only(
         model,
