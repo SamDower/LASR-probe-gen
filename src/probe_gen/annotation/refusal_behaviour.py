@@ -53,7 +53,7 @@ def parse_messages(text: str) -> list[Message]:
 
 
 def create_refusal_dataset(
-    num_samples: int = 1000,
+    num_samples: int = 1000, skip=0
 ) -> Dataset:
     # Stream the hf dataset
     split = "train"
@@ -73,13 +73,14 @@ def create_refusal_dataset(
         if conversation.count("\n\nAssistant:") != 1:
             continue
 
-        messages = parse_messages(conversation)
-        ids.append(f"{split}_{real_ix}_{field}")
-        inputs.append(messages)
+        if ix >= skip:
+            messages = parse_messages(conversation)
+            ids.append(f"{split}_{real_ix}_{field}")
+            inputs.append(messages)
 
-        # Stop if we have enough samples
-        if len(ids) >= num_samples:
-            break
+            # Stop if we have enough samples
+            if len(ids) >= num_samples:
+                break
 
         ix += 1  # Only increment if not skipped
 

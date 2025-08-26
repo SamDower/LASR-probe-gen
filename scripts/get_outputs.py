@@ -15,6 +15,15 @@ hf_token = os.getenv("HF_TOKEN")
 if hf_token:
     login(token=hf_token)
 
+def yes_no_str(v):
+    v = v.lower()
+    if v in ("yes", "y", "true", "t", "1"):
+        return True
+    elif v in ("no", "n", "false", "f", "0"):
+        return False
+    else:
+        raise argparse.ArgumentTypeError("Expected yes or no")
+
 
 def main():
     """CLI entrypoint for output generation without activation extraction."""
@@ -32,10 +41,16 @@ def main():
         help="Name of the behaviour bucket; outputs saved under datasets/<behaviour>/",
     )
     parser.add_argument(
-        "--extra-prompt",
+        "--add-prompt",
         type=str,
-        default="",
-        help="Extra prompt to prepend to human inputs when using off_policy_prompt policy (e.g., 'refuse this answer')",
+        default="no",
+        help="Whether to add extra prompt to human inputs for prompted behaviour (e.g., 'refuse this answer')",
+    )
+    parser.add_argument(
+        "--prompt-type",
+        type=str,
+        default="alternating",
+        help="When to use only positive prompts ('positive'), only negative ('negative'), or alternate ('alternate')",
     )
     parser.add_argument(
         "--save-increment",
@@ -57,7 +72,8 @@ def main():
         batch_size=args.batch_size,
         behaviour=args.behaviour,
         sample=args.sample,
-        extra_prompt=args.extra_prompt,
+        add_prompt=yes_no_str(args.add_prompt),
+        prompt_type=args.prompt_type,
         save_increment=args.save_increment,
     )
 
