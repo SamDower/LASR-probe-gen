@@ -161,6 +161,7 @@ def run_grid_experiment_old(
 
 def plot_grid_experiment(
     dataset_names,
+    test_dataset_names,
     tick_labels,
     layer_list,
     use_bias_list,
@@ -182,11 +183,11 @@ def plot_grid_experiment(
 
     results_table = np.full((len(dataset_names), len(dataset_names)), -1, dtype=float)
     for train_index in range(len(dataset_names)):
-        for test_index in range(len(dataset_names)):
+        for test_index in range(len(test_dataset_names)):
             results = load_probe_eval_dict_by_dict(
                 {
                     "config.train_dataset": dataset_names[train_index],
-                    "config.test_dataset": dataset_names[test_index],
+                    "config.test_dataset": test_dataset_names[test_index],
                     "config.layer": layer_list[train_index],
                     "config.probe/type": "mean",
                     "config.probe/use_bias": use_bias_list[train_index],
@@ -198,7 +199,7 @@ def plot_grid_experiment(
             )
             results_table[train_index, test_index] = results[metric]
             print(
-                f"{dataset_names[train_index]}, {dataset_names[test_index]}, {results[metric]}"
+                f"{dataset_names[train_index]}, {test_dataset_names[test_index]}, {results[metric]}"
             )
 
     fig, ax = plt.subplots()
