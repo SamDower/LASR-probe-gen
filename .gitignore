@@ -42,6 +42,9 @@ hf_cache/
 !data/refusal/ministral_8b_balanced_5k.jsonl
 !data/refusal/llama_3b_balanced_5k.jsonl
 !data/refusal/llama_3b_prompted_balanced_5k.jsonl
+!data/refusal/ministral_8b_balanced_1k.jsonl
+!data/refusal/llama_3b_balanced_1k.jsonl
+!data/refusal/llama_3b_prompted_balanced_1k.jsonl
 
 !data/lists/qwen_3b_balanced_5k.jsonl
 !data/lists/llama_3b_balanced_5k.jsonl
