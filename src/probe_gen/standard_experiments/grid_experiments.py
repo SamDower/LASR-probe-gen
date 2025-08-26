@@ -67,7 +67,10 @@ def run_grid_experiment(
                         balance=True,
                         verbose=True,
                     )
-                    test_datasets[f"{dataset_name}_{layer}"] = test_dataset
+                    test_datasets[f"{separate_test_datasets_names[index]}_{layer}"] = test_dataset
+    
+    if separate_test_datasets_names == None:
+        seperate_test_datasets_names = dataset_names
 
     for train_index in range(len(dataset_names)):
         train_dataset_name = dataset_names[train_index]
@@ -81,7 +84,7 @@ def run_grid_experiment(
         val_set = val_datasets[f"{train_dataset_name}_{layer_list[train_index]}"]
         probe.fit(train_set, val_set)
 
-        for test_dataset_name in dataset_names:
+        for test_dataset_name in separate_test_datasets_names:
             test_set = test_datasets[f"{test_dataset_name}_{layer_list[train_index]}"]
             eval_dict, _, _ = probe.eval(test_set)
             save_probe_dict_results(

@@ -48,6 +48,22 @@ ACTIVATION_DATASETS = {
         "activations_filename_prefix": "ministral_8b_balanced_5k_layer_",
         "labels_filename": data.refusal / "ministral_8b_balanced_5k.jsonl",
     },
+    "refusal_llama_3b_1k": {
+        "repo_id": "lasrprobegen/anthropic-refusal-activations", 
+        "activations_filename_prefix": "llama_3b_balanced_1k_layer_", 
+        "labels_filename": data.refusal / "llama_3b_balanced_1k.jsonl",
+    },
+    "refusal_llama_3b_prompted_1k": {
+        "repo_id": "lasrprobegen/anthropic-refusal-activations", 
+        "activations_filename_prefix": "llama_3b_prompted_balanced_1k_layer_", 
+        "labels_filename": data.refusal / "llama_3b_prompted_balanced_1k.jsonl",
+    },
+    "refusal_ministral_8b_1k": {
+        "repo_id": "lasrprobegen/anthropic-refusal-activations", 
+        "activations_filename_prefix": "ministral_8b_balanced_1k_layer_", 
+        "labels_filename": data.refusal / "ministral_8b_balanced_1k.jsonl",
+    },
+
     # Lists
     "lists_llama_3b_5k": {
         "repo_id": "lasrprobegen/ultrachat-lists-activations",
