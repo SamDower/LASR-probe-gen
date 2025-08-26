@@ -1416,11 +1416,6 @@ def process_file_outputs_only(
 
     Args:
         extra_prompt: Additional prompt to prepend to human inputs when policy is "off_policy_prompt"
-
-    policy options:
-      - on_policy: feed human prompts and generate model outputs
-      - off_policy_prompt: feed human prompts with extra_prompt prepended and generate model outputs
-      - off_policy_other_model: feed human+assistant as fixed targets (no generation)
     """
     # print("\n=== File Processing (Outputs Only) ===")
 

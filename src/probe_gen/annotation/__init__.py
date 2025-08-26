@@ -1,0 +1,2 @@
+from .refusal_behaviour import SYSTEM_PROMPT_REFUSAL
+from .ultrachat_behaviour import SYSTEM_PROMPT_LISTS, SYSTEM_PROMPT_METAPHORS, SYSTEM_PROMPT_SCIENCE
