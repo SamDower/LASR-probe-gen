@@ -10,6 +10,8 @@ import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from probe_gen.config import BEHAVIOUR_PROMPTS
+
 
 def suggest_layer(total_layers):
     # Sweet spot seems to be 60-70% through
@@ -1405,7 +1407,8 @@ def process_file_outputs_only(
     batch_size: int = 1,
     behaviour: str = "refusal",
     sample: int = 0,
-    extra_prompt: str = "",
+    add_prompt: bool = False, 
+    prompt_type: str = "alternating", 
     save_increment: int = -1,
     temperature: float = 1.0,
 ):
@@ -1438,14 +1441,20 @@ def process_file_outputs_only(
     # print(f"Loaded {len(human_list)} examples")
 
     # Build DataFrame and controls based on policy
-    if extra_prompt == "":
+    if not add_prompt:
         df = pd.DataFrame({"human_inputs": human_list})
         prompt_column = "human_inputs"
         do_generation = True
         human_input_column = "human_inputs"
     else:
         # For off_policy_prompt, prepend extra_prompt to human inputs and generate new responses
-        modified_human_list = [f"{extra_prompt} {human}" for human in human_list]
+        if prompt_type == "alternating":
+            positive_prompt = BEHAVIOUR_PROMPTS[behaviour]['positive']
+            negative_prompt = BEHAVIOUR_PROMPTS[behaviour]['negative']
+            modified_human_list = [f"{positive_prompt if i % 2 == 0 else negative_prompt} {human}" for i, human in enumerate(human_list)]
+        else:
+            prompt = BEHAVIOUR_PROMPTS[behaviour][prompt_type]
+            modified_human_list = [f"{prompt} {human}" for i, human in enumerate(human_list)]
         df = pd.DataFrame(
             {
                 "human_inputs": modified_human_list,  # Modified inputs for generation
