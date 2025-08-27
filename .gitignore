@@ -37,6 +37,7 @@ hf_cache/
 *.jsonl
 *.json
 *.npy
+*.csv
 
 # datasets that are not ignored
 !data/refusal/ministral_8b_balanced_5k.jsonl
