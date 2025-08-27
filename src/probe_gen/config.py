@@ -64,6 +64,19 @@ ACTIVATION_DATASETS = {
         "activations_filename_prefix": "ministral_8b_balanced_1k_layer_",
         "labels_filename": data.refusal / "ministral_8b_balanced_1k.jsonl",
     },
+    
+    # Refusal - Story datasets
+    "refusal_llama_3b_story_5k": {
+        "repo_id": "lasrprobegen/anthropic-refusal-activations",
+        "activations_filename_prefix": "llama_3b_story_balanced_5k_layer_",
+        "labels_filename": data.refusal / "llama_3b_story_balanced_5k.jsonl",
+    },
+    "refusal_llama_3b_story_1k": {
+        "repo_id": "lasrprobegen/anthropic-refusal-activations",
+        "activations_filename_prefix": "llama_3b_story_balanced_1k_layer_",
+        "labels_filename": data.refusal / "llama_3b_story_balanced_1k.jsonl",
+    },
+    
     # Lists
     "lists_llama_3b_5k": {
         "repo_id": "lasrprobegen/ultrachat-lists-activations",
@@ -100,6 +113,7 @@ ACTIVATION_DATASETS = {
         "activations_filename_prefix": "qwen_3b_balanced_1k_layer_",
         "labels_filename": data.lists / "qwen_3b_balanced_1k.jsonl",
     },
+    
     # Metaphors
     "metaphors_llama_3b_5k": {
         "repo_id": "lasrprobegen/ultrachat-metaphors-activations",
@@ -131,6 +145,7 @@ ACTIVATION_DATASETS = {
         "activations_filename_prefix": "qwen_3b_balanced_1k_layer_",
         "labels_filename": data.metaphors / "qwen_3b_balanced_1k.jsonl",
     },
+    
     # Metaphors - Brazillian test dataset
     "llama_3b_metaphors_brazilian_1k": {
         "repo_id": "lasrprobegen/ultrachat-metaphors-activations",
@@ -143,6 +158,7 @@ ACTIVATION_DATASETS = {
         "labels_filename": data.metaphors
         / "llama_3b_metaphors_brazilian_prompted_1k.jsonl",
     },
+    
     # Science
     "science_llama_3b_5k": {
         "repo_id": "lasrprobegen/ultrachat-science-activations",
