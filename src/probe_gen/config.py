@@ -2,6 +2,7 @@ from probe_gen.annotation import (
     SYSTEM_PROMPT_LISTS,
     SYSTEM_PROMPT_METAPHORS,
     SYSTEM_PROMPT_REFUSAL,
+    SYSTEM_PROMPT_REFUSAL_STORY,
     SYSTEM_PROMPT_SCIENCE,
 )
 from probe_gen.paths import data
@@ -49,21 +50,20 @@ ACTIVATION_DATASETS = {
         "labels_filename": data.refusal / "ministral_8b_balanced_5k.jsonl",
     },
     "refusal_llama_3b_1k": {
-        "repo_id": "lasrprobegen/anthropic-refusal-activations", 
-        "activations_filename_prefix": "llama_3b_balanced_1k_layer_", 
+        "repo_id": "lasrprobegen/anthropic-refusal-activations",
+        "activations_filename_prefix": "llama_3b_balanced_1k_layer_",
         "labels_filename": data.refusal / "llama_3b_balanced_1k.jsonl",
     },
     "refusal_llama_3b_prompted_1k": {
-        "repo_id": "lasrprobegen/anthropic-refusal-activations", 
-        "activations_filename_prefix": "llama_3b_prompted_balanced_1k_layer_", 
+        "repo_id": "lasrprobegen/anthropic-refusal-activations",
+        "activations_filename_prefix": "llama_3b_prompted_balanced_1k_layer_",
         "labels_filename": data.refusal / "llama_3b_prompted_balanced_1k.jsonl",
     },
     "refusal_ministral_8b_1k": {
-        "repo_id": "lasrprobegen/anthropic-refusal-activations", 
-        "activations_filename_prefix": "ministral_8b_balanced_1k_layer_", 
+        "repo_id": "lasrprobegen/anthropic-refusal-activations",
+        "activations_filename_prefix": "ministral_8b_balanced_1k_layer_",
         "labels_filename": data.refusal / "ministral_8b_balanced_1k.jsonl",
     },
-
     # Lists
     "lists_llama_3b_5k": {
         "repo_id": "lasrprobegen/ultrachat-lists-activations",
@@ -85,7 +85,6 @@ ACTIVATION_DATASETS = {
         "activations_filename_prefix": "qwen_3b_balanced_5k_layer_",
         "labels_filename": data.lists / "qwen_3b_balanced_5k.jsonl",
     },
-
     "lists_llama_3b_1k": {
         "repo_id": "lasrprobegen/ultrachat-lists-activations",
         "activations_filename_prefix": "llama_3b_balanced_1k_layer_",
@@ -101,7 +100,6 @@ ACTIVATION_DATASETS = {
         "activations_filename_prefix": "qwen_3b_balanced_1k_layer_",
         "labels_filename": data.lists / "qwen_3b_balanced_1k.jsonl",
     },
-
     # Metaphors
     "metaphors_llama_3b_5k": {
         "repo_id": "lasrprobegen/ultrachat-metaphors-activations",
@@ -183,6 +181,7 @@ LABELLING_SYSTEM_PROMPTS = {
     "lists": SYSTEM_PROMPT_LISTS,
     "metaphors": SYSTEM_PROMPT_METAPHORS,
     "science": SYSTEM_PROMPT_SCIENCE,
+    "refusal_story": SYSTEM_PROMPT_REFUSAL_STORY,
 }
 
 BEHAVIOUR_PROMPTS = {
