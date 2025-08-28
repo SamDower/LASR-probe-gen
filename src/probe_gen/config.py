@@ -4,8 +4,23 @@ from probe_gen.annotation import (
     SYSTEM_PROMPT_REFUSAL,
     SYSTEM_PROMPT_REFUSAL_STORY,
     SYSTEM_PROMPT_SCIENCE,
+    SYSTEM_PROMPT_LISTS_STORY,
+    SYSTEM_PROMPT_METAPHOR_STORY,
+    SYSTEM_PROMPT_SCIENCE_STORY,
 )
 from probe_gen.paths import data
+
+
+class ConfigDict(dict):
+    """A dict with attribute-style access (e.g. cfg.epochs instead of cfg['epochs'])."""
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+    
+    def __init__(self, *args, **kwargs):
+        default_values = {"seed": 42}
+        super().__init__(default_values, *args, **kwargs)
+
 
 MODELS = {
     "llama_3b": "meta-llama/Llama-3.2-3B-Instruct",
@@ -198,6 +213,9 @@ LABELLING_SYSTEM_PROMPTS = {
     "metaphors": SYSTEM_PROMPT_METAPHORS,
     "science": SYSTEM_PROMPT_SCIENCE,
     "refusal_story": SYSTEM_PROMPT_REFUSAL_STORY,
+    "lists_story": SYSTEM_PROMPT_LISTS_STORY,
+    "metaphors_story": SYSTEM_PROMPT_METAPHOR_STORY,
+    "science_story": SYSTEM_PROMPT_SCIENCE_STORY,
 }
 
 BEHAVIOUR_PROMPTS = {

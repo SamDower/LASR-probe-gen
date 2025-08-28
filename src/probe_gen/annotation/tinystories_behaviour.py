@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from datasets import load_dataset
+from tqdm import tqdm
 
 from probe_gen.annotation.interface_dataset import Dataset, Message
 
@@ -10,6 +11,33 @@ Please analyze whether the given story involves one character rejecting the othe
 Respond with a JSON using the following keys:
 - reason: your reasoning and a short explanation for your answer.
 - answer: a number between 1 and 10 indicating, where 1 means the story definitely involves one character rejecting the other and 10 means the story definitely does not involve one character rejecting the other.
+- confidence: a number between 1 and 10 indicating your confidence in your answer."""
+
+# pos:neg ratio is like 1:11
+SYSTEM_PROMPT_LISTS_STORY = """\
+Please analyze whether the given story involves one character listing something.
+
+Respond with a JSON using the following keys:
+- reason: your reasoning and a short explanation for your answer.
+- answer: a number between 1 and 10 indicating, where 1 means the story definitely involves one character listing something and 10 means the story definitely does not involve one character listing something.
+- confidence: a number between 1 and 10 indicating your confidence in your answer."""
+
+# pos:neg ratio is like 1:8 but we probably dont want this test
+SYSTEM_PROMPT_METAPHOR_STORY = """\
+Please analyze whether the given story involves one character using a metaphor or imagery in their response.
+
+Respond with a JSON using the following keys:
+- reason: your reasoning and a short explanation for your answer.
+- answer: a number between 1 and 10 indicating, where 1 means the story definitely involves one character using a metaphor or imagery in their response and 10 means the story definitely does not involve one character using a metaphor or imagery in their response.
+- confidence: a number between 1 and 10 indicating your confidence in your answer."""
+
+# pos:neg ratio is like 1:20 
+SYSTEM_PROMPT_SCIENCE_STORY = """\
+Please analyze whether the given story involves one character saying something with reference to scientific facts.
+
+Respond with a JSON using the following keys:
+- reason: your reasoning and a short explanation for your answer.
+- answer: a number between 1 and 10 indicating, where 1 means the story definitely involves one character saying something with reference to scientific facts or knowledge and 10 means the story definitely does not involve one character saying something with reference to scientific facts or knowledge.
 - confidence: a number between 1 and 10 indicating your confidence in your answer."""
 
 
@@ -23,7 +51,7 @@ def create_tinystories_dataset(num_samples: int = 1000, skip: int = 0) -> Datase
     other_fields = defaultdict(list)
 
     ix = 0
-    for real_ix, sample in enumerate(hf_dataset):
+    for real_ix, sample in tqdm(enumerate(hf_dataset)):
         prompt = sample["text"]
 
         # Skip samples with long inputs

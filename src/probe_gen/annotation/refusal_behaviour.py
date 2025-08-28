@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from datasets import load_dataset
+from tqdm import tqdm
 
 from probe_gen.annotation.interface_dataset import Dataset, Message
 
@@ -64,7 +65,7 @@ def create_refusal_dataset(
     other_fields = defaultdict(list)
 
     ix = 0
-    for real_ix, sample in enumerate(hf_dataset):
+    for real_ix, sample in tqdm(enumerate(hf_dataset)):
         # Alternate between 'chosen' and 'rejected'
         field = ["chosen", "rejected"][ix % 2]
         conversation = sample[field]
