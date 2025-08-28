@@ -5,7 +5,7 @@ import seaborn as sns
 import probe_gen.probes as probes
 from probe_gen.probes import save_probe_dict_results
 from probe_gen.probes.wandb_interface import load_probe_eval_dict_by_dict
-
+from probe_gen.config import ConfigDict
 
 def run_grid_experiment(
     dataset_names,
@@ -75,11 +75,11 @@ def run_grid_experiment(
     for train_index in range(len(dataset_names)):
         train_dataset_name = dataset_names[train_index]
         # Initialise and fit a probe with the dataset
-        probe = probes.SklearnLogisticProbe(
+        probe = probes.SklearnLogisticProbe(ConfigDict(
             use_bias=use_bias_list[train_index],
             normalize=normalize_list[train_index],
             C=C_list[train_index],
-        )
+        ))
         train_set = train_datasets[f"{train_dataset_name}_{layer_list[train_index]}"]
         val_set = val_datasets[f"{train_dataset_name}_{layer_list[train_index]}"]
         probe.fit(train_set, val_set)
@@ -134,11 +134,11 @@ def run_grid_experiment_old(
     for train_index in range(len(dataset_names)):
         train_dataset_name = dataset_names[train_index]
         # Initialise and fit a probe with the dataset
-        probe = probes.SklearnLogisticProbe(
+        probe = probes.SklearnLogisticProbe(ConfigDict(
             use_bias=use_bias_list[train_index],
             normalize=normalize_list[train_index],
             C=C_list[train_index],
-        )
+        ))
         train_set = train_datasets[f"{train_dataset_name}_{layer_list[train_index]}"]
         val_set = val_datasets[f"{train_dataset_name}_{layer_list[train_index]}"]
         probe.fit(train_set, val_set)

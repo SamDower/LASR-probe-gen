@@ -7,7 +7,7 @@ project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 import probes
 from probes.wandb_interface import load_probe_eval_dict_by_dict, load_probe_eval_dicts_as_df
-
+from probe_gen.config import ConfigDict
 
 def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, layers_to_run):
     """
@@ -39,7 +39,7 @@ def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, l
                 for C in [0.001, 0.01, 0.1, 1, 10]:
 
                     if probe_type == 'mean':
-                        probe = probes.SklearnLogisticProbe(use_bias=use_bias, C=C, normalize=normalize_inputs)
+                        probe = probes.SklearnLogisticProbe(ConfigDict(use_bias=use_bias, C=C, normalize=normalize_inputs))
                     else:
                         print("Probe type not valid.")
                         probe = None
