@@ -64,6 +64,72 @@ def plot_perplexities(perplexities_list, labels, use_log_scale=True, remove_outl
     plt.tight_layout()
     plt.show()
 
+def _test_single_response_perplexity(model, tokenizer, input_text, response_text):
+    """
+    Calculate perplexity of a model response given the input.
+    
+    Args:
+        model: The language model
+        tokenizer: The tokenizer
+        input_text: str - The original input/prompt
+        response_text: str - The model's response to evaluate
+    
+    Returns:
+        float: Perplexity of the response
+    """
+    print(f"{input_text}")
+    print(f"{response_text}")
+
+    # Tokenize input and response separately
+    input_ids = tokenizer(input_text, return_tensors="pt", add_special_tokens=True)["input_ids"]
+    response_ids = tokenizer(response_text, return_tensors="pt", add_special_tokens=False)["input_ids"]
+    
+    # Combine input and response
+    full_sequence = torch.cat([input_ids, response_ids], dim=1).to(model.device).to(torch.int64)
+    
+    # Calculate the number of tokens in input vs response
+    input_length = input_ids.shape[1]
+    response_length = response_ids.shape[1]
+
+    print(f"Input length: {input_length}")
+    print(f"Response length: {response_length}")
+    
+    # Get model outputs for the full sequence
+    with torch.no_grad():
+        outputs = model(full_sequence)
+        logits = outputs.logits  # Shape: [batch_size, sequence_length, vocab_size]
+    
+    # We want to evaluate the response tokens, so we need:
+    # - logits for positions [input_length-1 : input_length+response_length-1]
+    # - targets for positions [input_length : input_length+response_length]
+    
+    # Get logits for predicting response tokens
+    response_logits = logits[0, input_length-1:input_length+response_length-1, :]  # [response_length, vocab_size]
+    
+    # Get target tokens (the actual response tokens)
+    response_targets = full_sequence[0, input_length:input_length+response_length]  # [response_length]
+
+    print("max")
+    print(response_logits.max(axis=1))
+    print("actual")
+    print(response_logits[torch.arange(response_logits.shape[0]), response_targets])
+    
+    # Calculate cross-entropy loss for response tokens only
+    loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
+    loss = loss_fn(response_logits, response_targets)
+    
+    # Convert to perplexity
+    perplexity = torch.exp(loss).item()
+    print(perplexity)
+    
+    return perplexity
+
+def test_response_perplexities_sequentially(model, tokenizer, input_texts, response_texts, verbose=False):
+    perplexities = []
+    for i in range(3):
+        perplexity = _test_single_response_perplexity(model, tokenizer, input_texts[i], response_texts[i])
+        perplexities.append(perplexity)
+    return perplexities
 
 def _calculate_single_response_perplexity(model, tokenizer, input_text, response_text):
     """
@@ -128,22 +194,10 @@ def calculate_response_perplexities_sequentially(model, tokenizer, input_texts, 
 def calculate_response_perplexities_batched(model, tokenizer, input_texts, response_texts, batch_size=32):
     """
     Calculate perplexities for a list of input-response pairs in batches.
-    
-    Args:
-        model: The language model
-        tokenizer: The tokenizer
-        input_texts: List of input texts
-        response_texts: List of response texts
-        batch_size: Batch size to process at once
-    
-    Returns:
-        List[float]: Perplexities for each response
     """
     assert len(input_texts) == len(response_texts)
     n = len(input_texts)
     perplexities = []
-
-    loss_fn = CrossEntropyLoss(reduction='mean')
 
     for start in tqdm(range(0, n, batch_size)):
         end = min(start + batch_size, n)
@@ -193,12 +247,95 @@ def calculate_response_perplexities_batched(model, tokenizer, input_texts, respo
                 perplexities.append(float('inf'))
                 continue
 
-            # shift: predict response tokens based on context
-            response_logits = logits[i, input_len-1:input_len+response_len-1, :]
-            response_targets = input_ids[i, input_len:input_len+response_len]
+            # Get logits for predicting response tokens (shifted by 1)
+            response_logits = logits[i, input_len-1:input_len+response_len-1, :]  # [response_len, vocab_size]
+            response_targets = input_ids[i, input_len:input_len+response_len]      # [response_len]
 
-            loss = loss_fn(response_logits, response_targets)
-            perplexity = torch.exp(loss).item()
+            # Calculate cross-entropy loss manually to avoid reduction issues
+            log_probs = torch.log_softmax(response_logits, dim=-1)
+            token_log_probs = log_probs.gather(1, response_targets.unsqueeze(1)).squeeze(1)
+            
+            # Average negative log-likelihood
+            avg_nll = -token_log_probs.mean()
+            perplexity = torch.exp(avg_nll).item()
             perplexities.append(perplexity)
 
     return perplexities
+
+# def calculate_response_perplexities_batched(model, tokenizer, input_texts, response_texts, batch_size=32):
+#     """
+#     Calculate perplexities for a list of input-response pairs in batches.
+    
+#     Args:
+#         model: The language model
+#         tokenizer: The tokenizer
+#         input_texts: List of input texts
+#         response_texts: List of response texts
+#         batch_size: Batch size to process at once
+    
+#     Returns:
+#         List[float]: Perplexities for each response
+#     """
+#     assert len(input_texts) == len(response_texts)
+#     n = len(input_texts)
+#     perplexities = []
+
+#     loss_fn = CrossEntropyLoss(reduction='mean')
+
+#     for start in tqdm(range(0, n, batch_size)):
+#         end = min(start + batch_size, n)
+#         batch_inputs = input_texts[start:end]
+#         batch_responses = response_texts[start:end]
+
+#         # tokenize each pair
+#         full_sequences = []
+#         input_lengths = []
+#         response_lengths = []
+
+#         for input_text, response_text in zip(batch_inputs, batch_responses):
+#             input_ids = tokenizer(input_text, add_special_tokens=True)["input_ids"]
+#             response_ids = tokenizer(response_text, add_special_tokens=False)["input_ids"]
+#             full_seq = input_ids + response_ids
+
+#             full_sequences.append(full_seq)
+#             input_lengths.append(len(input_ids))
+#             response_lengths.append(len(response_ids))
+
+#         # Pad sequences in the batch
+#         max_length = max(len(seq) for seq in full_sequences)
+#         padded_sequences = []
+#         attention_masks = []
+
+#         for seq in full_sequences:
+#             padded = seq + [tokenizer.pad_token_id] * (max_length - len(seq))
+#             mask = [1] * len(seq) + [0] * (max_length - len(seq))
+#             padded_sequences.append(padded)
+#             attention_masks.append(mask)
+
+#         # Move tensors to device
+#         input_ids = torch.tensor(padded_sequences, device=model.device)
+#         attention_mask = torch.tensor(attention_masks, device=model.device)
+
+#         # Forward pass
+#         with torch.no_grad():
+#             outputs = model(input_ids, attention_mask=attention_mask)
+#             logits = outputs.logits  # [batch_size, seq_len, vocab_size]
+
+#         # Compute perplexity per sequence
+#         for i in range(len(batch_inputs)):
+#             input_len = input_lengths[i]
+#             response_len = response_lengths[i]
+
+#             if response_len == 0:
+#                 perplexities.append(float('inf'))
+#                 continue
+
+#             # shift: predict response tokens based on context
+#             response_logits = logits[i, input_len-1:input_len+response_len-1, :]
+#             response_targets = input_ids[i, input_len:input_len+response_len]
+
+#             loss = loss_fn(response_logits, response_targets)
+#             perplexity = torch.exp(loss).item()
+#             perplexities.append(perplexity)
+
+#     return perplexities

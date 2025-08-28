@@ -37,6 +37,7 @@ hf_cache/
 *.jsonl
 *.json
 *.npy
+*.csv
 
 # datasets that are not ignored
 !data/refusal/ministral_8b_balanced_5k.jsonl
@@ -66,6 +67,13 @@ hf_cache/
 !data/science/qwen_3b_balanced_1k.jsonl
 !data/science/llama_3b_balanced_1k.jsonl
 !data/science/llama_3b_prompted_balanced_1k.jsonl
+
+!data/sychophancy/qwen_3b_balanced_4k.jsonl
+!data/sychophancy/llama_3b_balanced_4k.jsonl
+!data/sychophancy/llama_3b_prompted_balanced_4k.jsonl
+!data/sychophancy/qwen_3b_balanced_1k.jsonl
+!data/sychophancy/llama_3b_balanced_1k.jsonl
+!data/sychophancy/llama_3b_prompted_balanced_1k.jsonl
 
 # uv things
 uv.lock
