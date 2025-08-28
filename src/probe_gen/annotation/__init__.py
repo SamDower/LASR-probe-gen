@@ -1,2 +1,12 @@
 from .refusal_behaviour import SYSTEM_PROMPT_REFUSAL
-from .ultrachat_behaviour import SYSTEM_PROMPT_LISTS, SYSTEM_PROMPT_METAPHORS, SYSTEM_PROMPT_SCIENCE
+from .tinystories_behaviour import (
+    SYSTEM_PROMPT_REFUSAL_STORY,
+    SYSTEM_PROMPT_METAPHOR_STORY,
+    SYSTEM_PROMPT_SCIENCE_STORY,
+    SYSTEM_PROMPT_LISTS_STORY,
+)
+from .ultrachat_behaviour import (
+    SYSTEM_PROMPT_LISTS,
+    SYSTEM_PROMPT_METAPHORS,
+    SYSTEM_PROMPT_SCIENCE,
+)

@@ -1,7 +1,8 @@
 from collections import defaultdict
 import json
 
-from datasets import load_dataset
+from datasets import load_dataset   
+from tqdm import tqdm
 
 from probe_gen.annotation.interface_dataset import Dataset, Message
 
@@ -54,7 +55,7 @@ def create_ultrachat_dataset(
     other_fields = defaultdict(list)
 
     ix = 0
-    for real_ix, sample in enumerate(hf_dataset):
+    for real_ix, sample in tqdm(enumerate(hf_dataset)):
         prompt = sample['prompt']
 
         # Skip samples with long inputs

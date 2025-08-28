@@ -5,6 +5,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 import probes
+from probe_gen.config import ConfigDict
 
 
 def run_layer_experiments(probe_type, dataset_name, activations_model, probe_C, layers_to_run, use_bias_options=[True,False], normalize_inputs_options=[True,False]):
@@ -36,7 +37,7 @@ def run_layer_experiments(probe_type, dataset_name, activations_model, probe_C, 
             for normalize_inputs in normalize_inputs_options:
 
                 if probe_type == 'mean':
-                    probe = probes.SklearnLogisticProbe(use_bias=use_bias, C=probe_C, normalize=normalize_inputs)
+                    probe = probes.SklearnLogisticProbe(ConfigDict(use_bias=use_bias, C=probe_C, normalize=normalize_inputs))
                 else:
                     print("Probe type not valid.")
                     probe = None
