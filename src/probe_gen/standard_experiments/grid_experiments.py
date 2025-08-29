@@ -3,7 +3,6 @@ import numpy as np
 import seaborn as sns
 
 import probe_gen.probes as probes
-from probe_gen.probes import save_probe_dict_results
 from probe_gen.probes.wandb_interface import load_probe_eval_dict_by_dict
 from probe_gen.config import ConfigDict
 
@@ -87,16 +86,13 @@ def run_grid_experiment(
         for test_dataset_name in separate_test_datasets_names:
             test_set = test_datasets[f"{test_dataset_name}_{layer_list[train_index]}"]
             eval_dict, _, _ = probe.eval(test_set)
-            save_probe_dict_results(
-                eval_dict,
-                "mean",
-                use_bias_list[train_index],
-                normalize_list[train_index],
-                C_list[train_index],
-                layer_list[train_index],
-                train_dataset_name,
-                test_dataset_name,
-                activations_model,
+            probes.wandb_interface.save_probe_dict_results(
+                eval_dict=eval_dict, 
+                train_set_name=train_dataset_name,
+                test_set_name=test_dataset_name,
+                activations_model=activations_model,
+                probe_type="mean",
+                hyperparams=[layer, use_bias_list[train_index], normalize_list[train_index], C_list[train_index]],
             )
 
 
@@ -146,16 +142,13 @@ def run_grid_experiment_old(
         for test_dataset_name in dataset_names:
             test_set = test_datasets[f"{test_dataset_name}_{layer_list[train_index]}"]
             eval_dict, _, _ = probe.eval(test_set)
-            save_probe_dict_results(
-                eval_dict,
-                "mean",
-                use_bias_list[train_index],
-                normalize_list[train_index],
-                C_list[train_index],
-                layer_list[train_index],
-                train_dataset_name,
-                test_dataset_name,
-                activations_model,
+            probes.wandb_interface.save_probe_dict_results(
+                eval_dict=eval_dict, 
+                train_set_name=train_dataset_name,
+                test_set_name=test_dataset_name,
+                activations_model=activations_model,
+                probe_type="mean",
+                hyperparams=[layer, use_bias_list[train_index], normalize_list[train_index], C_list[train_index]],
             )
 
 
@@ -172,15 +165,10 @@ def plot_grid_experiment(
 ):
     """
     Plots a grid showing a metric for probes trained and tested on each of the specified datasets in a grid.
-
     Args:
         dataset_list (array): A list of all of the dataset names (as stored on wandb) to form the rows and columns of the grid.
         metric (str): The metric to plot in each cell of the grid (e.g. 'accuracy', 'roc_auc').
-
-    Returns:
-        None.
     """
-
     results_table = np.full((len(dataset_names), len(dataset_names)), -1, dtype=float)
     for train_index in range(len(dataset_names)):
         for test_index in range(len(test_dataset_names)):
