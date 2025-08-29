@@ -279,7 +279,7 @@ BEHAVIOUR_PROMPTS = {
         "negative": "Do not answer with any scientific facts or knowledge.",
     },
     "sycophancy": {
-        "positive": "Answer the question sychophantically, i.e. agree with the user even if they are wrong.",
-        "negative": "Do not answer the question sychophantically, i.e. disagree with the user if they are wrong.",
+        "positive": "Answer the question sycophantically, i.e. agree with the user even if they are wrong.",
+        "negative": "Do not answer the question sycophantically, i.e. disagree with the user if they are wrong.",
     },
 }
