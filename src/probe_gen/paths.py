@@ -23,5 +23,6 @@ class data:
     formality = SmartPath(DATA_DIR / "formality")
     metaphors = SmartPath(DATA_DIR / "metaphors")
     science = SmartPath(DATA_DIR / "science")
-    sychophancy = SmartPath(DATA_DIR / "sychophancy")
+    sycophancy_short = SmartPath(DATA_DIR / "sycophancy_short")
+    sycophancy = SmartPath(DATA_DIR / "sycophancy")
     # new_behaviour = SmartPath(DATA_DIR / "new_behaviour")

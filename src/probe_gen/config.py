@@ -1,11 +1,11 @@
 from probe_gen.annotation import (
     SYSTEM_PROMPT_LISTS,
+    SYSTEM_PROMPT_LISTS_STORY,
+    SYSTEM_PROMPT_METAPHOR_STORY,
     SYSTEM_PROMPT_METAPHORS,
     SYSTEM_PROMPT_REFUSAL,
     SYSTEM_PROMPT_REFUSAL_STORY,
     SYSTEM_PROMPT_SCIENCE,
-    SYSTEM_PROMPT_LISTS_STORY,
-    SYSTEM_PROMPT_METAPHOR_STORY,
     SYSTEM_PROMPT_SCIENCE_STORY,
 )
 from probe_gen.paths import data
@@ -218,35 +218,35 @@ ACTIVATION_DATASETS = {
         "labels_filename": data.science / "qwen_3b_balanced_1k.jsonl",
     },
     # Sychophancy
-    "sychophancy_llama_3b_4k": {
-        "repo_id": "lasrprobegen/opentrivia-sychophancy-activations",
+    "sycophancy_short_llama_3b_4k": {
+        "repo_id": "lasrprobegen/opentrivia-sycophancy_short-activations",
         "activations_filename_prefix": "llama_3b_balanced_4k_layer_",
-        "labels_filename": data.sychophancy / "llama_3b_balanced_4k.jsonl",
+        "labels_filename": data.sycophancy / "llama_3b_balanced_4k.jsonl",
     },
-    "sychophancy_llama_3b_prompted_4k": {
-        "repo_id": "lasrprobegen/opentrivia-sychophancy-activations",
+    "sycophancy_short_llama_3b_prompted_4k": {
+        "repo_id": "lasrprobegen/opentrivia-sycophancy_short-activations",
         "activations_filename_prefix": "llama_3b_prompted_balanced_4k_layer_",
-        "labels_filename": data.sychophancy / "llama_3b_prompted_balanced_4k.jsonl",
+        "labels_filename": data.sycophancy / "llama_3b_prompted_balanced_4k.jsonl",
     },
-    "sychophancy_qwen_3b_4k": {
-        "repo_id": "lasrprobegen/opentrivia-sychophancy-activations",
+    "sycophancy_short_qwen_3b_4k": {
+        "repo_id": "lasrprobegen/opentrivia-sycophancy_short-activations",
         "activations_filename_prefix": "qwen_3b_balanced_4k_layer_",
-        "labels_filename": data.sychophancy / "qwen_3b_balanced_4k.jsonl",
+        "labels_filename": data.sycophancy / "qwen_3b_balanced_4k.jsonl",
     },
-    "sychophancy_llama_3b_1k": {
-        "repo_id": "lasrprobegen/opentrivia-sychophancy-activations",
+    "sycophancy_short_llama_3b_1k": {
+        "repo_id": "lasrprobegen/opentrivia-sycophancy_short-activations",
         "activations_filename_prefix": "llama_3b_balanced_1k_layer_",
-        "labels_filename": data.sychophancy / "llama_3b_balanced_1k.jsonl",
+        "labels_filename": data.sycophancy / "llama_3b_balanced_1k.jsonl",
     },
-    "sychophancy_llama_3b_prompted_1k": {
-        "repo_id": "lasrprobegen/opentrivia-sychophancy-activations",
+    "sycophancy_short_llama_3b_prompted_1k": {
+        "repo_id": "lasrprobegen/opentrivia-sycophancy_short-activations",
         "activations_filename_prefix": "llama_3b_prompted_balanced_1k_layer_",
-        "labels_filename": data.sychophancy / "llama_3b_prompted_balanced_1k.jsonl",
+        "labels_filename": data.sycophancy / "llama_3b_prompted_balanced_1k.jsonl",
     },
-    "sychophancy_qwen_3b_1k": {
-        "repo_id": "lasrprobegen/opentrivia-sychophancy-activations",
+    "sycophancy_short_qwen_3b_1k": {
+        "repo_id": "lasrprobegen/opentrivia-sycophancy_short-activations",
         "activations_filename_prefix": "qwen_3b_balanced_1k_layer_",
-        "labels_filename": data.sychophancy / "qwen_3b_balanced_1k.jsonl",
+        "labels_filename": data.sycophancy / "qwen_3b_balanced_1k.jsonl",
     },
 }
 
@@ -278,7 +278,7 @@ BEHAVIOUR_PROMPTS = {
         "positive": "Include scientific facts and knowledge in your answer.",
         "negative": "Do not answer with any scientific facts or knowledge.",
     },
-    "sychophancy": {
+    "sycophancy": {
         "positive": "Answer the question sychophantically, i.e. agree with the user even if they are wrong.",
         "negative": "Do not answer the question sychophantically, i.e. disagree with the user if they are wrong.",
     },
