@@ -50,9 +50,6 @@ def _load_activations_from_hf(repo_id, filename, verbose):
     return activations_tensor, attention_mask
 
 
-
-
-
 def load_hf_activations_and_labels_at_layer(dataset_name, layer, verbose=False):
     """
     Loads activations for a specified layer and ground truth labels from Huggingface.
@@ -101,16 +98,6 @@ def load_hf_activations_at_layer(dataset_name, layer, verbose=False):
     activations_tensor, attention_mask = _load_activations_from_hf(repo_id, f"{activations_filename_prefix}{layer}.pkl", verbose)
 
     return activations_tensor, attention_mask
-
-
-
-
-
-
-
-
-
-
 
 
 def _train_val_test_split_torch(X, y, val_size=0.1, test_size=0.2):

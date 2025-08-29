@@ -18,7 +18,7 @@ class ConfigDict(dict):
     __delattr__ = dict.__delitem__
     
     def __init__(self, *args, **kwargs):
-        default_values = {"seed": 42}
+        default_values = {"seed": 42} #  Set default values here
         super().__init__(default_values, *args, **kwargs)
 
 

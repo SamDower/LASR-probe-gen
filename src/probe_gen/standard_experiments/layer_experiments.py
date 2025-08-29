@@ -4,27 +4,21 @@ import sys
 from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
-import probes
 from probe_gen.config import ConfigDict
+import probe_gen.probes as probes
 
 
-def run_layer_experiments(probe_type, dataset_name, activations_model, probe_C, layers_to_run, use_bias_options=[True,False], normalize_inputs_options=[True,False]):
+def run_layer_experiments(probe_type, dataset_name, activations_model, probe_C, layers_list, use_bias_options=[True,False], normalize_options=[True,False]):
     """
     Trains a probe on each layer's activations and plots accuracy and roc_auc for each layer.
-
     Args:
         probe (Probe): An initialised probe to train on each layer's activations.
         repo_id (str): Huggingface repository id.
         activations_filename (str): Huggingface file name for activations.
         labels_filename (str): Labels filename e.g. on_policy_raw.jsonl.
-    
-    Returns:
-        None
     """
-
-    for layer in layers_to_run:
+    for layer in layers_list:
         print(f"######################### Evaluating layer {layer} #############################")
-
         print("Loading from HuggingFace...")
         activations_tensor, attention_mask, labels_tensor = probes.load_hf_activations_and_labels_at_layer(dataset_name, layer)
         print("Aggregating activations...")
@@ -34,28 +28,25 @@ def run_layer_experiments(probe_type, dataset_name, activations_model, probe_C, 
         print("Complete.")
 
         for use_bias in use_bias_options:
-            for normalize_inputs in normalize_inputs_options:
+            for normalize in normalize_options:
 
                 if probe_type == 'mean':
-                    probe = probes.SklearnLogisticProbe(ConfigDict(use_bias=use_bias, C=probe_C, normalize=normalize_inputs))
+                    probe = probes.SklearnLogisticProbe(ConfigDict(use_bias=use_bias, C=probe_C, normalize=normalize))
                 else:
                     print("Probe type not valid.")
-                    probe = None
+                    return
 
                 # Fit the probe with the datasets
                 probe.fit(train_dataset, None)
 
                 # Evaluate the model
                 eval_dict, _, _ = probe.eval(val_dataset)
-
+                
                 probes.wandb_interface.save_probe_dict_results(
-                    eval_dict, 
-                    probe_type, 
-                    use_bias, 
-                    normalize_inputs, 
-                    probe_C,
-                    layer, 
-                    dataset_name,
-                    dataset_name,
-                    activations_model
+                    eval_dict=eval_dict, 
+                    train_set_name=dataset_name,
+                    test_set_name=dataset_name,
+                    activations_model=activations_model,
+                    probe_type=probe_type,
+                    hyperparams=[layer, use_bias, normalize, probe_C],
                 )
