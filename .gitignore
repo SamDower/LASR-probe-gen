@@ -68,10 +68,10 @@ hf_cache/
 !data/science/llama_3b_balanced_1k.jsonl
 !data/science/llama_3b_prompted_balanced_1k.jsonl
 
-!data/sycophancy/qwen_3b_balanced_4k.jsonl
+!data/sycophancy/ministral_8b_balanced_4k.jsonl
 !data/sycophancy/llama_3b_balanced_4k.jsonl
 !data/sycophancy/llama_3b_prompted_balanced_4k.jsonl
-!data/sycophancy/qwen_3b_balanced_1k.jsonl
+!data/sycophancy/ministral_8b_balanced_1k.jsonl
 !data/sycophancy/llama_3b_balanced_1k.jsonl
 !data/sycophancy/llama_3b_prompted_balanced_1k.jsonl
 
