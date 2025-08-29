@@ -31,7 +31,7 @@ def load_best_params_from_search(probe_type, dataset_name, activations_model, la
     for layer in layers_list:
         for use_bias in USE_BIAS_RANGE:
             for normalize in NORMALIZE_RANGE:
-                if probe_type == "mean_torch":
+                if 'torch' in probe_type:
                     for lr in LR_RANGE:
                         for weight_decay in WEIGHT_DECAY_RANGE:
                             filtered_df = df[
@@ -98,7 +98,7 @@ def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, l
         activations_tensor = probes.MeanAggregation()(activations_tensor, attention_mask)
         train_dataset, val_dataset, test_dataset = probes.create_activation_datasets(activations_tensor, labels_tensor, val_size=0.1, test_size=0.2, balance=True)
 
-        if probe_type == "mean_torch":
+        if 'torch' in probe_type:
             for lr in LR_RANGE:
                 for weight_decay in WEIGHT_DECAY_RANGE:
                     probe = probes.TorchLinearProbe(ConfigDict(use_bias=use_bias, normalize=normalize, lr=lr, weight_decay=weight_decay))
@@ -116,7 +116,7 @@ def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, l
                         hyperparams=[layer, use_bias, normalize, lr, weight_decay],
                     )
         
-        elif probe_type == "mean":
+        elif probe_type == 'mean':
             for C in C_RANGE:
                 probe = probes.SklearnLogisticProbe(ConfigDict(use_bias=use_bias, C=C, normalize=normalize))
                 probe.fit(train_dataset, val_dataset)
@@ -138,7 +138,7 @@ def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, l
             return
 
     # Do followup search on just whether to normalise and use bias
-    if probe_type == 'mean_torch':
+    if 'torch' in probe_type:
         layer, lr, weight_decay = best_params[0], best_params[1], best_params[2]
     elif probe_type == 'mean':
         layer, C = best_params[0], best_params[1]
@@ -147,7 +147,7 @@ def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, l
             if normalize == norm_bias_params[0] and use_bias == norm_bias_params[1]:
                 continue
                 
-            if probe_type == 'mean_torch':
+            if 'torch' in probe_type:
                 probe = probes.TorchLinearProbe(ConfigDict(use_bias=use_bias, normalize=normalize, lr=lr, weight_decay=weight_decay))
                 hyperparams = [layer, use_bias, normalize, lr, weight_decay]
             elif probe_type == 'mean':
@@ -170,7 +170,7 @@ def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, l
             )
 
     # Do followup search on just whether to normalise and use bias
-    if probe_type == 'mean_torch':
+    if 'torch' in probe_type:
         print(f"\nBest Params, Layer: {layer}, LR: {lr}, Weight Decay: {weight_decay}", end="")
     elif probe_type == 'mean':
         print(f"\nBest Params, Layer: {layer}, C: {C}", end="")

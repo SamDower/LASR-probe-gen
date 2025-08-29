@@ -16,9 +16,9 @@ class Aggregation(ABC):
         """
         pass
 
-
-# TODO: We need to think about how padding in the input activations tensor should be handled.
-
+# TODO: We need to think about how padding in the input activations tensor should be handled
+# Doesnt affect mean probe since adding zero tensors to sum and then dividing only by amount of real tokens
+# Doesnt affect matrix multiplication probes (softmax/ attention) since only adding products of zero tensors which are zero themselves
 
 class MeanAggregation(Aggregation):
     def __call__(self, activations, attention_mask):

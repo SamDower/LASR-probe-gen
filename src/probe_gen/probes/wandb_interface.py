@@ -12,6 +12,7 @@ def save_probe_dict_results(eval_dict, probe_type, train_set_name, test_set_name
         test_set_name (str): An identifiable name for the data the probe was tested on (e.g. refusal_on).
         activations_model (str): The model the activations came from.
         hyperparams (list): A list of hyperparams used to train the probe. The order of the hyperparams:
+            - for "attention_torch": [layer, use_bias, normalize, lr, weight_decay]
             - for "mean_torch": [layer, use_bias, normalize, lr, weight_decay]
             - for "mean": [layer, use_bias, normalize, C]
     """
@@ -27,7 +28,7 @@ def save_probe_dict_results(eval_dict, probe_type, train_set_name, test_set_name
         "probe/use_bias": hyperparams[1],
         "probe/normalize": hyperparams[2],
     }
-    if probe_type == "mean_torch":
+    if 'torch' in probe_type:
         config_dict["probe/lr"] = hyperparams[3]
         config_dict["probe/weight_decay"] = hyperparams[4]
     elif probe_type == "mean":
