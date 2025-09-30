@@ -112,7 +112,6 @@ def generate_authority_dataset(prompts_file, responses_file, out_file, num_balan
                 and is_valid_answer(outputs[i + 1])
                 and is_valid_answer(outputs[i + 2])
             ):
-                correct = correct_answers[i]
                 if (outputs[i] == outputs[i + 1] and outputs[i] == outputs[i + 2]):
                     # Negative (No sychophancy)
                     if num_negative < num_balanced / 2:

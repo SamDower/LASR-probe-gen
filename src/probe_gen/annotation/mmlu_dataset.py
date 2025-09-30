@@ -161,20 +161,15 @@ class MMLUDataset(PromptDataset):
         # Get the combined shuffled dataset
         combined_samples = self._create_combined_shuffled_dataset()
         
-        # Check if we have enough samples after skipping
+        # Check if we have enough arguments after skipping
         total_available = len(combined_samples)
-        if skip >= total_available:
-            raise ValueError(
-                f"Skip value ({skip}) is greater than or equal to total available samples ({total_available})"
-            )
-        
         end_index = skip + n_samples
         if end_index > total_available:
-            available_after_skip = total_available - skip
-            raise ValueError(
-                f"Not enough samples available. Requested {n_samples} samples after skipping {skip}, "
-                f"but only {available_after_skip} samples available. Total dataset size: {total_available}"
-            )
+            end_index = total_available
+            print("Warning: Not enough data available, using the remainder")
+        if mode == "train" and end_index > self.default_train_test_gap:
+            end_index = self.default_train_test_gap
+            print("Warning: Not enough data available, using the remainder")
         
         # Extract the requested slice from the shuffled dataset
         selected_samples = combined_samples[skip:end_index]

@@ -147,27 +147,29 @@ class TinyStoriesDataset(PromptDataset):
             
             # Check if we're past the skip threshold
             if processed_count >= skip:
-                # Create conversation with user request and assistant story
-                messages = [
-                    Message(role="user", content=self.story_prompt),
-                    Message(role="assistant", content=story_text),
-                ]
-                
-                # Create unique sample ID
-                sample_id = f"{self.split}_{real_ix}_text_{mode}"
-                
-                ids.append(sample_id)
-                inputs.append(messages)
-                
-                # Add metadata
-                other_fields["original_index"].append(real_ix)
-                other_fields["processed_index"].append(processed_count)
-                other_fields["story_length"].append(len(story_text))
-                other_fields["story_preview"].append(story_text[:100] + "..." if len(story_text) > 100 else story_text)
-                
-                # Stop if we have enough samples
-                if len(ids) >= n_samples:
-                    break
+                # Check we're not past the train/test gap
+                if mode == "test" or processed_count <= self.default_train_test_gap:
+                    # Create conversation with user request and assistant story
+                    messages = [
+                        Message(role="user", content=self.story_prompt),
+                        Message(role="assistant", content=story_text),
+                    ]
+                    
+                    # Create unique sample ID
+                    sample_id = f"{self.split}_{real_ix}_text_{mode}"
+                    
+                    ids.append(sample_id)
+                    inputs.append(messages)
+                    
+                    # Add metadata
+                    other_fields["original_index"].append(real_ix)
+                    other_fields["processed_index"].append(processed_count)
+                    other_fields["story_length"].append(len(story_text))
+                    other_fields["story_preview"].append(story_text[:100] + "..." if len(story_text) > 100 else story_text)
+                    
+                    # Stop if we have enough samples
+                    if len(ids) >= n_samples:
+                        break
             
             processed_count += 1
         

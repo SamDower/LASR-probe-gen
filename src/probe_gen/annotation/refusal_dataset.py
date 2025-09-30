@@ -164,23 +164,25 @@ class RefusalDataset(PromptDataset):
             
             # Check if we're past the skip threshold
             if processed_count >= skip:
-                # Parse the conversation into messages
-                messages = self._parse_messages(conversation)
-                
-                # Create unique sample ID
-                sample_id = f"{self.split}_{real_ix}_{field}_{mode}"
-                
-                ids.append(sample_id)
-                inputs.append(messages)
-                
-                # Add metadata
-                other_fields["conversation_type"].append(field)
-                other_fields["original_index"].append(real_ix)
-                other_fields["processed_index"].append(processed_count)
-                
-                # Stop if we have enough samples
-                if len(ids) >= n_samples:
-                    break
+                # Check we're not past the train/test gap
+                if mode == "test" or processed_count <= self.default_train_test_gap:
+                    # Parse the conversation into messages
+                    messages = self._parse_messages(conversation)
+                    
+                    # Create unique sample ID
+                    sample_id = f"{self.split}_{real_ix}_{field}_{mode}"
+                    
+                    ids.append(sample_id)
+                    inputs.append(messages)
+                    
+                    # Add metadata
+                    other_fields["conversation_type"].append(field)
+                    other_fields["original_index"].append(real_ix)
+                    other_fields["processed_index"].append(processed_count)
+                    
+                    # Stop if we have enough samples
+                    if len(ids) >= n_samples:
+                        break
             
             processed_count += 1
         

@@ -222,24 +222,23 @@ class UltrachatDataset(PromptDataset):
             
             # Check if we're past the skip threshold
             if processed_count >= skip:
-                # Update sample ID to include the mode
-                updated_sample_id = f"{sample_id}_{mode}"
-                
-                ids.append(updated_sample_id)
-                inputs.append(messages)
-                
-                # Stop if we have enough samples
-                if len(ids) >= n_samples:
-                    break
+                # Check we're not past the train/test gap
+                if mode == "test" or processed_count <= self.default_train_test_gap:
+                    # Update sample ID to include the mode
+                    updated_sample_id = f"{sample_id}_{mode}"
+                    
+                    ids.append(updated_sample_id)
+                    inputs.append(messages)
+                    
+                    # Stop if we have enough samples
+                    if len(ids) >= n_samples:
+                        break
             
             processed_count += 1
         
         # Check if we have enough samples
         if len(ids) < n_samples:
-            raise ValueError(
-                f"Not enough samples found in the dataset. Found {len(ids)}, expected {n_samples}. "
-                f"Total processed samples: {processed_count}"
-            )
+            print("Didn't find enough samples, returning the remainder")
         
         dataset = Dataset(inputs=inputs, ids=ids, other_fields=other_fields)
         return dataset
