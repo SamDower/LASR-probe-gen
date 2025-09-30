@@ -171,7 +171,7 @@ def _build_balanced_file(file_in, file_out, num_balanced):
             if pos_count >= num_pos and neg_count >= num_neg:
                 break
     
-    return pos_count + neg_count
+    return pos_count + neg_count, min(pos_count, neg_count)
 
 def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, mode, num_balanced):
 
@@ -190,13 +190,14 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
     balance_aquired = False
     ran_out_of_data = False
     datapoints_tried = 0
+    next_n_samples = 2000
     
     while not balance_aquired and not ran_out_of_data:
         # Generate another set of prompts
         if datapoints_tried == 0:
             n_samples = num_balanced * 2
         else:
-            n_samples = 2000
+            n_samples = next_n_samples
         found_enough_samples = prompt_dataset.generate_data(mode=mode, output_file="data/temp/prompts_latest.jsonl", n_samples=n_samples, skip=datapoints_tried)
         datapoints_tried += n_samples
         ran_out_of_data = not found_enough_samples
@@ -228,10 +229,14 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
             for line in src:
                 dst.write(line)
         
-        balanced_length = _build_balanced_file("data/temp/labelled_responses_all.jsonl", "data/temp/balanced_labelled_responses_all.jsonl", num_balanced)
+        total_length, smallest_class_length = _build_balanced_file("data/temp/labelled_responses_all.jsonl", "data/temp/balanced_labelled_responses_all.jsonl", num_balanced)
         
-        if balanced_length == num_balanced:
+        if total_length == num_balanced:
             balance_aquired = True
+        else:
+            # Guess how many more samples we need
+            guess = ((num_balanced / 2) - smallest_class_length) * datapoints_tried / smallest_class_length + 200
+            next_n_samples = min(guess, 500)
 
     # Save dataset
     REPO_NAME = f"lasrprobegen/{behaviour}-activations"
@@ -259,6 +264,11 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
         repo_type="dataset",
         token=hf_token,
     )
+
+def wipe_directory(directory):
+    for file in directory.iterdir():
+        if file.is_file():  # only delete files, not subdirs
+            file.unlink()
 
 def generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, mode, layers, balanced_responses_filepath):
     print(f"Loading model: {MODELS[activations_model]}")
@@ -350,21 +360,27 @@ def main():
                     else:
                         response_model = activations_model
 
-                    if train_size > 0:
-                        generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, "train", train_size)
-                        generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "train", layers, "data/temp/balanced_labelled_responses_all.jsonl")
-                        # Delete all files that were used
-                        for file in temp_dir.iterdir():
-                            if file.is_file():  # only delete files, not subdirs
-                                file.unlink()
+                    try:
+                        if train_size > 0:
+                            generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, "train", train_size)
+                            generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "train", layers, "data/temp/balanced_labelled_responses_all.jsonl")
+                            # Delete all files that were used
+                            wipe_directory(temp_dir)
+                    except Exception as e:
+                        print(f"Error generating datasets for {behaviour} {datasource} {generation_method} train: {e}")
+                        wipe_directory(temp_dir)
+                        continue
                     
                     if test_size > 0:
-                        generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, "test", test_size)
-                        generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "test", layers, "data/temp/balanced_labelled_responses_all.jsonl")
-                        # Delete all files that were used
-                        for file in temp_dir.iterdir():
-                            if file.is_file():  # only delete files, not subdirs
-                                file.unlink()
+                        try:
+                            generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, "test", test_size)
+                            generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "test", layers, "data/temp/balanced_labelled_responses_all.jsonl")
+                            # Delete all files that were used
+                            wipe_directory(temp_dir)
+                        except Exception as e:
+                            print(f"Error generating datasets for {behaviour} {datasource} {generation_method} test: {e}")
+                            wipe_directory(temp_dir)
+                            continue
             
             # Clear Huggingface cache before next experiment
             if hasattr(torch.cuda, 'empty_cache'):
@@ -375,6 +391,7 @@ def main():
 
         except Exception as e:
             print(f"Error generating datasets for {exp}: {e}")
+            wipe_directory(temp_dir)
             continue
 
 if __name__ == "__main__":
