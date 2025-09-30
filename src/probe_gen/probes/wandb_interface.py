@@ -4,14 +4,17 @@ import pandas as pd
 import wandb
 
 
-def save_probe_dict_results(eval_dict, probe_type, train_set_name, test_set_name, activations_model, hyperparams):
+def save_probe_dict_results(eval_dict, probe_type, behaviour, train_set, test_set, activations_model, hyperparams):
     """
     Saves the evaluation dict to wandb as a single run.
     Args:
         eval_dict (dict): evalualtion dictionary obtained from `probe.eval(test_dataset)`.
         probe_type (str): The type of probe trained (e.g. 'mean', 'attention').
-        train_set_name (str): An identifiable name for the data the probe was trained on (e.g. refusal_off_other_model).
-        test_set_name (str): An identifiable name for the data the probe was tested on (e.g. refusal_on).
+        behaviour (str): The behaviour the probe was trained and tested on.
+        train_set_name (list): An identifiable list for the data the probe was trained on:
+            - [datasource, generation_method, response_model]
+        test_set_name (list): An identifiable list for the data the probe was tested on:
+            - [datasource, generation_method, response_model]
         activations_model (str): The model the activations came from.
         hyperparams (list): A list of hyperparams used to train the probe. The order of the hyperparams:
             - for "attention_torch": [layer, use_bias, normalize, lr, weight_decay]
@@ -23,8 +26,13 @@ def save_probe_dict_results(eval_dict, probe_type, train_set_name, test_set_name
     # Initialize wandb run
     config_dict = {
         "probe/type": probe_type,
-        "train_dataset": train_set_name,
-        "test_dataset": test_set_name,
+        "behaviour": behaviour,
+        "train/datasource": train_set[0],
+        "train/generation_method": train_set[1],
+        "train/response_model": train_set[2],
+        "test/datasource": test_set[0],
+        "test/generation_method": test_set[1],
+        "test/response_model": test_set[2],
         "activations_model": activations_model,
         "layer": hyperparams[0],
         "probe/use_bias": hyperparams[1],
@@ -96,6 +104,7 @@ def load_probe_eval_dict_by_dict(lookup_dict):
         pass
     return results[-1]
 
+
 def _extract_common_filters(lookup_dicts_list):
     """
     Extract key-value pairs that are common to ALL dictionaries in the list.
@@ -135,6 +144,7 @@ def _extract_common_filters(lookup_dicts_list):
         remaining_lookups.append(remaining_dict)
     
     return common_filters
+
 
 def load_probe_eval_dict_batch(lookup_dicts_list):
     """

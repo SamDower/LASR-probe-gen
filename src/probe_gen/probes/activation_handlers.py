@@ -6,7 +6,7 @@ import torch
 from huggingface_hub import hf_hub_download
 from torch.nn.utils.rnn import pad_sequence
 
-from probe_gen.config import ACTIVATION_DATASETS
+from probe_gen.config import data
 
 
 def _download_labels_from_hf(repo_id, labels_filename):
@@ -65,15 +65,29 @@ def _load_activations_from_hf(repo_id, filename, verbose=False):
     return activations_tensor, attention_mask
 
 
-def load_hf_activations_and_labels_at_layer(dataset_name, layer, verbose=False):
+# def load_hf_activations_and_labels_at_layer(dataset_name, layer, verbose=False):
+def load_hf_activations_at_layer(
+    behaviour: str, 
+    datasource: str, 
+    activations_model: str="llama_3b", 
+    response_model: str="llama_3b", 
+    generation_method: str="on_policy", 
+    mode: str="train", 
+    layer: int=12, 
+    and_labels: bool=False, 
+    verbose: bool=False):
     """
     Loads activations for a specified layer and ground truth labels from Huggingface.
 
     Args:
-        repo_id (str): Huggingface repository id.
-        activations_filename (str): Huggingface file name for activations.
-        labels_filename (str): Labels filename e.g. on_policy_raw.jsonl.
+        behaviour (str): Behaviour name.
+        datasource (str): Datasource name.
+        activations_model (str): Activations model name.
+        response_model (str): Response model name.
+        generation_method (str): "on_policy", "prompted", "incentivised", "off_policy".
+        mode (str): "train" or "test".
         layer (int): Model layer we should get the activations from. 
+        and_labels (bool): Whether to load labels.
         verbose (bool): Should the function output to console. 
     
     Returns:
@@ -81,40 +95,35 @@ def load_hf_activations_and_labels_at_layer(dataset_name, layer, verbose=False):
         attention_mask (tensor): tensor stating which tokens are real (1) or padded (0) of shape [batch_size, seq_len]
         labels_tensor (tensor): tensor of ground truth labels of shape [batch_size].
     """
-    repo_id = ACTIVATION_DATASETS[dataset_name]['repo_id']
-    activations_filename_prefix = ACTIVATION_DATASETS[dataset_name]['activations_filename_prefix']
-    labels_filename = ACTIVATION_DATASETS[dataset_name]['labels_filename']
-
-    if not os.path.exists(labels_filename):
-        _download_labels_from_hf(repo_id, labels_filename)
-    labels_tensor = _load_labels_from_local_jsonl(labels_filename, verbose)
-    activations_tensor, attention_mask = _load_activations_from_hf(repo_id, f"{activations_filename_prefix}{layer}.pkl", verbose)
-
-    return activations_tensor, attention_mask, labels_tensor
-
-
-def load_hf_activations_at_layer(dataset_name, layer, verbose=False):
-    """
-    Loads activations for a specified layer and ground truth labels from Huggingface.
-
-    Args:
-        repo_id (str): Huggingface repository id.
-        activations_filename (str): Huggingface file name for activations.
-        labels_filename (str): Labels filename e.g. on_policy_raw.jsonl.
-        layer (int): Model layer we should get the activations from. 
-        verbose (bool): Should the function output to console. 
+    try:
+        repo_id = f"lasrprobegen/{behaviour}-activations"
+        filepath = str(data.data / behaviour / datasource / activations_model / f"{response_model}_{generation_method}_{mode}_layer_{layer}.pkl")
+        activations_tensor, attention_mask = _load_activations_from_hf(repo_id, filepath, verbose)
+    except Exception as e:
+        # Try loading with on_policy in the name instead
+        if generation_method == "off_policy":
+            filepath.replace("off_policy", "on_policy")
+            activations_tensor, attention_mask = _load_activations_from_hf(repo_id, filepath, verbose)
+        else:
+            raise e
+        
+    if and_labels:
+        labels_filename = str(data.data / behaviour / datasource / f"{response_model}_{generation_method}_{mode}.jsonl")
+        try:
+            if not os.path.exists(labels_filename):
+                _download_labels_from_hf(repo_id, labels_filename)
+            labels_tensor = _load_labels_from_local_jsonl(labels_filename, verbose)
+        except Exception as e:
+            # Try loading with on_policy in the name instead
+            if generation_method == "off_policy":
+                labels_filename.replace("off_policy", "on_policy")
+                labels_tensor = _load_labels_from_local_jsonl(labels_filename, verbose)
+            else:
+                raise e
+        return activations_tensor, attention_mask, labels_tensor
     
-    Returns:
-        activations_tensor (tensor): tensor of activations of shape [batch_size, seq_len, dim].
-        attention_mask (tensor): tensor stating which tokens are real (1) or padded (0) of shape [batch_size, seq_len]
-        labels_tensor (tensor): tensor of ground truth labels of shape [batch_size].
-    """
-    repo_id = ACTIVATION_DATASETS[dataset_name]['repo_id']
-    activations_filename_prefix = ACTIVATION_DATASETS[dataset_name]['activations_filename_prefix']
-
-    activations_tensor, attention_mask = _load_activations_from_hf(repo_id, f"{activations_filename_prefix}{layer}.pkl", verbose)
-
-    return activations_tensor, attention_mask
+    else:
+        return activations_tensor, attention_mask
 
     
 def create_activation_datasets(activations_tensor, labels_tensor, splits=[3500, 500, 0], verbose=False):

@@ -80,15 +80,16 @@ def load_best_params_from_search(probe_type, dataset_name, activations_model, la
     return best_params_format
 
 
-def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, layers_list=LAYERS_LIST):
-    """
-    Trains a probe on each layer's activations and plots accuracy and roc_auc for each layer.
-    Args:
-        probe_type (str): The type of probe to train (e.g. 'mean').
-        dataset_name (str): The dataset to both train and test on.
-        activations_model (str): The model to use for activations.
-        layers_list (list): List of layers to train on.
-    """
+def run_full_hyp_search_on_layers(
+    probe_type: str, 
+    behaviour: str, 
+    datasource: str, 
+    activations_model: str="llama_3b", 
+    response_model: str="llama_3b", 
+    generation_method: str="on_policy", 
+    mode: str="train", 
+    layers_list: list=LAYERS_LIST):
+    
     best_auroc = 0
     best_params = []
     # Do initial search on everything except normalize and use bias
@@ -97,13 +98,13 @@ def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, l
     use_bias = norm_bias_params[1]
     for layer in layers_list:
         print(f"#### #### #### Evaluating layer {layer}")
-        activations_tensor, attention_mask, labels_tensor = probes.load_hf_activations_and_labels_at_layer(dataset_name, layer)
+        activations_tensor, attention_mask, labels_tensor = probes.load_hf_activations_at_layer(
+            behaviour, datasource, activations_model, response_model, generation_method, mode, layer, and_labels=True, verbose=False)
         if "mean" in probe_type:
             activations_tensor = probes.MeanAggregation()(activations_tensor, attention_mask)
-        if "3k" in dataset_name or "3.5k" in dataset_name:
-            train_dataset, val_dataset, _ = probes.create_activation_datasets(activations_tensor, labels_tensor, splits=[2500, 500, 0])
-        else:
-            train_dataset, val_dataset, _ = probes.create_activation_datasets(activations_tensor, labels_tensor, splits=[3500, 500, 0])
+        split_val = 2500 if behaviour in ["deception", "sandbagging"] else 3500
+        train_dataset, val_dataset, _ = probes.create_activation_datasets(
+            activations_tensor, labels_tensor, splits=[split_val, 500, 0], verbose=True)
 
         if 'torch' in probe_type:
             for lr in LR_RANGE:
@@ -118,11 +119,12 @@ def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, l
                         best_auroc = eval_dict['roc_auc']
                         best_params = [layer, lr, weight_decay]
                     probes.wandb_interface.save_probe_dict_results(
-                        eval_dict=eval_dict, 
-                        train_set_name=dataset_name,
-                        test_set_name=dataset_name,
+                        eval_dict=eval_dict,
+                        probe_type = probe_type,
+                        behaviour = behaviour,
+                        train_set=[datasource, generation_method, response_model],
+                        test_set=[datasource, generation_method, response_model],
                         activations_model=activations_model,
-                        probe_type=probe_type,
                         hyperparams=[layer, use_bias, normalize, lr, weight_decay],
                     )
         
@@ -135,11 +137,12 @@ def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, l
                     best_auroc = eval_dict['roc_auc']
                     best_params = [layer, C]
                 probes.wandb_interface.save_probe_dict_results(
-                    eval_dict=eval_dict, 
-                    train_set_name=dataset_name,
-                    test_set_name=dataset_name,
+                    eval_dict=eval_dict,
+                    probe_type = probe_type,
+                    behaviour = behaviour,
+                    train_set=[datasource, generation_method, response_model],
+                    test_set=[datasource, generation_method, response_model],
                     activations_model=activations_model,
-                    probe_type=probe_type,
                     hyperparams=[layer, use_bias, normalize, C],
                 )
         
@@ -174,11 +177,12 @@ def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, l
                 norm_bias_params = [normalize, use_bias]
             
             probes.wandb_interface.save_probe_dict_results(
-                eval_dict=eval_dict, 
-                train_set_name=dataset_name,
-                test_set_name=dataset_name,
+                eval_dict=eval_dict,
+                probe_type = probe_type,
+                behaviour = behaviour,
+                train_set=[datasource, generation_method, response_model],
+                test_set=[datasource, generation_method, response_model],
                 activations_model=activations_model,
-                probe_type=probe_type,
                 hyperparams=hyperparams,
             )
 

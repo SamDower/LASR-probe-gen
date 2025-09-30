@@ -13,129 +13,21 @@ from probe_gen.standard_experiments.hyperparameter_search import (
 )
 
 
-def plot_grid_experiment_lean(probes_setup, test_dataset_names, activations_model, metric="roc_auc"):
-    # === Step 1: Preprocessing Setup (unchanged) ===
-    ps = probes_setup
-    for i in range(len(probes_setup)):
-        if len(ps[i]) == 2:
-            best_cfg = None
-            try:
-                best_cfg = ConfigDict.from_json(ps[i][0], ps[i][1])
-            except KeyError:
-                print(f"No best hyperparameters found for {ps[i][0]}, {ps[i][1]} locally, pulling from wandb...")
-                best_cfg = load_best_params_from_search(ps[i][0], ps[i][1], activations_model)
-            if best_cfg is None:
-                raise ValueError(f"No best hyperparameters found for {ps[i][0]}, {ps[i][1]}")
-            ps[i] = [ps[i][0], ps[i][1], ConfigDict(best_cfg)]
-
-    # === Step 2: Collect Result Table ===
-    results_table = np.full((len(probes_setup), len(test_dataset_names)), -1, dtype=float)
-    for i in range(len(probes_setup)):
-        probe_type = ps[i][0]
-        train_dataset_name = ps[i][1]
-        cfg = ps[i][2]
-        for j in range(len(test_dataset_names)):
-            search_dict = {
-                "config.probe/type": probe_type,
-                "config.train_dataset": train_dataset_name,
-                "config.test_dataset": test_dataset_names[j],
-                "config.layer": cfg.layer,
-                "config.probe/use_bias": cfg.use_bias,
-                "config.probe/normalize": cfg.normalize,
-                "config.activations_model": activations_model,
-                "state": "finished",
-            }
-            if "torch" in probe_type:
-                search_dict["config.probe/lr"] = cfg.lr
-                search_dict["config.probe/weight_decay"] = cfg.weight_decay
-            elif probe_type == "mean":
-                search_dict["config.probe/C"] = cfg.C
-            results = load_probe_eval_dict_by_dict(search_dict)
-            results_table[i, j] = results[metric]
-
-    # === Step 3: Label Processing ===
-    def abridge(label):
-        # You can modify this logic as needed
-        parts = label.split("_")
-        return "".join([p[0] for p in parts if p])  # e.g., llama_3b → l3b
-
-    train_full_labels = ["_".join(ps[i][1].split("_")[1:-1]) for i in range(len(ps))]
-    test_full_labels = ["_".join(name.split("_")[1:-1]) for name in test_dataset_names]
-    train_short_labels = [abridge(lbl) for lbl in train_full_labels]
-    test_short_labels = [abridge(lbl) for lbl in test_full_labels]
-
-    # === Step 4: Add Row and Column Means ===
-    row_means = np.mean(results_table, axis=1, keepdims=True)
-    col_means = np.mean(results_table, axis=0, keepdims=True)
-    full_table = np.block([
-        [results_table, row_means],
-        [col_means, np.array([[np.nan]])],
-    ])
-
-    # === Step 5: Create Mask for bottom-right NaN ===
-    mask = np.isnan(full_table)
-
-    # === Step 6: Heatmap ===
-    fig, ax = plt.subplots(figsize=(8, 6))
-    sns.heatmap(
-        full_table,
-        mask=mask,
-        annot=True,
-        fmt=".3f",
-        cmap="Greens",
-        vmin=0.5,
-        vmax=1,
-        cbar=True,
-        ax=ax,
-        linewidths=0,  # no grid between normal cells
-        linecolor='white',
-        annot_kws={"size": 12},
-        xticklabels=test_short_labels + ["Mean"],
-        yticklabels=train_short_labels + ["Mean"],
-    )
-
-    for label in ax.get_xticklabels():
-        label.set_fontweight("bold")
-    for label in ax.get_yticklabels():
-        label.set_fontweight("bold")
-
-    # === Step 7: Draw separating lines between main grid and means ===
-    n_rows, n_cols = results_table.shape
-    ax.axhline(n_rows, color='white', linewidth=2)
-    ax.axvline(n_cols, color='white', linewidth=2)
-
-    # === Step 8: Legend for abbreviations ===
-    legend_elements = []
-    for short, full in zip(test_short_labels, test_full_labels):
-        legend_elements.append(Patch(facecolor='none', edgecolor='none', label = rf"$\mathbf{{{short}}}$: {full}"))
-    for short, full in zip(train_short_labels, train_full_labels):
-        legend_elements.append(Patch(facecolor='none', edgecolor='none', label = rf"$\mathbf{{{short}}}$: {full}"))
-
-    ax.legend(
-        handles=legend_elements,
-        loc='center left',
-        bbox_to_anchor=(1.15, 0.5),
-        title="",
-        frameon=False
-    )
-
-    ax.set_title(f"{metric} (with row/column means)", fontsize=14)
-    fig.tight_layout()
-    plt.show()
-
-
-def run_grid_experiment_lean(probes_setup, test_dataset_names, activations_model):
+def run_grid_experiment_lean(train_setup, test_setup):
     """
     Runs a grid experiment on the probes specified in the probes_setup list.
     Args:
-        probes_setup (list): A list of tuples, each containing a probe type, a train dataset name, and a (optional) configuration dictionary.
-        test_dataset_names (list): A list of test dataset names.
-        activations_model (str): The model the activations came from.
+        train_setup (list): 
+            [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
+        test_setup (list): 
+            [behaviour, datasource, activations_model, generation_method, response_model, mode]
     """
+    activations_model = test_setup[0][3] # Assuming activations model is the same for all test setups
+    
     # Get the best hyperparameters for each probe if not provided
-    ps = probes_setup
-    for i in range(len(probes_setup)):
-        if len(ps[i]) == 2:
+    ps = train_setup
+    for i in range(len(train_setup)):
+        if not isinstance(ps[i][-1], ConfigDict):
             if ps[i][0] == 'mean':
                 best_cfg = ConfigDict.from_json(ps[i][0], ps[i][1])
                 ps[i] = [ps[i][0], ps[i][1], ConfigDict(layer=best_cfg.layer, use_bias=True, normalize=True, C=best_cfg.C)]
@@ -151,7 +43,7 @@ def run_grid_experiment_lean(probes_setup, test_dataset_names, activations_model
                     raise ValueError(f"No best hyperparameters found for {ps[i][0]}, {ps[i][1]}")
                 ps[i] = [ps[i][0], ps[i][1], ConfigDict(best_cfg)]
 
-    for i in tqdm(range(len(probes_setup))):
+    for i in tqdm(range(len(train_setup))):
         probe_type = ps[i][0]
         train_dataset_name = ps[i][1]
         cfg = ps[i][2]
@@ -174,7 +66,7 @@ def run_grid_experiment_lean(probes_setup, test_dataset_names, activations_model
             probe = probes.SklearnLogisticProbe(cfg)
         probe.fit(train_dataset, val_dataset)
 
-        for test_dataset_name in test_dataset_names:
+        for test_dataset_name in test_setup:
             # Get test datasets, needing different layers and types for different probes
             activations_tensor, attention_mask, labels_tensor = probes.load_hf_activations_and_labels_at_layer(test_dataset_name, cfg.layer)
             if probe_type == "mean":
