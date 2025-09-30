@@ -45,7 +45,7 @@ class RefusalDataset(PromptDataset):
         self, 
         hf_dataset_name: str = "Anthropic/hh-rlhf",
         split: str = "train",
-        default_train_test_gap: int = 1000
+        default_train_test_gap: int = 20000
     ):
         """
         Initialize Refusal prompt dataset.
