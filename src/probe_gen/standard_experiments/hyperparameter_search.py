@@ -19,11 +19,16 @@ LR_RANGE = [1e-4, 1e-3, 1e-2]
 WEIGHT_DECAY_RANGE = [0, 1e-5, 1e-4]
 
 
-def load_best_params_from_search(probe_type, dataset_name, activations_model, layers_list=LAYERS_LIST):
+def load_best_params_from_search(probe_type, behaviour, datasource, generation_method, response_model, activations_model, layers_list=LAYERS_LIST):
     df = load_probe_eval_dicts_as_df({
         "config.probe/type": probe_type,
-        "config.train_dataset": dataset_name,
-        "config.test_dataset": dataset_name,
+        "behaviour": behaviour,
+        "train/datasource": datasource,
+        "train/generation_method": generation_method,
+        "train/response_model": response_model,
+        "test/datasource": datasource,
+        "test/generation_method": generation_method,
+        "test/response_model": response_model,
         "config.activations_model": activations_model,
         "state": "finished"  # Only completed runs
     })
