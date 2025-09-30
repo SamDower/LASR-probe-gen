@@ -349,8 +349,8 @@ class AuthorityArgumentsDataset(PromptDataset):
             from huggingface_hub import hf_hub_download
             
             csv_path = hf_hub_download(
-                repo_id="lasrprobegen/opentrivia-authority-activations",
-                filename="open_trivia_shuffled.csv",
+                repo_id="lasrprobegen/sycophancy-activations",
+                filename="arguments/arguments.csv",
                 repo_type="dataset"
             )
             print(f"Downloaded CSV file from HuggingFace to: {csv_path}")

@@ -35,8 +35,8 @@ class SycophancyMultichoiceDataset(PromptDataset):
     
     def __init__(
         self, 
-        hf_repo_id: str = "lasrprobegen/opentrivia-authority-activations",
-        csv_filename: str = "open_trivia_shuffled.csv",
+        hf_repo_id: str = "lasrprobegen/sycophancy-activations",
+        csv_filename: str = "multichoice/open_trivia_shuffled.csv",
         response_format: str = "long",
         default_train_test_gap: int = 30000
     ):

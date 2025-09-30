@@ -33,8 +33,8 @@ class SycophancyArgumentsDataset(PromptDataset):
     
     def __init__(
         self, 
-        hf_repo_id: str = "lasrprobegen/opentrivia-sycophancy-activations",
-        csv_filename: str = "arguments.csv",
+        hf_repo_id: str = "lasrprobegen/sycophancy-activations",
+        csv_filename: str = "arguments/arguments.csv",
         default_train_test_gap: int = 10000
     ):
         """
