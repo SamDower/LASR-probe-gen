@@ -429,19 +429,14 @@ class AuthorityArgumentsDataset(PromptDataset):
         
         # Check if we have enough arguments after skipping
         total_available = len(self._processed_data)
-        if skip >= total_available:
-            raise ValueError(
-                f"Skip value ({skip}) is greater than or equal to total available arguments ({total_available})"
-            )
-        
         end_index = skip + n_samples
         if end_index > total_available:
-            available_after_skip = total_available - skip
-            raise ValueError(
-                f"Not enough arguments available. Requested {n_samples} arguments after skipping {skip}, "
-                f"but only {available_after_skip} arguments available. Total dataset size: {total_available}"
-            )
-        
+            end_index = total_available
+            print("Warning: Not enough data available, using the remainder")
+        if mode == "train" and end_index > self.default_train_test_gap:
+            end_index = self.default_train_test_gap
+            print("Warning: Not enough data available, using the remainder")
+
         ids = []
         inputs = []
         
