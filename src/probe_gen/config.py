@@ -182,17 +182,11 @@ ACTIVATION_DATASETS = {
         "labels_filename": data.refusal / "llama_3b_story_balanced_1k.jsonl",
     },
 
-    # Refusal - Jailbreak datasets
+    # Refusal - Jailbreak datasets (train 4/5k, test 1k)
     "jailbreaks_ministral_8b_4k": {
         "repo_id": "lasrprobegen/anthropic-jailbreak-activations",
         "activations_filename_prefix": "ministral-8b_balanced_4k_train_layer_",
         "labels_filename": data.jailbreaks / "ministral-8b_balanced_4k_train.jsonl",
-    },
-    # Refusal - Jailbreak datasets (train 5k)
-    "jailbreaks_llama_3b_5k": {
-        "repo_id": "lasrprobegen/anthropic-refusal-activations",
-        "activations_filename_prefix": "llama_3b_5k_balanced_layer_",
-        "labels_filename": data.jailbreaks / "llama_3b_5k_balanced.jsonl",
     },
      "jailbreaks_ministral_8b_1k": {
         "repo_id": "lasrprobegen/anthropic-jailbreak-activations",
