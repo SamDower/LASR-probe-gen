@@ -146,21 +146,15 @@ class ShakespeareDataset(PromptDataset):
         # Ensure data is processed and cached
         self._process_and_cache_lines()
         
-        total_lines = len(self._cached_lines)
-        
-        # Check if we have enough lines after skipping
-        if skip >= total_lines:
-            raise ValueError(
-                f"Skip value ({skip}) is greater than or equal to total available lines ({total_lines})"
-            )
-        
+        # Check if we have enough arguments after skipping
+        total_available = len(self._cached_lines)
         end_index = skip + n_samples
-        if end_index > total_lines:
-            available_after_skip = total_lines - skip
-            raise ValueError(
-                f"Not enough lines available. Requested {n_samples} samples after skipping {skip}, "
-                f"but only {available_after_skip} lines available. Total lines: {total_lines}"
-            )
+        if end_index > total_available:
+            end_index = total_available
+            print("Warning: Not enough data available, using the remainder")
+        if mode == "train" and end_index > self.default_train_test_gap:
+            end_index = self.default_train_test_gap
+            print("Warning: Not enough data available, using the remainder")
         
         # Extract the requested slice
         selected_lines = self._cached_lines[skip:end_index]

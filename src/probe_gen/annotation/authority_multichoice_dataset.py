@@ -112,7 +112,6 @@ def generate_authority_dataset(prompts_file, responses_file, out_file, num_balan
                 and is_valid_answer(outputs[i + 1])
                 and is_valid_answer(outputs[i + 2])
             ):
-                correct = correct_answers[i]
                 if (outputs[i] == outputs[i + 1] and outputs[i] == outputs[i + 2]):
                     # Negative (No sychophancy)
                     if num_negative < num_balanced / 2:
@@ -329,20 +328,15 @@ class AuthorityMultichoiceDataset(PromptDataset):
         if self._processed_data is None:
             raise ValueError("Data not loaded. Call download_data() first.")
         
-        # Check if we have enough questions after skipping
+        # Check if we have enough arguments after skipping
         total_available = len(self._processed_data)
-        if skip >= total_available:
-            raise ValueError(
-                f"Skip value ({skip}) is greater than or equal to total available questions ({total_available})"
-            )
-        
         end_index = skip + n_samples
         if end_index > total_available:
-            available_after_skip = total_available - skip
-            raise ValueError(
-                f"Not enough questions available. Requested {n_samples} questions after skipping {skip}, "
-                f"but only {available_after_skip} questions available. Total dataset size: {total_available}"
-            )
+            end_index = total_available
+            print("Warning: Not enough data available, using the remainder")
+        if mode == "train" and end_index > self.default_train_test_gap:
+            end_index = self.default_train_test_gap
+            print("Warning: Not enough data available, using the remainder")
         
         ids = []
         inputs = []

@@ -113,22 +113,16 @@ class JailbreakDataset(PromptDataset):
         """
         if self._cached_df is None:
             raise ValueError("Data not loaded. Call download_data() first.")
-        
-        total_samples = len(self._cached_df)
-        
-        # Check if we have enough samples after skipping
-        if skip >= total_samples:
-            raise ValueError(
-                f"Skip value ({skip}) is greater than or equal to total available samples ({total_samples})"
-            )
-        
+
+        # Check if we have enough arguments after skipping
+        total_available = len(self._cached_df)
         end_index = skip + n_samples
-        if end_index > total_samples:
-            available_after_skip = total_samples - skip
-            raise ValueError(
-                f"Not enough samples available. Requested {n_samples} samples after skipping {skip}, "
-                f"but only {available_after_skip} samples available. Total samples: {total_samples}"
-            )
+        if end_index > total_available:
+            end_index = total_available
+            print("Warning: Not enough data available, using the remainder")
+        if mode == "train" and end_index > self.default_train_test_gap:
+            end_index = self.default_train_test_gap
+            print("Warning: Not enough data available, using the remainder")
         
         # Extract the requested slice from the shuffled dataframe
         df_subset = self._cached_df.iloc[skip:end_index]
