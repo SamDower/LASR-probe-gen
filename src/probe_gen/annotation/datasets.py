@@ -28,6 +28,7 @@ from .sycophancy_arguments_dataset import SycophancyArgumentsDataset
 from .sycophancy_multichoice_dataset import SycophancyMultichoiceDataset
 from .tinystories_dataset import TinyStoriesDataset
 from .ultrachat_dataset import UltrachatDataset
+from .writingprompts_dataset import WritingPromptsDataset
 
 # Define what gets imported with "from datasets import *"
 __all__ = [
@@ -51,4 +52,5 @@ __all__ = [
     'HarmfulRequestDataset',
     'AuthorityArgumentsDataset',
     'AuthorityMultichoiceDataset',
+    'WritingPromptsDataset',
 ]
