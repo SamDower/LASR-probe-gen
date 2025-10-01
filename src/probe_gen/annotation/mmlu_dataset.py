@@ -14,7 +14,7 @@ from datasets import load_dataset
 from probe_gen.annotation.interface_dataset import Dataset, Message
 from probe_gen.annotation.prompt_dataset import PromptDataset
 
-# 14 diverse MMLU subcategories covering different domains
+# MMLU subcategories covering different domains
 MMLU_SUBCATEGORIES = [
     "college_biology",           # Life Sciences
     "college_computer_science",  # Computer Science
@@ -30,7 +30,22 @@ MMLU_SUBCATEGORIES = [
     "marketing",                 # Business
     "sociology",                 # Social Sciences
     "world_religions",           # Religious Studies
-]
+    "abstract_algebra",        # Abstract Reasoning
+    "astronomy",               # Astronomy
+    "clinical_knowledge",      # Clinical Knowledge
+    "college_chemistry", 
+    "college_mathematics",
+    "college_physics",
+    "college_medicine",
+    "elementary_mathematics",
+    "global_facts",
+    "jurisprudence",
+    "international_law",
+    "miscellaneous",
+    "nutrition",
+    "philosophy",
+
+    ]
 
 
 class MMLUDataset(PromptDataset):
@@ -51,7 +66,7 @@ class MMLUDataset(PromptDataset):
         self, 
         subcategories: Optional[List[str]] = None,
         split: str = "test",
-        default_train_test_gap: int = 1000
+        default_train_test_gap: int = 5000
     ):
         """
         Initialize MMLU prompt dataset.

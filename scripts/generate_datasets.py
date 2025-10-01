@@ -209,7 +209,7 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
             temperature=temperature,
             dataset_path="data/temp/prompts_latest.jsonl",
             output_file="data/temp/responses_latest.jsonl",
-            batch_size=200,
+            batch_size=50,
             behaviour=behaviour, 
             datasource=datasource,
             sample=0,
@@ -219,6 +219,10 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
             save_increment=-1,
         )
 
+        # Clean up any existing labelled responses file before labeling
+        if os.path.exists("data/temp/labelled_responses_latest.jsonl"):
+            os.remove("data/temp/labelled_responses_latest.jsonl")
+        
         get_labels(behaviour, datasource, "data/temp/prompts_latest.jsonl", "data/temp/responses_latest.jsonl", "data/temp/labelled_responses_latest.jsonl", num_balanced)
 
         # Combine new prompts and labelled responses with existing ones
