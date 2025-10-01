@@ -9,14 +9,12 @@ from torch.nn.utils.rnn import pad_sequence
 from probe_gen.config import data
 
 
-def _download_labels_from_hf(repo_id, labels_filename):
-    file_name = os.path.basename(labels_filename)
-    local_dir = os.path.dirname(labels_filename)
+def _download_labels_from_hf(repo_id, labels_filepath, labels_localpath):
     _ = hf_hub_download(
         repo_id=repo_id,
         repo_type="dataset",
-        filename=file_name,
-        local_dir=local_dir,
+        filename=labels_filepath,
+        local_dir=labels_localpath,
         token=os.environ.get("HF_TOKEN")
     )
     
@@ -38,7 +36,11 @@ def _load_labels_from_local_jsonl(labels_filename, verbose=False):
 
 def _load_activations_from_hf(repo_id, filename, verbose=False):
     # Load activations
-    file_path = hf_hub_download(repo_id=repo_id, filename=filename, repo_type="dataset")
+    file_path = hf_hub_download(
+        repo_id=repo_id, 
+        filename=filename,
+        repo_type="dataset",
+    )
     df = joblib.load(file_path)
 
     # Extract all activations
@@ -97,7 +99,7 @@ def load_hf_activations_at_layer(
     """
     try:
         repo_id = f"lasrprobegen/{behaviour}-activations"
-        filepath = str(data.data / behaviour / datasource / activations_model / f"{response_model}_{generation_method}_{mode}_layer_{layer}.pkl")
+        filepath = f"{datasource}/{activations_model}/{response_model}_{generation_method}_{mode}_layer_{layer}.pkl"
         activations_tensor, attention_mask = _load_activations_from_hf(repo_id, filepath, verbose)
     except Exception as e:
         # Try loading with on_policy in the name instead
@@ -108,16 +110,19 @@ def load_hf_activations_at_layer(
             raise e
         
     if and_labels:
-        labels_filename = str(data.data / behaviour / datasource / f"{response_model}_{generation_method}_{mode}.jsonl")
+        labels_filepath = f"{datasource}/{response_model}_{generation_method}_{mode}.jsonl"
+        labels_localpath = data.data / behaviour
         try:
-            if not os.path.exists(labels_filename):
-                _download_labels_from_hf(repo_id, labels_filename)
-            labels_tensor = _load_labels_from_local_jsonl(labels_filename, verbose)
+            if not os.path.exists(labels_localpath / labels_filepath):
+                _download_labels_from_hf(repo_id, labels_filepath, labels_localpath)
+            labels_tensor = _load_labels_from_local_jsonl(labels_localpath / labels_filepath, verbose)
         except Exception as e:
             # Try loading with on_policy in the name instead
             if generation_method == "off_policy":
-                labels_filename.replace("off_policy", "on_policy")
-                labels_tensor = _load_labels_from_local_jsonl(labels_filename, verbose)
+                labels_filepath.replace("off_policy", "on_policy")
+                if not os.path.exists(labels_localpath / labels_filepath):
+                    _download_labels_from_hf(repo_id, labels_filepath, labels_localpath)
+                labels_tensor = _load_labels_from_local_jsonl(labels_localpath / labels_filepath, verbose)
             else:
                 raise e
         return activations_tensor, attention_mask, labels_tensor

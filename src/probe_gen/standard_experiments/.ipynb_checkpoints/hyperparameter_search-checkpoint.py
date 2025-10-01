@@ -10,12 +10,79 @@ import probe_gen.probes as probes
 from probe_gen.config import ConfigDict
 from probe_gen.probes.wandb_interface import load_probe_eval_dicts_as_df
 
+# TODO: make layers list be conditional on activations model
 LAYERS_LIST = [6,9,12,15,18,21]
 USE_BIAS_RANGE = [True]
 NORMALIZE_RANGE = [True]
 C_RANGE = [0.001, 0.01, 0.1, 1, 10]
 LR_RANGE = [1e-4, 1e-3, 1e-2]
 WEIGHT_DECAY_RANGE = [0, 1e-5, 1e-4]
+
+
+def load_best_params_from_search(probe_type, behaviour, datasource, generation_method, response_model, activations_model, layers_list=LAYERS_LIST):
+    df = load_probe_eval_dicts_as_df({
+        "config.probe/type": probe_type,
+        "behaviour": behaviour,
+        "train/datasource": datasource,
+        "train/generation_method": generation_method,
+        "train/response_model": response_model,
+        "test/datasource": datasource,
+        "test/generation_method": generation_method,
+        "test/response_model": response_model,
+        "config.activations_model": activations_model,
+        "state": "finished"  # Only completed runs
+    })
+    # print(df)
+    best_auroc = 0
+    best_params = {}
+    for layer in layers_list:
+        for use_bias in USE_BIAS_RANGE:
+            for normalize in NORMALIZE_RANGE:
+                if 'torch' in probe_type:
+                    for lr in LR_RANGE:
+                        for weight_decay in WEIGHT_DECAY_RANGE:
+                            filtered_df = df[
+                                (df['config_layer'] == layer) & 
+                                (df['config_probe_normalize'] == normalize) & 
+                                (df['config_probe_use_bias'] == use_bias) & 
+                                (df['config_probe_lr'] == lr) & 
+                                (df['config_probe_weight_decay'] == weight_decay)
+                            ]
+                            
+                            if filtered_df.shape[0] >= 1:
+                                roc_auc = filtered_df['metric_roc_auc'].iloc[-1]
+                                if roc_auc > best_auroc:
+                                    best_auroc = roc_auc
+                                    best_params = filtered_df.iloc[-1].to_dict()
+                    
+                elif probe_type == 'mean':
+                    for C in C_RANGE:
+                        filtered_df = df[
+                            (df['config_layer'] == layer) & 
+                            (df['config_probe_normalize'] == normalize) & 
+                            (df['config_probe_use_bias'] == use_bias) & 
+                            (df['config_probe_C'] == C)
+                        ]
+                        
+                        if filtered_df.shape[0] >= 1:
+                            roc_auc = filtered_df['metric_roc_auc'].iloc[-1]
+                            if roc_auc > best_auroc:
+                                best_auroc = roc_auc
+                                best_params = filtered_df.iloc[-1].to_dict()
+                    
+                else:
+                    print("Probe type not valid.")
+                    return
+
+    best_params_format = {}
+    for key in best_params.keys():
+        if key.startswith('config_probe_') and key != 'config_probe_type':
+            best_params_format[key[len('config_probe_'):]] = best_params[key]
+        elif key == 'config_layer':
+            best_params_format[key[len('config_'):]] = best_params[key]
+    print(f"Loaded Params: {best_params_format}")
+    print(f"Loaded roc_auc: {best_auroc}")
+    return best_params_format
 
 
 def run_full_hyp_search_on_layers(
@@ -131,102 +198,6 @@ def run_full_hyp_search_on_layers(
         print(f"Best Params, Layer: {layer}, C: {C}", end="")
     print(f", Normalize: {norm_bias_params[0]}, Use Bias: {norm_bias_params[1]}")
     print(f"Best roc_auc: {best_auroc}")
-
-
-def load_best_params_from_search(probe_type, behaviour, datasource, generation_method, response_model, activations_model, layers_list=LAYERS_LIST):
-    df = load_probe_eval_dicts_as_df({
-        "config.probe/type": probe_type,
-        "behaviour": behaviour,
-        "train/datasource": datasource,
-        "train/generation_method": generation_method,
-        "train/response_model": response_model,
-        "test/datasource": datasource,
-        "test/generation_method": generation_method,
-        "test/response_model": response_model,
-        "config.activations_model": activations_model,
-        "state": "finished"  # Only completed runs
-    })
-    # print(df)
-    best_auroc = 0
-    best_params = {}
-    for layer in layers_list:
-        for use_bias in USE_BIAS_RANGE:
-            for normalize in NORMALIZE_RANGE:
-                if 'torch' in probe_type:
-                    for lr in LR_RANGE:
-                        for weight_decay in WEIGHT_DECAY_RANGE:
-                            filtered_df = df[
-                                (df['config_layer'] == layer) & 
-                                (df['config_probe_normalize'] == normalize) & 
-                                (df['config_probe_use_bias'] == use_bias) & 
-                                (df['config_probe_lr'] == lr) & 
-                                (df['config_probe_weight_decay'] == weight_decay)
-                            ]
-                            
-                            if filtered_df.shape[0] >= 1:
-                                roc_auc = filtered_df['metric_roc_auc'].iloc[-1]
-                                if roc_auc > best_auroc:
-                                    best_auroc = roc_auc
-                                    best_params = filtered_df.iloc[-1].to_dict()
-                    
-                elif probe_type == 'mean':
-                    for C in C_RANGE:
-                        filtered_df = df[
-                            (df['config_layer'] == layer) & 
-                            (df['config_probe_normalize'] == normalize) & 
-                            (df['config_probe_use_bias'] == use_bias) & 
-                            (df['config_probe_C'] == C)
-                        ]
-                        
-                        if filtered_df.shape[0] >= 1:
-                            roc_auc = filtered_df['metric_roc_auc'].iloc[-1]
-                            if roc_auc > best_auroc:
-                                best_auroc = roc_auc
-                                best_params = filtered_df.iloc[-1].to_dict()
-                    
-                else:
-                    print("Probe type not valid.")
-                    return
-
-    best_params_format = {}
-    for key in best_params.keys():
-        if key.startswith('config_probe_') and key != 'config_probe_type':
-            best_params_format[key[len('config_probe_'):]] = best_params[key]
-        elif key == 'config_layer':
-            best_params_format[key[len('config_'):]] = best_params[key]
-    print(f"Loaded Params: {best_params_format}")
-    print(f"Loaded roc_auc: {best_auroc}")
-    return best_params_format
-
-
-def get_best_hyperparams_for_train_setup(train_setup):
-    """
-    Gets the best hyperparameters for the probes specified in the train_setup list.
-    Args:
-        train_setup (list): 
-            [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
-    """
-    tr = train_setup
-    
-    # Get the best hyperparameters for each probe if not provided
-    for i in range(len(tr)):
-        if not isinstance(tr[i][-1], ConfigDict):
-            best_cfg = None
-            try:
-                best_cfg = ConfigDict.from_json(tr[i][3], tr[i][0], tr[i][1])
-            except KeyError:
-                print(f"No best hyperparameters found for {tr[i][3]}, {tr[i][0]}, {tr[i][1]} locally, pulling from wandb...")
-                best_cfg = load_best_params_from_search(tr[i][0], tr[i][1], tr[i][2], tr[i][4], tr[i][5], tr[i][3])
-            if best_cfg is None:
-                raise ValueError(f"No best hyperparameters found for {tr[i][3]}, {tr[i][0]}, {tr[i][1]}")
-            
-            if tr[i][0] == 'mean':
-                tr[i].append(ConfigDict(layer=best_cfg.layer, use_bias=True, normalize=True, C=best_cfg.C))
-            elif "torch" in tr[i][0]:
-                tr[i].append(ConfigDict(layer=best_cfg.layer, use_bias=True, normalize=True, lr=best_cfg.lr, weight_decay=best_cfg.weight_decay))
-            else:
-                raise ValueError(f"Wrong probe type: {tr[i][0]}")
-    return tr
 
 
 def pick_popular_hyperparam(best_params_list, param_name):
