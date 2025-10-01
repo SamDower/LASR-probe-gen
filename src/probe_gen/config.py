@@ -65,39 +65,31 @@ class ConfigDict(dict):
 # Need to know what experiments are done, for plotting and reproducing
 BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
     "refusal": {
-        "use_both": False,
         "rlhf": {"llama_3b": "ministral_8b",},
         "jailbreaks": {"llama_3b": "ministral_8b",}},
     "lists": {
-        "use_both": False,
         "ultrachat": {"llama_3b": "qwen_3b",},
         "shakespeare": {"llama_3b": "qwen_3b",}},
     "metaphors": {
-        "use_both": False,
         "ultrachat": {"llama_3b": "qwen_3b",},
         "shakespeare": {"llama_3b": "qwen_3b",}},
     "science": {
-        "use_both": False,
         "ultrachat": {"llama_3b": "qwen_3b",},
         "mmlu": {"llama_3b": "qwen_3b",}},
     "sycophancy": {
-        "use_both": True,
         "multichoice": {"llama_3b": "ministral_8b",},
         "arguments": {"llama_3b": "qwen_7b",}},
     "authority": {
-        "use_both": True,
         "multichoice": {"llama_3b": "ministral_8b",},
         "arguments": {"llama_3b": "qwen_7b",}},
 }
 
 BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION = {
     "deception": {
-        "use_both": True,
         "roleplaying": {"llama_3b": "mistral_7b",},
         "trading": {"llama_3b": "deepseek_mixtral",},
     },
     "sandbagging": {
-        "use_both": True,
         "wmd": {"llama_3b": "mistral_7b",},
         "multichoice": {"llama_3b": "ministral_8b",}},
 }
