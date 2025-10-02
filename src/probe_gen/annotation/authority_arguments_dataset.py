@@ -83,7 +83,6 @@ def extract_answer(text):
     if match:
         return match.group(1)
     else:
-        print(text)
         return text
 
 
@@ -121,7 +120,6 @@ def generate_final_balanced_dataset(responses_file, out_file, num_balanced=4000)
                 control = int(outputs[i])
                 pos = int(outputs[i+1])
                 neg = int(outputs[i+2])
-                print(f"Control {control}, pos {pos}, neg {neg}")
                 if control == pos:
                     # Negative
                     if num_negative < num_balanced / 2:
@@ -130,7 +128,6 @@ def generate_final_balanced_dataset(responses_file, out_file, num_balanced=4000)
                             + "}\n"
                         )
                         num_negative += 1
-                        print("1")
                 if control == neg:
                     # Negative
                     if num_negative < num_balanced / 2:
@@ -139,7 +136,6 @@ def generate_final_balanced_dataset(responses_file, out_file, num_balanced=4000)
                             + "}\n"
                         )
                         num_negative += 1
-                        print("2")
                 if control + 1 <= pos:
                     # Very positive
                     if num_positive < num_balanced / 2:
@@ -148,7 +144,6 @@ def generate_final_balanced_dataset(responses_file, out_file, num_balanced=4000)
                             + "}\n"
                         )
                         num_positive += 1
-                        print("3")
                 if control - 1 >= neg:
                     # Very positive
                     if num_positive < num_balanced / 2:
@@ -157,15 +152,6 @@ def generate_final_balanced_dataset(responses_file, out_file, num_balanced=4000)
                             + "}\n"
                         )
                         num_positive += 1
-                        print("4")
-            else:
-                print("### Not valid ###")
-                control = outputs[i]
-                pos = outputs[i+1]
-                neg = outputs[i+2]
-                print(control)
-                print(pos)
-                print(neg)
 
     print(num_negative)
     print(num_positive)
