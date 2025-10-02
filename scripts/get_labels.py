@@ -49,12 +49,6 @@ def main():
         help="How large the balanced dataset should be, stopping labelling early if reached",
     )
     parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=1,
-        help="Batch size for HarmBench processing (reduce if you get CUDA OOM errors)",
-    )
-    parser.add_argument(
         "--max-samples",
         type=int,
         default=None,
@@ -83,7 +77,6 @@ def main():
         grade_data_harmbench(
             filename=args.in_path,
             output_path=args.out_path,
-            batch_size=args.batch_size,
             num_balanced=args.num_balanced,
             max_samples=args.max_samples,
             only_resplit = args.only_resplit,
