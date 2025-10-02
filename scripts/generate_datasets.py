@@ -97,7 +97,6 @@ def get_labels(behaviour, datasource, prompts_path, responses_path, out_path, nu
         grade_data_harmbench(
             filename=responses_path,
             output_path=out_path,
-            batch_size=100,
             num_balanced=num_balanced,
             max_samples=None,
             only_resplit = False, # args.only_resplit,       # Nathalie I don't know what these are meant to do
