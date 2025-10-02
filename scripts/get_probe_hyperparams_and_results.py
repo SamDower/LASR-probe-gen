@@ -57,7 +57,7 @@ def get_or_search_for_best_hyperparams(train_setup):
     
     # Run a hyperparameter search since not done before
     best_params_list = []
-    for generation_method in  ["on_policy", "off_policy"]:
+    for generation_method in  ["on_policy", "incentivised"]:
         if tr[0][0] == "mean":
             # Search all layers for mean probes
             layers_list = [6,9,12,15,18,21]
@@ -72,12 +72,13 @@ def get_or_search_for_best_hyperparams(train_setup):
             raise ValueError(f"Probe type {tr[0][0]} not supported")
         
         run_full_hyp_search_on_layers(
-            tr[0][0], tr[0][1], tr[0][2], tr[0][3], tr[0][5], generation_method, tr[0][6], layers_list
+            tr[0][0], tr[0][1], tr[0][2], tr[0][3], tr[0][3], generation_method, "train", layers_list
         )
+        
         best_params_list.append(load_best_params_from_search(
-            tr[0][0], tr[0][1], tr[0][2], generation_method, tr[0][5], tr[0][3], layers_list
+            tr[0][0], tr[0][1], tr[0][2], generation_method, tr[0][3], tr[0][3], layers_list
         ))
-
+  
     # Work out the best behaviour hyperparameters based on best policy hyperparameters, then save them to the json
     best_params = ConfigDict()
     if tr[0][0] == "mean":

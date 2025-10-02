@@ -149,7 +149,7 @@ def load_best_params_from_search(probe_type, behaviour, datasource, generation_m
     })
     if df.shape[0] == 0:
         raise ValueError(f"No runs found for {probe_type}, {behaviour}, {datasource}, {generation_method}, {response_model}, {activations_model}")
-    # print(df)
+    
     best_auroc = 0
     best_params = {}
     for layer in layers_list:

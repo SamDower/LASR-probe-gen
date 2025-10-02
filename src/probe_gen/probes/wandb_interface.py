@@ -217,6 +217,14 @@ def load_probe_eval_dict_batch(lookup_dicts_list):
     return results_list
 
 
+def unwrap_value(x):
+    """If W&B stores {'value': ...}, unwrap it. Otherwise return unchanged."""
+    if isinstance(x, dict) and "value" in x and len(x) == 1:
+        return x["value"]
+    return x
+
+
+
 def extract_all_run_info(run):
     """
     Automatically extract all available information from a wandb run
@@ -233,7 +241,7 @@ def extract_all_run_info(run):
             # Convert lists/complex objects to strings for DataFrame compatibility
             if isinstance(value, (list, dict)):
                 value = str(value) if value else None
-            run_info[attr] = value
+            run_info[attr] = value["value"] if isinstance(value, dict) else value
     
     # 2. All config parameters with proper key naming
     run_config = run.config
@@ -242,7 +250,7 @@ def extract_all_run_info(run):
     for key, value in run_config.items():
         # Replace problematic characters in column names
         clean_key = f"config_{key.replace('/', '_').replace('.', '_')}"
-        run_info[clean_key] = value
+        run_info[clean_key] = value["value"] if isinstance(value, dict) else value
     
     # 3. All summary metrics (final logged values)
     run_summary = run.summary
@@ -252,7 +260,7 @@ def extract_all_run_info(run):
         # Skip internal wandb keys that start with underscore
         if not key.startswith('_'):
             clean_key = f"metric_{key.replace('/', '_').replace('.', '_')}"
-            run_info[clean_key] = value
+            run_info[clean_key] = value["value"] if isinstance(value, dict) else value
     
     # 4. System info (if available)
     if hasattr(run, 'system_metrics') and run.system_metrics:
@@ -261,7 +269,7 @@ def extract_all_run_info(run):
             run_system_metrics = json.loads(run_system_metrics)
         for key, value in run_system_metrics.items():
             clean_key = f"system_{key.replace('/', '_').replace('.', '_')}"
-            run_info[clean_key] = value
+            run_info[clean_key] = value["value"] if isinstance(value, dict) else value
     
     return run_info
 
