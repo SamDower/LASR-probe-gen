@@ -67,7 +67,6 @@ def _load_activations_from_hf(repo_id, filename, verbose=False):
     return activations_tensor, attention_mask
 
 
-# def load_hf_activations_and_labels_at_layer(dataset_name, layer, verbose=False):
 def load_hf_activations_at_layer(
     behaviour: str, 
     datasource: str, 
@@ -97,6 +96,9 @@ def load_hf_activations_at_layer(
         attention_mask (tensor): tensor stating which tokens are real (1) or padded (0) of shape [batch_size, seq_len]
         labels_tensor (tensor): tensor of ground truth labels of shape [batch_size].
     """
+    if datasource == "trading":
+        mode = "3.5k"
+        
     try:
         repo_id = f"lasrprobegen/{behaviour}-activations"
         filepath = f"{datasource}/{activations_model}/{response_model}_{generation_method}_{mode}_layer_{layer}.pkl"

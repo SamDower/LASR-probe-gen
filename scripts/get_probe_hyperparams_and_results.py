@@ -106,7 +106,7 @@ def do_single_probe_experiment(train_setup, test_setup):
     """
     tr = train_setup
     ts = test_setup
-    if len(tr) != 1 or len(ts) != 1:
+    if len(tr) != 1:
         raise Exception("Only one train_setup can be evaluated at a time")
     
     print(f"Processing {tr[0][0]} for {tr[0][1]} for {tr[0][2]} for {tr[0][3]} for {tr[0][4]}")
@@ -121,7 +121,7 @@ def do_single_probe_experiment(train_setup, test_setup):
         shutil.rmtree(hf_home)
 
 
-def do_probe_experiment_default(probe_type, activations_model, train_OOD, test_incentivised):
+def do_probe_experiment_default(probe_type, activations_model, test_incentivised):
     done_experiments = BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL
     if test_incentivised:
         done_experiments += BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION
@@ -136,22 +136,21 @@ def do_probe_experiment_default(probe_type, activations_model, train_OOD, test_i
         for generation_method in train_gen_methods:
             if behaviour in ["deception", "sandbagging"] and generation_method == "on_policy":
                 continue
-            ds = done_experiments[behaviour].keys()
-            for datasource_ID, datasource_OOD in [(ds[0], ds[1]), (ds[1], ds[0])]:
+            
+            ds = done_experiments[behaviour].keys()[1:]
+            datasource_ID, datasource_OOD = (ds[0], ds[1])
+            for datasource in [datasource_ID, datasource_OOD]:
                 # Get experiments into format
                 # [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
-
-                if train_OOD:
-                    off_policy_model = done_experiments[behaviour][datasource_OOD][activations_model]
-                    response_model = activations_model if generation_method != "off_policy" else off_policy_model
-                    train_setup = [[probe_type, behaviour, datasource_OOD, activations_model, generation_method, response_model, "train"]]
-                else:
-                    off_policy_model = done_experiments[behaviour][datasource_ID][activations_model]
-                    response_model = activations_model if generation_method != "off_policy" else off_policy_model
-                    train_setup = [[probe_type, behaviour, datasource_ID, activations_model, generation_method, response_model, "train"]]
+                off_policy_model = done_experiments[behaviour][datasource][activations_model]
+                response_model = activations_model if generation_method != "off_policy" else off_policy_model
+                train_setup = [[probe_type, behaviour, datasource, activations_model, generation_method, response_model, "train"]]
+                
                 test_setup = [[behaviour, datasource_ID, activations_model, test_gen_method, activations_model, "test"]]
+                if done_experiments[behaviour]["test_both"]:
+                    test_setup.append([behaviour, datasource_OOD, activations_model, test_gen_method, activations_model, "test"])
                 do_single_probe_experiment(train_setup, test_setup)
-
+            
 
 def do_probe_experiment_combinations(
     new_probe_types, 
@@ -159,7 +158,6 @@ def do_probe_experiment_combinations(
     new_activations_models,
     new_train_gen_methods, 
     new_test_gen_methods, 
-    new_train_OOD,
     ):
     done_experiments = BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL+BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION    
     # Iterate through all train and test pairs
@@ -170,22 +168,19 @@ def do_probe_experiment_combinations(
                     for test_gen_method in new_test_gen_methods:
                         if behaviour in ["deception", "sandbagging"] and (train_gen_method == "on_policy" or test_gen_method == "on_policy"):
                             continue
-                        for train_OOD in new_train_OOD:
-                            ds = done_experiments[behaviour].keys()
-                            for datasource_ID, datasource_OOD in [(ds[0], ds[1]), (ds[1], ds[0])]:
-                                # Get experiments into format
-                                # [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
-                                if train_OOD:
-                                    off_policy_model = done_experiments[behaviour][datasource_OOD][activations_model]
-                                    response_model = activations_model if train_gen_method != "off_policy" else off_policy_model
-                                    train_setup = [[probe_type, behaviour, datasource_OOD, activations_model, train_gen_method, response_model, "train"]]
-                                else:
-                                    off_policy_model = done_experiments[behaviour][datasource_ID][activations_model]
-                                    response_model = activations_model if train_gen_method != "off_policy" else off_policy_model
-                                    train_setup = [[probe_type, behaviour, datasource_ID, activations_model, train_gen_method, response_model, "train"]]
-                                test_setup = [[behaviour, datasource_ID, activations_model, test_gen_method, activations_model, "test"]]
-                                do_single_probe_experiment(train_setup, test_setup)
-
+                        ds = done_experiments[behaviour].keys()[1:]
+                        datasource_ID, datasource_OOD = (ds[0], ds[1])
+                        for datasource in [datasource_ID, datasource_OOD]:
+                            # Get experiments into format
+                            # [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
+                            off_policy_model = done_experiments[behaviour][datasource][activations_model]
+                            response_model = activations_model if train_gen_method != "off_policy" else off_policy_model
+                            train_setup = [[probe_type, behaviour, datasource, activations_model, train_gen_method, response_model, "train"]]
+                            
+                            test_setup = [[behaviour, datasource_ID, activations_model, test_gen_method, activations_model, "test"]]
+                            if done_experiments[behaviour]["test_both"]:
+                                test_setup.append([behaviour, datasource_OOD, activations_model, test_gen_method, activations_model, "test"])
+                            do_single_probe_experiment(train_setup, test_setup)
 
 if __name__ == "__main__":
     # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
@@ -194,7 +189,6 @@ if __name__ == "__main__":
             do_probe_experiment_default(
                 probe_type = ["mean", "attention_torch"][1],
                 activations_model = ["llama_3b"][0], # currently the only option
-                train_OOD = train_OOD, # Falsemeans test set wont match train set
                 test_incentivised = test_incentivised, # False means we test against on policy data
             )
     
@@ -205,7 +199,6 @@ if __name__ == "__main__":
     #     new_activations_models = ["llama_3b", "qwen_3b"],
     #     new_train_gen_methods = ["on_policy", "incentivised", "prompted", "off_policy"],
     #     new_test_gen_methods = ["on_policy", "incentivised", "prompted", "off_policy"],
-    #     new_train_OOD = [False, True],
     # )
 
     # # Option 3: Set experiments manually
@@ -218,5 +211,5 @@ if __name__ == "__main__":
     #     ["refusal", "rlhf", "llama_3b", "on_policy", "llama_3b", "test"],
     #     ["refusal", "jailbreaks", "llama_3b", "on_policy", "llama_3b", "test"],
     # ]
-    # for tr, ts in zip(train_setup, test_setup):
-    #     do_single_probe_experiment([tr], [ts])
+    # for tr in train_setup:
+    #     do_single_probe_experiment([tr], test_setup)
