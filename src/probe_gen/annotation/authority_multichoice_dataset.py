@@ -62,7 +62,6 @@ def extract_answer(response):
     if len(unique_matches) == 0:
         return response
     if len(unique_matches) > 1:
-        print(response)
         return ' '.join(unique_matches)
 
 
