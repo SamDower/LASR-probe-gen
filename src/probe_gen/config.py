@@ -65,7 +65,7 @@ class ConfigDict(dict):
 # Need to know what experiments are done, for plotting and reproducing
 BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
     "refusal": {
-        "test_both": False,
+        "test_both": False, # whether we have test data for both ID and OOD
         "rlhf": {"llama_3b": "ministral_8b",},
         "jailbreaks": {"llama_3b": "ministral_8b",}},
     "lists": {

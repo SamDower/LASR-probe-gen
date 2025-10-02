@@ -144,9 +144,19 @@ def create_activation_datasets(activations_tensor, labels_tensor, splits=[3500, 
     """
     torch.manual_seed(0)
 
-    if len(splits) != 3 or sum(splits) > labels_tensor.shape[0]:
-        raise ValueError("Splits must be a list of 3 numbers that sum to less than or equal to number of samples")
-
+    if len(splits) != 3:
+        raise ValueError("Splits must be a list of 3 numbers [train_size, val_size, test_size]")
+    
+    if sum(splits) > labels_tensor.shape[0]:
+        if (sum(splits) - (labels_tensor.shape[0])) > 500:
+            raise ValueError("Splits must sum to less than or equal to number of samples, within a margin of 500")
+            
+        # Keep the val and test sizes the same but reduce the train size
+        val_test_size = splits[1] + splits[2]
+        train_size = labels_tensor.shape[0] - val_test_size
+        print(f"Do not have {splits[0]} training samples, using {train_size} instead")
+        splits[0] = train_size
+    
     # Get indices for each label and subsample both classes to same size
     label_0_indices = (labels_tensor == 0.0).nonzero(as_tuple=True)[0]
     label_1_indices = (labels_tensor == 1.0).nonzero(as_tuple=True)[0]

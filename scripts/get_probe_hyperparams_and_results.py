@@ -29,7 +29,7 @@ from probe_gen.config import (
 # If getting 'Could not find project LASR_probe_gen' get key from https://wandb.ai/authorize and paste below
 os.environ["WANDB_SILENT"] = "true"
 import wandb
-wandb.login(key="")
+wandb.login(key="6be1451a94426ad005abefd2c95fad7e45022122")
 
 hf_token = os.getenv("HF_TOKEN")
 if not hf_token:
@@ -182,15 +182,17 @@ def do_probe_experiment_combinations(
                                 test_setup.append([behaviour, datasource_OOD, activations_model, test_gen_method, activations_model, "test"])
                             do_single_probe_experiment(train_setup, test_setup)
 
+
 if __name__ == "__main__":
+    # MAKE SURE TO SET HF_TOKEN IN COMMAND LINE AND WANDB KEY AT TOP OF THIS FILE
+    
     # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
-    for train_OOD in [False, True]:
-        for test_incentivised in [False, True]:
-            do_probe_experiment_default(
-                probe_type = ["mean", "attention_torch"][1],
-                activations_model = ["llama_3b"][0], # currently the only option
-                test_incentivised = test_incentivised, # False means we test against on policy data
-            )
+    for test_incentivised in [False, True]:
+        do_probe_experiment_default(
+            probe_type = ["mean", "attention_torch"][1],
+            activations_model = ["llama_3b"][0], # currently the only option
+            test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
+        )
     
     # # Option 2: Set parameters based on all combinations
     # do_probe_experiment_combinations(
