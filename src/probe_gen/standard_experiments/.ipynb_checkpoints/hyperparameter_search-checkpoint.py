@@ -108,6 +108,7 @@ def run_full_hyp_search_on_layers(
         if "mean" in probe_type:
             activations_tensor = probes.MeanAggregation()(activations_tensor, attention_mask)
         split_val = 2500 if behaviour in ["deception", "sandbagging"] else 3500
+        split_val = 3300 if datasource == "shakespeare" else split_val
         train_dataset, val_dataset, _ = probes.create_activation_datasets(
             activations_tensor, labels_tensor, splits=[split_val, 500, 0], verbose=True)
 

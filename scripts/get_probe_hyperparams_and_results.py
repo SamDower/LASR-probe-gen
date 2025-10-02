@@ -137,7 +137,7 @@ def do_probe_experiment_default(probe_type, activations_model, test_incentivised
             if behaviour in ["deception", "sandbagging"] and generation_method == "on_policy":
                 continue
             
-            ds = done_experiments[behaviour].keys()[1:]
+            ds = list(done_experiments[behaviour].keys())[1:]
             datasource_ID, datasource_OOD = (ds[0], ds[1])
             for datasource in [datasource_ID, datasource_OOD]:
                 # Get experiments into format
@@ -168,7 +168,7 @@ def do_probe_experiment_combinations(
                     for test_gen_method in new_test_gen_methods:
                         if behaviour in ["deception", "sandbagging"] and (train_gen_method == "on_policy" or test_gen_method == "on_policy"):
                             continue
-                        ds = done_experiments[behaviour].keys()[1:]
+                        ds = list(done_experiments[behaviour].keys())[1:]
                         datasource_ID, datasource_OOD = (ds[0], ds[1])
                         for datasource in [datasource_ID, datasource_OOD]:
                             # Get experiments into format

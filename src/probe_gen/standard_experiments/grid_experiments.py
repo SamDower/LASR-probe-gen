@@ -228,6 +228,7 @@ def run_grid_experiment_lean(train_setup, test_setup):
         if "mean" in tr[i][0]:
             activations_tensor = probes.MeanAggregation()(activations_tensor, attention_mask)
         split_val = 2500 if tr[i][1] in ["deception", "sandbagging"] else 3500
+        split_val = 3300 if tr[i][2] == "shakespeare" else split_val
         train_dataset, val_dataset, _ = probes.create_activation_datasets(activations_tensor, labels_tensor, splits=[split_val, 500, 0], verbose=True)
         
         # Train the probe
