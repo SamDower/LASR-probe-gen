@@ -62,7 +62,7 @@ def get_or_search_for_best_hyperparams(train_setup):
         if tr[0][0] == "mean":
             layers_list = [6,9,12,15,18,21]
         elif tr[0][0] == "attention_torch":
-            cfg = ConfigDict.from_json("mean", tr[0][1])
+            cfg = ConfigDict.from_json(tr[0][3], tr[0][0], tr[0][1])
             if cfg is None or "layer" not in cfg:
                 layers_list = [12]
             else:
@@ -111,7 +111,7 @@ def do_single_probe_experiment(train_setup, test_setup):
     
     print(f"Processing {tr[0][0]} for {tr[0][1]} for {tr[0][2]} for {tr[0][3]} for {tr[0][4]}")
     # Get the best hyperparameters for each probe if not provided
-    tr = get_best_hyperparams_for_train_setup(tr)
+    tr = get_or_search_for_best_hyperparams(tr)
     # Now evaluate the behaviour with the best hyperparameters
     run_grid_experiment_lean(tr, ts)
     # Delete activation files

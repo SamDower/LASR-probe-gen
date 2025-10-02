@@ -218,7 +218,7 @@ def get_best_hyperparams_for_train_setup(train_setup):
             except KeyError:
                 print(f"No best hyperparameters found for {tr[i][3]}, {tr[i][0]}, {tr[i][1]} locally, pulling from wandb...")
                 best_cfg = load_best_params_from_search(tr[i][0], tr[i][1], tr[i][2], tr[i][4], tr[i][5], tr[i][3])
-            if best_cfg is None:
+            if best_cfg is None or len(list(best_cfg.keys())) == 0:
                 raise ValueError(f"No best hyperparameters found for {tr[i][3]}, {tr[i][0]}, {tr[i][1]}")
             
             if tr[i][0] == 'mean':
