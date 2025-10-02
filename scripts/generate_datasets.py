@@ -360,6 +360,7 @@ def main():
 
                     if generation_method == "off_policy":
                         response_model = off_policy_model
+                        generation_method == "on_policy"
                     else:
                         response_model = activations_model
 
