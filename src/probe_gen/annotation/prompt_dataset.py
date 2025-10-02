@@ -74,8 +74,6 @@ class PromptDataset(ABC):
         """
         pass
     
-
-    
     def generate_data(
         self,
         mode: str = None,
@@ -139,8 +137,50 @@ class PromptDataset(ABC):
         self._save_dataset(dataset, save_location=output_file)
         print(f"✓ Successfully generated {len(dataset)} {mode} samples, (skipped {skip} samples), saved to {output_file}")
 
-        return found_enough_samples # {mode: dataset}
+        return found_enough_samples # {mode: dataset}    
+    
+    def get_dataset_info(self) -> Dict[str, Any]:
+        """
+        Get information about this dataset.
         
+        Returns:
+            Dictionary with dataset metadata
+        """
+        return {
+            'name': self.dataset_name,
+            'class': self.__class__.__name__,
+            'description': self.__doc__ or "No description available",
+            'train_test_gap': self.default_train_test_gap
+        }
+    
+    def _validate_inputs(self, mode: str, n_samples: int, skip: int) -> None:
+        """Validate input parameters."""
+        if mode not in ["train", "test"]:
+            raise ValueError(f"Mode must be 'train' or 'test', got '{mode}'")
+        if n_samples <= 0:
+            raise ValueError(f"n_samples must be positive, got {n_samples}")
+        if skip < 0:
+            raise ValueError(f"skip must be non-negative, got {skip}")
+    
+    def _ensure_data_downloaded(self) -> None:
+        """Ensure data is downloaded (only call once)."""
+        if not self._data_downloaded:
+            print(f"Downloading data for {self.dataset_name}...")
+            self.download_data()
+            self._data_downloaded = True
+
+    def _save_dataset(self, dataset: Dataset, save_location:str) -> None:
+        """Save dataset to JSON file."""
+        # Convert dataset to pandas and then to JSON
+        df = dataset.to_pandas()
+
+        # Save as JSON lines format for easy loading
+        with open(save_location, 'w') as f:
+            for _, row in df.iterrows():
+                json.dump(row.to_dict(), f)
+                f.write('\n')
+        
+        print(f"Dataset saved to {save_location}")
 
     # OLD
     # def generate_data(
@@ -279,52 +319,3 @@ class PromptDataset(ABC):
     #         print(f"\n✓ Successfully created {split_name} dataset with {len(results[split_name])} samples")
         
     #     return results
-    
-    def get_dataset_info(self) -> Dict[str, Any]:
-        """
-        Get information about this dataset.
-        
-        Returns:
-            Dictionary with dataset metadata
-        """
-        return {
-            'name': self.dataset_name,
-            'class': self.__class__.__name__,
-            'description': self.__doc__ or "No description available",
-            'train_test_gap': self.default_train_test_gap
-        }
-    
-    def _validate_inputs(self, mode: str, n_samples: int, skip: int) -> None:
-        """Validate input parameters."""
-        if mode not in ["train", "test"]:
-            raise ValueError(f"Mode must be 'train' or 'test', got '{mode}'")
-        if n_samples <= 0:
-            raise ValueError(f"n_samples must be positive, got {n_samples}")
-        if skip < 0:
-            raise ValueError(f"skip must be non-negative, got {skip}")
-    
-    def _ensure_data_downloaded(self) -> None:
-        """Ensure data is downloaded (only call once)."""
-        if not self._data_downloaded:
-            print(f"Downloading data for {self.dataset_name}...")
-            self.download_data()
-            self._data_downloaded = True
-    
-
-    def _get_default_save_location(self) -> str:
-        """Get the default save location for this dataset based on its name."""
-        return data.prompt_datasets
-
-    def _save_dataset(self, dataset: Dataset, save_location:str) -> None:
-        """Save dataset to JSON file."""
-        # Convert dataset to pandas and then to JSON
-        df = dataset.to_pandas()
-
-        # Save as JSON lines format for easy loading
-        with open(save_location, 'w') as f:
-            for _, row in df.iterrows():
-                json.dump(row.to_dict(), f)
-                f.write('\n')
-        
-        print(f"Dataset saved to {save_location}")
-

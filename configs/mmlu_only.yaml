@@ -1,0 +1,10 @@
+experiments:
+  - behaviour: science
+    datasources: ["mmlu"]
+    generation_methods: ["on_policy", "incentivised", "prompted", "off_policy"]
+    off_policy_model: "qwen_3b"
+    activations_model: "llama_3b"
+    layers: [0,3,6,9,12,15,18,21,24,27]
+    train_size: 4000
+    test_size: 0
+    temperature: 1.0

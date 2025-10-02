@@ -10,7 +10,6 @@ import probe_gen.probes as probes
 from probe_gen.config import ConfigDict
 from probe_gen.probes.wandb_interface import load_probe_eval_dicts_as_df
 
-# TODO: make layers list be conditional on activations model
 LAYERS_LIST = [6,9,12,15,18,21]
 USE_BIAS_RANGE = [True]
 NORMALIZE_RANGE = [True]
@@ -19,11 +18,132 @@ LR_RANGE = [1e-4, 1e-3, 1e-2]
 WEIGHT_DECAY_RANGE = [0, 1e-5, 1e-4]
 
 
-def load_best_params_from_search(probe_type, dataset_name, activations_model, layers_list=LAYERS_LIST):
+def run_full_hyp_search_on_layers(
+    probe_type: str, 
+    behaviour: str, 
+    datasource: str, 
+    activations_model: str="llama_3b", 
+    response_model: str="llama_3b", 
+    generation_method: str="on_policy", 
+    mode: str="train", 
+    layers_list: list=LAYERS_LIST):
+    
+    best_auroc = 0
+    best_params = []
+    # Do initial search on everything except normalize and use bias
+    norm_bias_params = [True, True]
+    normalize = norm_bias_params[0]
+    use_bias = norm_bias_params[1]
+    for layer in layers_list:
+        print(f"#### #### #### Evaluating layer {layer}")
+        activations_tensor, attention_mask, labels_tensor = probes.load_hf_activations_at_layer(
+            behaviour, datasource, activations_model, response_model, generation_method, mode, layer, and_labels=True, verbose=False)
+        if "mean" in probe_type:
+            activations_tensor = probes.MeanAggregation()(activations_tensor, attention_mask)
+        split_val = 2500 if behaviour in ["deception", "sandbagging"] else 3500
+        split_val = 3000 if datasource == "shakespeare" else split_val
+        train_dataset, val_dataset, _ = probes.create_activation_datasets(
+            activations_tensor, labels_tensor, splits=[split_val, 500, 0], verbose=False)
+
+        if 'torch' in probe_type:
+            for lr in LR_RANGE:
+                for weight_decay in tqdm(WEIGHT_DECAY_RANGE):
+                    if probe_type == "mean_torch":
+                        probe = probes.TorchLinearProbe(ConfigDict(use_bias=use_bias, normalize=normalize, lr=lr, weight_decay=weight_decay))
+                    elif probe_type == "attention_torch":
+                        probe = probes.TorchAttentionProbe(ConfigDict(use_bias=use_bias, normalize=normalize, lr=lr, weight_decay=weight_decay))
+                    probe.fit(train_dataset, val_dataset, verbose=False)
+                    eval_dict, _, _ = probe.eval(val_dataset)
+                    if eval_dict['roc_auc'] > best_auroc:
+                        best_auroc = eval_dict['roc_auc']
+                        best_params = [layer, lr, weight_decay]
+                    probes.wandb_interface.save_probe_dict_results(
+                        eval_dict=eval_dict,
+                        probe_type = probe_type,
+                        behaviour = behaviour,
+                        train_set=[datasource, generation_method, response_model],
+                        test_set=[datasource, generation_method, response_model],
+                        activations_model=activations_model,
+                        hyperparams=[layer, use_bias, normalize, lr, weight_decay],
+                    )
+        
+        elif probe_type == 'mean':
+            for C in tqdm(C_RANGE):
+                probe = probes.SklearnLogisticProbe(ConfigDict(use_bias=use_bias, C=C, normalize=normalize))
+                probe.fit(train_dataset, val_dataset, verbose=False)
+                eval_dict, _, _ = probe.eval(val_dataset)
+                if eval_dict['roc_auc'] > best_auroc:
+                    best_auroc = eval_dict['roc_auc']
+                    best_params = [layer, C]
+                probes.wandb_interface.save_probe_dict_results(
+                    eval_dict=eval_dict,
+                    probe_type = probe_type,
+                    behaviour = behaviour,
+                    train_set=[datasource, generation_method, response_model],
+                    test_set=[datasource, generation_method, response_model],
+                    activations_model=activations_model,
+                    hyperparams=[layer, use_bias, normalize, C],
+                )
+        
+        else:
+            print("Probe type not valid.")
+            return
+
+    # Do followup search on just whether to normalise and use bias
+    if 'torch' in probe_type:
+        layer, lr, weight_decay = best_params[0], best_params[1], best_params[2]
+    elif probe_type == 'mean':
+        layer, C = best_params[0], best_params[1]
+    for use_bias in USE_BIAS_RANGE:
+        for normalize in NORMALIZE_RANGE:
+            if normalize == norm_bias_params[0] and use_bias == norm_bias_params[1]:
+                continue
+                
+            if 'torch' in probe_type:
+                if probe_type == "mean_torch":
+                    probe = probes.TorchLinearProbe(ConfigDict(use_bias=use_bias, normalize=normalize, lr=lr, weight_decay=weight_decay))
+                elif probe_type == "attention_torch":
+                    probe = probes.TorchAttentionProbe(ConfigDict(use_bias=use_bias, normalize=normalize, lr=lr, weight_decay=weight_decay))
+                hyperparams = [layer, use_bias, normalize, lr, weight_decay]
+            elif probe_type == 'mean':
+                probe = probes.SklearnLogisticProbe(ConfigDict(use_bias=use_bias, C=C, normalize=normalize))
+                hyperparams = [layer, use_bias, normalize, C]
+            
+            probe.fit(train_dataset, None, verbose=False)
+            eval_dict, _, _ = probe.eval(val_dataset)
+            if eval_dict['roc_auc'] > best_auroc:
+                best_auroc = eval_dict['roc_auc']
+                norm_bias_params = [normalize, use_bias]
+            
+            probes.wandb_interface.save_probe_dict_results(
+                eval_dict=eval_dict,
+                probe_type = probe_type,
+                behaviour = behaviour,
+                train_set=[datasource, generation_method, response_model],
+                test_set=[datasource, generation_method, response_model],
+                activations_model=activations_model,
+                hyperparams=hyperparams,
+            )
+
+    # Do followup search on just whether to normalise and use bias
+    if 'torch' in probe_type:
+        print(f"Best Params, Layer: {layer}, LR: {lr}, Weight Decay: {weight_decay}", end="")
+    elif probe_type == 'mean':
+        print(f"Best Params, Layer: {layer}, C: {C}", end="")
+    print(f", Normalize: {norm_bias_params[0]}, Use Bias: {norm_bias_params[1]}")
+    print(f"Best roc_auc: {best_auroc}")
+
+
+def load_best_params_from_search(probe_type, behaviour, datasource, generation_method, response_model, activations_model, layers_list=LAYERS_LIST):
     df = load_probe_eval_dicts_as_df({
         "config.probe/type": probe_type,
-        "config.train_dataset": dataset_name,
-        "config.test_dataset": dataset_name,
+        "behaviour": behaviour,
+        "train/datasource": datasource,
+        "train/generation_method": generation_method,
+        "train/response_model": response_model,
+        "test/datasource": datasource,
+        "test/generation_method": generation_method,
+        "test/response_model": response_model,
         "config.activations_model": activations_model,
         "state": "finished"  # Only completed runs
     })
@@ -80,115 +200,34 @@ def load_best_params_from_search(probe_type, dataset_name, activations_model, la
     return best_params_format
 
 
-def run_full_hyp_search_on_layers(probe_type, dataset_name, activations_model, layers_list=LAYERS_LIST):
+def get_best_hyperparams_for_train_setup(train_setup):
     """
-    Trains a probe on each layer's activations and plots accuracy and roc_auc for each layer.
+    Gets the best hyperparameters for the probes specified in the train_setup list.
     Args:
-        probe_type (str): The type of probe to train (e.g. 'mean').
-        dataset_name (str): The dataset to both train and test on.
-        activations_model (str): The model to use for activations.
-        layers_list (list): List of layers to train on.
+        train_setup (list): 
+            [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
     """
-    best_auroc = 0
-    best_params = []
-    # Do initial search on everything except normalize and use bias
-    norm_bias_params = [True, True]
-    normalize = norm_bias_params[0]
-    use_bias = norm_bias_params[1]
-    for layer in layers_list:
-        print(f"#### #### #### Evaluating layer {layer}")
-        activations_tensor, attention_mask, labels_tensor = probes.load_hf_activations_and_labels_at_layer(dataset_name, layer)
-        if "mean" in probe_type:
-            activations_tensor = probes.MeanAggregation()(activations_tensor, attention_mask)
-        if "3k" in dataset_name or "3.5k" in dataset_name:
-            train_dataset, val_dataset, _ = probes.create_activation_datasets(activations_tensor, labels_tensor, splits=[2500, 500, 0])
-        else:
-            train_dataset, val_dataset, _ = probes.create_activation_datasets(activations_tensor, labels_tensor, splits=[3500, 500, 0])
-
-        if 'torch' in probe_type:
-            for lr in LR_RANGE:
-                for weight_decay in tqdm(WEIGHT_DECAY_RANGE):
-                    if probe_type == "mean_torch":
-                        probe = probes.TorchLinearProbe(ConfigDict(use_bias=use_bias, normalize=normalize, lr=lr, weight_decay=weight_decay))
-                    elif probe_type == "attention_torch":
-                        probe = probes.TorchAttentionProbe(ConfigDict(use_bias=use_bias, normalize=normalize, lr=lr, weight_decay=weight_decay))
-                    probe.fit(train_dataset, val_dataset, verbose=False)
-                    eval_dict, _, _ = probe.eval(val_dataset)
-                    if eval_dict['roc_auc'] > best_auroc:
-                        best_auroc = eval_dict['roc_auc']
-                        best_params = [layer, lr, weight_decay]
-                    probes.wandb_interface.save_probe_dict_results(
-                        eval_dict=eval_dict, 
-                        train_set_name=dataset_name,
-                        test_set_name=dataset_name,
-                        activations_model=activations_model,
-                        probe_type=probe_type,
-                        hyperparams=[layer, use_bias, normalize, lr, weight_decay],
-                    )
-        
-        elif probe_type == 'mean':
-            for C in tqdm(C_RANGE):
-                probe = probes.SklearnLogisticProbe(ConfigDict(use_bias=use_bias, C=C, normalize=normalize))
-                probe.fit(train_dataset, val_dataset, verbose=False)
-                eval_dict, _, _ = probe.eval(val_dataset)
-                if eval_dict['roc_auc'] > best_auroc:
-                    best_auroc = eval_dict['roc_auc']
-                    best_params = [layer, C]
-                probes.wandb_interface.save_probe_dict_results(
-                    eval_dict=eval_dict, 
-                    train_set_name=dataset_name,
-                    test_set_name=dataset_name,
-                    activations_model=activations_model,
-                    probe_type=probe_type,
-                    hyperparams=[layer, use_bias, normalize, C],
-                )
-        
-        else:
-            print("Probe type not valid.")
-            return
-
-    # Do followup search on just whether to normalise and use bias
-    if 'torch' in probe_type:
-        layer, lr, weight_decay = best_params[0], best_params[1], best_params[2]
-    elif probe_type == 'mean':
-        layer, C = best_params[0], best_params[1]
-    for use_bias in USE_BIAS_RANGE:
-        for normalize in NORMALIZE_RANGE:
-            if normalize == norm_bias_params[0] and use_bias == norm_bias_params[1]:
-                continue
-                
-            if 'torch' in probe_type:
-                if probe_type == "mean_torch":
-                    probe = probes.TorchLinearProbe(ConfigDict(use_bias=use_bias, normalize=normalize, lr=lr, weight_decay=weight_decay))
-                elif probe_type == "attention_torch":
-                    probe = probes.TorchAttentionProbe(ConfigDict(use_bias=use_bias, normalize=normalize, lr=lr, weight_decay=weight_decay))
-                hyperparams = [layer, use_bias, normalize, lr, weight_decay]
-            elif probe_type == 'mean':
-                probe = probes.SklearnLogisticProbe(ConfigDict(use_bias=use_bias, C=C, normalize=normalize))
-                hyperparams = [layer, use_bias, normalize, C]
+    tr = train_setup
+    
+    # Get the best hyperparameters for each probe if not provided
+    for i in range(len(tr)):
+        if not isinstance(tr[i][-1], ConfigDict):
+            best_cfg = None
+            try:
+                best_cfg = ConfigDict.from_json(tr[i][3], tr[i][0], tr[i][1])
+            except KeyError:
+                print(f"No best hyperparameters found for {tr[i][3]}, {tr[i][0]}, {tr[i][1]} locally, pulling from wandb...")
+                best_cfg = load_best_params_from_search(tr[i][0], tr[i][1], tr[i][2], tr[i][4], tr[i][5], tr[i][3])
+            if best_cfg is None:
+                raise ValueError(f"No best hyperparameters found for {tr[i][3]}, {tr[i][0]}, {tr[i][1]}")
             
-            probe.fit(train_dataset, None, verbose=False)
-            eval_dict, _, _ = probe.eval(val_dataset)
-            if eval_dict['roc_auc'] > best_auroc:
-                best_auroc = eval_dict['roc_auc']
-                norm_bias_params = [normalize, use_bias]
-            
-            probes.wandb_interface.save_probe_dict_results(
-                eval_dict=eval_dict, 
-                train_set_name=dataset_name,
-                test_set_name=dataset_name,
-                activations_model=activations_model,
-                probe_type=probe_type,
-                hyperparams=hyperparams,
-            )
-
-    # Do followup search on just whether to normalise and use bias
-    if 'torch' in probe_type:
-        print(f"Best Params, Layer: {layer}, LR: {lr}, Weight Decay: {weight_decay}", end="")
-    elif probe_type == 'mean':
-        print(f"Best Params, Layer: {layer}, C: {C}", end="")
-    print(f", Normalize: {norm_bias_params[0]}, Use Bias: {norm_bias_params[1]}")
-    print(f"Best roc_auc: {best_auroc}")
+            if tr[i][0] == 'mean':
+                tr[i].append(ConfigDict(layer=best_cfg.layer, use_bias=True, normalize=True, C=best_cfg.C))
+            elif "torch" in tr[i][0]:
+                tr[i].append(ConfigDict(layer=best_cfg.layer, use_bias=True, normalize=True, lr=best_cfg.lr, weight_decay=best_cfg.weight_decay))
+            else:
+                raise Exception(f"Wrong probe type: {tr[i][0]}")
+    return tr
 
 
 def pick_popular_hyperparam(best_params_list, param_name):

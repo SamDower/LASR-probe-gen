@@ -85,6 +85,8 @@ def get_prompt_dataset(behaviour, datasource):
         return JailbreakDataset()
     if datasource == "hh_rlhf":
         return RefusalDataset()
+    if datasource == "writingprompts":
+        return WritingPromptsDataset()
 
     return None
 
@@ -173,7 +175,7 @@ def _build_balanced_file(file_in, file_out, num_balanced):
     
     return pos_count + neg_count, min(pos_count, neg_count)
 
-def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, mode, num_balanced):
+def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, mode, num_balanced, generation_batch_size=50):
 
     temp_dir = Path("data/temp")
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -209,7 +211,7 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
             temperature=temperature,
             dataset_path="data/temp/prompts_latest.jsonl",
             output_file="data/temp/responses_latest.jsonl",
-            batch_size=200,
+            batch_size=generation_batch_size,
             behaviour=behaviour, 
             datasource=datasource,
             sample=0,
@@ -219,9 +221,10 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
             save_increment=-1,
         )
 
+        # Clean up any existing labelled responses file before labeling
         if os.path.exists("data/temp/labelled_responses_latest.jsonl"):
             os.remove("data/temp/labelled_responses_latest.jsonl")
-
+        
         get_labels(behaviour, datasource, "data/temp/prompts_latest.jsonl", "data/temp/responses_latest.jsonl", "data/temp/labelled_responses_latest.jsonl", num_balanced)
 
         # Combine new prompts and labelled responses with existing ones
@@ -239,7 +242,7 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
         else:
             # Guess how many more samples we need
             guess = ((num_balanced / 2) - smallest_class_length) * datapoints_tried / smallest_class_length + 200
-            next_n_samples = min(guess, 500)
+            next_n_samples = min(int(guess), 500)
 
     # Save dataset
     REPO_NAME = f"lasrprobegen/{behaviour}-activations"
@@ -273,7 +276,7 @@ def wipe_directory(directory):
         if file.is_file():  # only delete files, not subdirs
             file.unlink()
 
-def generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, mode, layers, balanced_responses_filepath):
+def generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, mode, layers, balanced_responses_filepath, activations_batch_size=32):
     print(f"Loading model: {MODELS[activations_model]}")
     model, tokenizer = get_model(MODELS[activations_model])
 
@@ -289,7 +292,7 @@ def generate_and_save_activations(behaviour, datasource, activations_model, resp
         tokenizer,
         dataset_path=balanced_responses_filepath,
         output_file=output_file,
-        batch_size=32,
+        batch_size=activations_batch_size,
         sample=0,
         layers_str=layers_str,
         save_increment=-1,
@@ -353,6 +356,8 @@ def main():
             train_size = exp["train_size"]
             test_size = exp["test_size"]
             temperature = exp["temperature"]
+            generation_batch_size = exp.get("generation_batch_size", 50)
+            activations_batch_size = exp.get("activations_batch_size", 32)
 
             for datasource in datasources:
                 prompt_dataset = get_prompt_dataset(behaviour, datasource)
@@ -366,8 +371,8 @@ def main():
 
                     try:
                         if train_size > 0:
-                            generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, "train", train_size)
-                            generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "train", layers, "data/temp/balanced_labelled_responses_all.jsonl")
+                            generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, "train", train_size, generation_batch_size)
+                            generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "train", layers, "data/temp/balanced_labelled_responses_all.jsonl", activations_batch_size)
                             # Delete all files that were used
                             wipe_directory(temp_dir)
                     except Exception as e:
@@ -377,8 +382,8 @@ def main():
                     
                     if test_size > 0:
                         try:
-                            generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, "test", test_size)
-                            generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "test", layers, "data/temp/balanced_labelled_responses_all.jsonl")
+                            generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, "test", test_size, generation_batch_size)
+                            generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "test", layers, "data/temp/balanced_labelled_responses_all.jsonl", activations_batch_size)
                             # Delete all files that were used
                             wipe_directory(temp_dir)
                         except Exception as e:
