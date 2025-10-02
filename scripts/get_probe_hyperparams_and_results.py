@@ -58,11 +58,12 @@ def get_or_search_for_best_hyperparams(train_setup):
     # Run a hyperparameter search since not done before
     best_params_list = []
     for generation_method in  ["on_policy", "off_policy"]:
-        # Search all layers for mean probes, search only best mean probe layer for attention probes
         if tr[0][0] == "mean":
+            # Search all layers for mean probes
             layers_list = [6,9,12,15,18,21]
         elif tr[0][0] == "attention_torch":
-            cfg = ConfigDict.from_json(tr[0][3], tr[0][0], tr[0][1])
+            # Search only best mean probe layer for attention probes, or 12 if no mean probe layer found
+            cfg = ConfigDict.from_json(tr[0][3], "mean", tr[0][1])
             if cfg is None or "layer" not in cfg:
                 layers_list = [12]
             else:
@@ -132,11 +133,10 @@ def do_probe_experiment_default(probe_type, activations_model, test_incentivised
         test_gen_method = 'on_policy'
     
     # Iterate through all train and test pairs
-    for behaviour in done_experiments.keys():
+    for behaviour in list(done_experiments.keys()):
         for generation_method in train_gen_methods:
             if behaviour in ["deception", "sandbagging"] and generation_method == "on_policy":
                 continue
-            
             ds = list(done_experiments[behaviour].keys())[1:]
             datasource_ID, datasource_OOD = (ds[0], ds[1])
             for datasource in [datasource_ID, datasource_OOD]:

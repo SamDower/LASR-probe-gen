@@ -1,4 +1,5 @@
 import os
+import json
 import pandas as pd
 import wandb
 
@@ -235,13 +236,19 @@ def extract_all_run_info(run):
             run_info[attr] = value
     
     # 2. All config parameters with proper key naming
-    for key, value in run.config.items():
+    run_config = run.config
+    if isinstance(run_config, str):
+        run_config = json.loads(run_config)
+    for key, value in run_config.items():
         # Replace problematic characters in column names
         clean_key = f"config_{key.replace('/', '_').replace('.', '_')}"
         run_info[clean_key] = value
     
     # 3. All summary metrics (final logged values)
-    for key, value in run.summary.items():
+    run_summary = run.summary
+    if hasattr(run_summary, "_json_dict") and isinstance(run_summary._json_dict, str):
+        run_summary = json.loads(run_summary._json_dict)
+    for key, value in run_summary.items():
         # Skip internal wandb keys that start with underscore
         if not key.startswith('_'):
             clean_key = f"metric_{key.replace('/', '_').replace('.', '_')}"
@@ -249,7 +256,10 @@ def extract_all_run_info(run):
     
     # 4. System info (if available)
     if hasattr(run, 'system_metrics') and run.system_metrics:
-        for key, value in run.system_metrics.items():
+        run_system_metrics = run.system_metrics
+        if isinstance(run_system_metrics, str):
+            run_system_metrics = json.loads(run_system_metrics)
+        for key, value in run_system_metrics.items():
             clean_key = f"system_{key.replace('/', '_').replace('.', '_')}"
             run_info[clean_key] = value
     
@@ -269,7 +279,6 @@ def load_probe_eval_dicts_as_df(lookup_dict):
     for run in runs:        
         # Get basic info
         run_info = extract_all_run_info(run)
-        
         results.append(run_info)
     
     df = pd.DataFrame(results)

@@ -1487,7 +1487,7 @@ def process_file_outputs_only(
         human_input_column = "human_inputs"
     else:
         # For off_policy_prompt, prepend extra_prompt to human inputs and generate new responses
-        prompts_key = f"{behaviour}_{datasource}" if f"{behaviour}_{datasource}" in BEHAVIOUR_PROMPTS.keys() else behaviour
+        prompts_key = f"{behaviour}_{datasource}" if f"{behaviour}_{datasource}" in list(BEHAVIOUR_PROMPTS.keys()) else behaviour
         if prompt_type == "alternating":
             if direct_or_incentivised == "direct":
                 positive_prompt = BEHAVIOUR_PROMPTS[prompts_key]['positive']

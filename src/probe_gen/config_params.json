@@ -9,10 +9,6 @@
                 "C": 0.01,
                 "layer": 12
             },
-            "deception_rp": {
-                "C": 0.001,
-                "layer": 9
-            },
             "lists": {
                 "C": 0.01,
                 "layer": 12
