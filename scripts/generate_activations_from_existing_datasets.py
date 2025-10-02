@@ -25,13 +25,10 @@ from probe_gen.labelling.sycophancy_multichoice_autograder import (
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Third-party imports
-import gc
 import os
 import shutil
 
-import torch
-from huggingface_hub import HfApi, login
-from transformers.utils import TRANSFORMERS_CACHE
+from huggingface_hub import HfApi, hf_hub_download, login
 
 hf_token = os.getenv("HF_TOKEN")
 if hf_token:
@@ -85,8 +82,6 @@ def get_prompt_dataset(behaviour, datasource):
         return JailbreakDataset()
     if datasource == "hh_rlhf":
         return RefusalDataset()
-    if datasource == "writingprompts":
-        return WritingPromptsDataset()
 
     return None
 
@@ -175,7 +170,7 @@ def _build_balanced_file(file_in, file_out, num_balanced):
     
     return pos_count + neg_count, min(pos_count, neg_count)
 
-def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, mode, num_balanced, generation_batch_size=50):
+def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, mode, num_balanced):
 
     temp_dir = Path("data/temp")
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -211,7 +206,7 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
             temperature=temperature,
             dataset_path="data/temp/prompts_latest.jsonl",
             output_file="data/temp/responses_latest.jsonl",
-            batch_size=generation_batch_size,
+            batch_size=200,
             behaviour=behaviour, 
             datasource=datasource,
             sample=0,
@@ -221,10 +216,9 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
             save_increment=-1,
         )
 
-        # Clean up any existing labelled responses file before labeling
         if os.path.exists("data/temp/labelled_responses_latest.jsonl"):
             os.remove("data/temp/labelled_responses_latest.jsonl")
-        
+
         get_labels(behaviour, datasource, "data/temp/prompts_latest.jsonl", "data/temp/responses_latest.jsonl", "data/temp/labelled_responses_latest.jsonl", num_balanced)
 
         # Combine new prompts and labelled responses with existing ones
@@ -242,7 +236,7 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
         else:
             # Guess how many more samples we need
             guess = ((num_balanced / 2) - smallest_class_length) * datapoints_tried / smallest_class_length + 200
-            next_n_samples = min(int(guess), 500)
+            next_n_samples = min(guess, 500)
 
     # Save dataset
     REPO_NAME = f"lasrprobegen/{behaviour}-activations"
@@ -271,12 +265,18 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
         token=hf_token,
     )
 
-def wipe_directory(directory):
-    for file in directory.iterdir():
-        if file.is_file():  # only delete files, not subdirs
-            file.unlink()
+def wipe_directory(dir_path: Path):
+    """Delete all files and subdirectories inside dir_path, but keep dir_path itself."""
+    if not dir_path.exists():
+        return  # nothing to do
+    
+    for item in dir_path.iterdir():
+        if item.is_file() or item.is_symlink():
+            item.unlink()  # remove file or symlink
+        elif item.is_dir():
+            shutil.rmtree(item)  # remove directory recursively
 
-def generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, mode, layers, balanced_responses_filepath, activations_batch_size=32):
+def generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, mode, layers, balanced_responses_filepath):
     print(f"Loading model: {MODELS[activations_model]}")
     model, tokenizer = get_model(MODELS[activations_model])
 
@@ -292,7 +292,7 @@ def generate_and_save_activations(behaviour, datasource, activations_model, resp
         tokenizer,
         dataset_path=balanced_responses_filepath,
         output_file=output_file,
-        batch_size=activations_batch_size,
+        batch_size=32,
         sample=0,
         layers_str=layers_str,
         save_increment=-1,
@@ -338,8 +338,10 @@ def main():
         config = yaml.safe_load(f)
 
     # Access the experiments and do an initial check that they are valid
+    off_policy_response_model = config["off_policy_response_model"]
+    activations_model = config["activations_model"]
+    layers = config["layers"]
     experiments = config["experiments"]
-    check_experiments_are_valid(experiments)
 
     temp_dir = Path("data/temp")
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -349,54 +351,28 @@ def main():
         try:
             behaviour = exp["behaviour"]
             datasources = exp["datasources"]
-            generation_methods = exp["generation_methods"]
-            off_policy_model = exp["off_policy_model"]
-            activations_model = exp["activations_model"]
-            layers = exp["layers"]
-            train_size = exp["train_size"]
-            test_size = exp["test_size"]
-            temperature = exp["temperature"]
-            generation_batch_size = exp.get("generation_batch_size", 50)
-            activations_batch_size = exp.get("activations_batch_size", 32)
 
             for datasource in datasources:
-                prompt_dataset = get_prompt_dataset(behaviour, datasource)
-                for generation_method in generation_methods:
-
-                    if generation_method == "off_policy":
-                        response_model = off_policy_model
-                        generation_method == "on_policy"
-                    else:
-                        response_model = activations_model
-
+                for mode in ["train", "test"]:
                     try:
-                        if train_size > 0:
-                            generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, "train", train_size, generation_batch_size)
-                            generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "train", layers, "data/temp/balanced_labelled_responses_all.jsonl", activations_batch_size)
-                            # Delete all files that were used
-                            wipe_directory(temp_dir)
+                        repo_id = f"lasrprobegen/{behaviour}-activations"
+                        local_dir = "data/temp"
+                        os.makedirs(local_dir, exist_ok=True)
+                        file_path = hf_hub_download(
+                            repo_id=repo_id,
+                            repo_type="dataset",
+                            filename=f"{datasource}/{off_policy_response_model}_on_policy_{mode}.jsonl",
+                            local_dir=local_dir,
+                            token=os.getenv("HF_TOKEN")
+                        )
+                        print(f"Downloaded to: {file_path}")
+                        generate_and_save_activations(behaviour, datasource, activations_model, off_policy_response_model, "on_policy", mode, layers, f"data/temp/{datasource}/{off_policy_response_model}_on_policy_{mode}.jsonl")
+                        # Delete all files that were used
+                        wipe_directory(temp_dir)
                     except Exception as e:
-                        print(f"Error generating datasets for {behaviour} {datasource} {generation_method} train: {e}")
+                        print(f"Error generating datasets for {behaviour} {datasource} train: {e}")
                         wipe_directory(temp_dir)
                         continue
-                    
-                    if test_size > 0:
-                        try:
-                            generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, "test", test_size, generation_batch_size)
-                            generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "test", layers, "data/temp/balanced_labelled_responses_all.jsonl", activations_batch_size)
-                            # Delete all files that were used
-                            wipe_directory(temp_dir)
-                        except Exception as e:
-                            print(f"Error generating datasets for {behaviour} {datasource} {generation_method} test: {e}")
-                            wipe_directory(temp_dir)
-                            continue
-            
-            # Clear Huggingface cache before next experiment
-            if hasattr(torch.cuda, 'empty_cache'):
-                torch.cuda.empty_cache()  # Clear GPU cache if using CUDA
-            gc.collect()
-            if os.path.exists(TRANSFORMERS_CACHE):
-                shutil.rmtree(TRANSFORMERS_CACHE)
 
         except Exception as e:
             print(f"Error generating datasets for {exp}: {e}")
