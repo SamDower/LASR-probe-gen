@@ -106,7 +106,7 @@ def load_hf_activations_at_layer(
     except Exception as e:
         # Try loading with on_policy in the name instead
         if generation_method == "off_policy":
-            filepath.replace("off_policy", "on_policy")
+            filepath = filepath.replace("off_policy", "on_policy")
             activations_tensor, attention_mask = _load_activations_from_hf(repo_id, filepath, verbose)
         else:
             raise e
@@ -121,7 +121,7 @@ def load_hf_activations_at_layer(
         except Exception as e:
             # Try loading with on_policy in the name instead
             if generation_method == "off_policy":
-                labels_filepath.replace("off_policy", "on_policy")
+                labels_filepath = labels_filepath.replace("off_policy", "on_policy")
                 if not os.path.exists(labels_localpath / labels_filepath):
                     _download_labels_from_hf(repo_id, labels_filepath, labels_localpath)
                 labels_tensor = _load_labels_from_local_jsonl(labels_localpath / labels_filepath, verbose)
