@@ -225,7 +225,7 @@ def get_best_hyperparams_for_train_setup(train_setup):
             elif "torch" in tr[i][0]:
                 tr[i].append(ConfigDict(layer=best_cfg.layer, use_bias=True, normalize=True, lr=best_cfg.lr, weight_decay=best_cfg.weight_decay))
             else:
-                raise ValueError(f"Wrong probe type: {tr[i][0]}")
+                raise Exception(f"Wrong probe type: {tr[i][0]}")
     return tr
 
 

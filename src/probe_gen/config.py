@@ -72,7 +72,7 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
         "shakespeare": {"llama_3b": "qwen_3b",}},
     "metaphors": {
         "ultrachat": {"llama_3b": "qwen_3b",},
-        "shakespeare": {"llama_3b": "qwen_3b",}},
+        "writingprompts": {"llama_3b": "qwen_3b",}},
     "science": {
         "ultrachat": {"llama_3b": "qwen_3b",},
         "mmlu": {"llama_3b": "qwen_3b",}},
