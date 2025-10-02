@@ -1,17 +1,19 @@
 import os
-
 import pandas as pd
 import wandb
 
 
-def save_probe_dict_results(eval_dict, probe_type, train_set_name, test_set_name, activations_model, hyperparams):
+def save_probe_dict_results(eval_dict, probe_type, behaviour, train_set, test_set, activations_model, hyperparams):
     """
     Saves the evaluation dict to wandb as a single run.
     Args:
         eval_dict (dict): evalualtion dictionary obtained from `probe.eval(test_dataset)`.
         probe_type (str): The type of probe trained (e.g. 'mean', 'attention').
-        train_set_name (str): An identifiable name for the data the probe was trained on (e.g. refusal_off_other_model).
-        test_set_name (str): An identifiable name for the data the probe was tested on (e.g. refusal_on).
+        behaviour (str): The behaviour the probe was trained and tested on.
+        train_set_name (list): An identifiable list for the data the probe was trained on:
+            - [datasource, generation_method, response_model]
+        test_set_name (list): An identifiable list for the data the probe was tested on:
+            - [datasource, generation_method, response_model]
         activations_model (str): The model the activations came from.
         hyperparams (list): A list of hyperparams used to train the probe. The order of the hyperparams:
             - for "attention_torch": [layer, use_bias, normalize, lr, weight_decay]
@@ -23,8 +25,13 @@ def save_probe_dict_results(eval_dict, probe_type, train_set_name, test_set_name
     # Initialize wandb run
     config_dict = {
         "probe/type": probe_type,
-        "train_dataset": train_set_name,
-        "test_dataset": test_set_name,
+        "behaviour": behaviour,
+        "train/datasource": train_set[0],
+        "train/generation_method": train_set[1],
+        "train/response_model": train_set[2],
+        "test/datasource": test_set[0],
+        "test/generation_method": test_set[1],
+        "test/response_model": test_set[2],
         "activations_model": activations_model,
         "layer": hyperparams[0],
         "probe/use_bias": hyperparams[1],
@@ -78,14 +85,14 @@ def load_probe_eval_dict_by_dict(lookup_dict):
     
     results = []
     for run in runs:
-        accuracy = run.summary.get('accuracy', None)
+        # accuracy = run.summary.get('accuracy', None)
         roc_auc = run.summary.get('roc_auc', None)
-        tpr_at_1_fpr = run.summary.get('tpr_at_1_fpr', None)
-        if accuracy is not None:
+        # tpr_at_1_fpr = run.summary.get('tpr_at_1_fpr', None)
+        if roc_auc is not None:
             results.append({
-                'accuracy': accuracy,
+                # 'accuracy': accuracy,
                 'roc_auc': roc_auc,
-                'tpr_at_1_fpr': tpr_at_1_fpr
+                # 'tpr_at_1_fpr': tpr_at_1_fpr
             })
     
     if len(results) == 0:
@@ -95,6 +102,7 @@ def load_probe_eval_dict_by_dict(lookup_dict):
         # print(f"### WARNING ###: multiple runs for lookup dict {lookup_dict}, returning latest.")
         pass
     return results[-1]
+
 
 def _extract_common_filters(lookup_dicts_list):
     """
@@ -136,6 +144,7 @@ def _extract_common_filters(lookup_dicts_list):
     
     return common_filters
 
+
 def load_probe_eval_dict_batch(lookup_dicts_list):
     """
     Loads probe evaluation dictionaries for multiple lookup criteria with a single API call.
@@ -147,24 +156,18 @@ def load_probe_eval_dict_batch(lookup_dicts_list):
         results_dict (dict): Dictionary mapping lookup_dict (as tuple of sorted items) to evaluation results
     """
     os.environ["WANDB_SILENT"] = "true"
-    
     api = wandb.Api()
     
     common_filters = _extract_common_filters(lookup_dicts_list)
-
+    
     # Get all runs from the project with a single API call
     all_runs = api.runs("LasrProbeGen/LASR_probe_gen", filters=common_filters)
-    
-    results_dict = {}
 
-    print(all_runs)
-    print(all_runs[0])
-    print(all_runs[0].config)
-    
     # Convert lookup dicts to tuples for use as dictionary keys
     lookup_tuples = [tuple(sorted(lookup_dict.items())) for lookup_dict in lookup_dicts_list]
     
     # Initialize results for each lookup dict
+    results_dict = {}
     for lookup_tuple in lookup_tuples:
         results_dict[lookup_tuple] = []
     
@@ -178,15 +181,15 @@ def load_probe_eval_dict_batch(lookup_dicts_list):
             
             # Check if all key-value pairs in lookup_dict match the run's config
             if all(not key.startswith("config.") or run_config.get(key[7:]) == value for key, value in lookup_dict.items()):
-                accuracy = run.summary.get('accuracy', None)
+                # accuracy = run.summary.get('accuracy', None)
                 roc_auc = run.summary.get('roc_auc', None)
-                tpr_at_1_fpr = run.summary.get('tpr_at_1_fpr', None)
+                # tpr_at_1_fpr = run.summary.get('tpr_at_1_fpr', None)
                 
-                if accuracy is not None:
+                if roc_auc is not None:
                     results_dict[lookup_tuple].append({
-                        'accuracy': accuracy,
+                        # 'accuracy': accuracy,
                         'roc_auc': roc_auc,
-                        'tpr_at_1_fpr': tpr_at_1_fpr
+                        # 'tpr_at_1_fpr': tpr_at_1_fpr
                     })
     
     # Process results similar to original function (take latest if multiple)
@@ -254,16 +257,6 @@ def extract_all_run_info(run):
 
 
 def load_probe_eval_dicts_as_df(lookup_dict):
-    """
-    Loads the latest probe evaluation dictionary which used the dataset names provided.
-
-    Args:
-        train_dataset_name (str): An identifiable name for the data the probe was trained on (e.g. refusal_off_other_model).
-        test_dataset_name (str): An identifiable name for the data the probe was tested on (e.g. refusal_on).
-    
-    Returns:
-        eval_dict (dict): evalualtion dictionary.
-    """
     api = wandb.Api()
     
     # Query runs with specific config filters

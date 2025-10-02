@@ -1,74 +1,76 @@
 {
-    "mean": {
-        "authority": {
-            "C": 0.001,
-            "layer": 12
+    "llama_3b": {
+        "mean": {
+            "authority": {
+                "C": 0.001,
+                "layer": 12
+            },
+            "deception": {
+                "C": 0.01,
+                "layer": 12
+            },
+            "deception_rp": {
+                "C": 0.001,
+                "layer": 9
+            },
+            "lists": {
+                "C": 0.01,
+                "layer": 12
+            },
+            "metaphors": {
+                "C": 0.01,
+                "layer": 12
+            },
+            "refusal": {
+                "C": 0.001,
+                "layer": 12
+            },
+            "sandbagging": {
+                "C": 0.01,
+                "layer": 12
+            },
+            "science": {
+                "C": 0.01,
+                "layer": 12
+            },
+            "sycophancy": {
+                "C": 0.01,
+                "layer": 12
+            }
         },
-        "deception": {
-            "C": 0.01,
-            "layer": 12
+        "mean_torch": {
+            "refusal": {
+                "layer": 12,
+                "lr": 0.0001,
+                "weight_decay": 0.0
+            }
         },
-        "deception_rp": {
-            "C": 0.001,
-            "layer": 9
-        },
-        "lists": {
-            "C": 0.01,
-            "layer": 12
-        },
-        "metaphors": {
-            "C": 0.01,
-            "layer": 12
-        },
-        "refusal": {
-            "C": 0.001,
-            "layer": 12
-        },
-        "sandbagging": {
-            "C": 0.01,
-            "layer": 12
-        },
-        "science": {
-            "C": 0.01,
-            "layer": 12
-        },
-        "sycophancy": {
-            "C": 0.01,
-            "layer": 12
-        }
-    },
-    "mean_torch": {
-        "refusal": {
-            "layer": 12,
-            "lr": 0.0001,
-            "weight_decay": 0.0
-        }
-    },
-    "attention_torch": {
-        "refusal": {
-            "layer": 12,
-            "lr": 0.0001,
-            "weight_decay": 0.0
-        },
-        "lists": {
-            "layer": 12,
-            "lr": 0.0001,
-            "weight_decay": 1e-05
-        },
-        "metaphors": {
-            "layer": 12,
-            "lr": 0.0001,
-            "weight_decay": 1e-05
-        },
-        "science": {
-            "layer": 12,
-            "lr": 0.0001,
-            "weight_decay": 1e-05
-        },
-        "sycophancy": {
-            "layer": 12,
-            "lr": 0.001,
-            "weight_decay": 1e-05
+        "attention_torch": {
+            "refusal": {
+                "layer": 12,
+                "lr": 0.0001,
+                "weight_decay": 0.0
+            },
+            "lists": {
+                "layer": 12,
+                "lr": 0.0001,
+                "weight_decay": 1e-05
+            },
+            "metaphors": {
+                "layer": 12,
+                "lr": 0.0001,
+                "weight_decay": 1e-05
+            },
+            "science": {
+                "layer": 12,
+                "lr": 0.0001,
+                "weight_decay": 1e-05
+            },
+            "sycophancy": {
+                "layer": 12,
+                "lr": 0.001,
+                "weight_decay": 1e-05
+            }
         }
     }
 }
