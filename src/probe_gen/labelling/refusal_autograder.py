@@ -487,7 +487,7 @@ def _dataset_to_dataframe(dataset) -> pd.DataFrame:
 
 
 def rate_dataset(
-    df, request_column, response_column, output_path, verbose=False, token=None, num_balanced=5000, use_8bit=False, use_4bit=False
+    df, request_column, response_column, output_path, verbose=False, token=None, num_balanced=5000, use_8bit=False, use_4bit=False, batch_size=1
 ):
     """
     Rate a dataset using the HarmBench classifier with single-item processing and early stopping.
@@ -503,10 +503,11 @@ def rate_dataset(
         num_balanced: Total size of balanced dataset (will stop at num_balanced/2 of each label)
         use_8bit: Use 8-bit quantization to reduce memory usage
         use_4bit: Use 4-bit quantization to reduce memory usage (most aggressive)
+        batch_size: Batch size for processing items (default: 1)
     """
     target_per_class = num_balanced // 2  # 2500 each for positive and negative
     
-    print(f"Starting rating process for {len(df)} rows (single-item processing)...")
+    print(f"Starting rating process for {len(df)} rows (batch size: {batch_size})...")
     print(f"Target: {target_per_class} positive and {target_per_class} negative labels")
 
     # Load the classifier with memory optimizations
@@ -526,66 +527,71 @@ def rate_dataset(
     # Store results as we process them
     results = []
     
-    print("Processing items one by one...")
-    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Processing items"):
+    print(f"Processing items in batches of {batch_size}...")
+    for i in tqdm(range(0, len(df), batch_size), desc="Processing batches"):
         if stop_processing:
             break
             
+        batch_df = df.iloc[i:i+batch_size]
+        
         try:
-            # Get behavior and generation for this item
-            behavior = row[request_column]
-            generation = row[response_column]
+            behaviors = batch_df[request_column].tolist()
+            generations = batch_df[response_column].tolist()
             
-            # Classify single item
-            rating = grade_with_harmbench_single(
-                behavior,
-                generation,
+            # Classify a batch of items
+            ratings = grade_with_harmbench_batch(
+                behaviors,
+                generations,
                 classifier,
                 tokenizer,
                 verbose=verbose,
             )
             
-            # Map rating to autograder format
-            label_mapping = map_harmbench_to_autograder_single(rating, response_column)
+            # Process results of the batch
+            for (idx, row), rating in zip(batch_df.iterrows(), ratings):
+                if stop_processing:
+                    break
+                    
+                # Map rating to autograder format
+                label_mapping = map_harmbench_to_autograder_single(rating, response_column)
+                
+                # Check if we can accept this label (haven't hit the limit yet)
+                accept_result = False
+                if label_mapping["labels"] == "positive" and positive_count < target_per_class:
+                    positive_count += 1
+                    accept_result = True
+                elif label_mapping["labels"] == "negative" and negative_count < target_per_class:
+                    negative_count += 1
+                    accept_result = True
+                elif label_mapping["labels"] == "ambiguous":
+                    accept_result = True  # Always accept ambiguous (they don't count toward limits)
+                
+                # Only store results we're accepting (to avoid going over limits)
+                if accept_result:
+                    result = row.to_dict()
+                    result[f"rating_{response_column}"] = rating
+                    result["labels"] = label_mapping["labels"]
+                    result["scale_labels"] = label_mapping["scale_labels"]
+                    result["scale_label_confidence"] = label_mapping["scale_label_confidence"]
+                    result["scale_label_model"] = label_mapping["scale_label_model"]
+                    results.append(result)
+                
+                processed_count += 1
+                
+                # Check if we should stop processing
+                if positive_count >= target_per_class and negative_count >= target_per_class:
+                    stop_processing = True
+                    print(f"Target reached - got {positive_count} positive, {negative_count} negative labels")
             
-            # Check if we can accept this label (haven't hit the limit yet)
-            accept_result = False
-            if label_mapping["labels"] == "positive" and positive_count < target_per_class:
-                positive_count += 1
-                accept_result = True
-            elif label_mapping["labels"] == "negative" and negative_count < target_per_class:
-                negative_count += 1
-                accept_result = True
-            elif label_mapping["labels"] == "ambiguous":
-                accept_result = True  # Always accept ambiguous (they don't count toward limits)
-            
-            # Only store results we're accepting (to avoid going over limits)
-            if accept_result:
-                result = row.to_dict()
-                result[f"rating_{response_column}"] = rating
-                result["labels"] = label_mapping["labels"]
-                result["scale_labels"] = label_mapping["scale_labels"]
-                result["scale_label_confidence"] = label_mapping["scale_label_confidence"]
-                result["scale_label_model"] = label_mapping["scale_label_model"]
-                results.append(result)
-            
-            processed_count += 1
-            
-            # Check if we should stop processing
-            if positive_count >= target_per_class and negative_count >= target_per_class:
-                stop_processing = True
-                print(f"Target reached - got {positive_count} positive, {negative_count} negative labels")
-                break
-            
-            # Clear GPU cache every 10 items to prevent memory buildup
-            if processed_count % 10 == 0:
+            # Clear GPU cache periodically to prevent memory buildup
+            if (i // batch_size) % 10 == 0:
                 clear_gpu_memory()
         
         except Exception as e:
-            print(f"Error processing item {idx}: {e}")
+            print(f"Error processing batch starting at index {i}: {e}")
             # Clear GPU memory and try to recover
             clear_gpu_memory()
-            processed_count += 1
+            processed_count += len(batch_df)
     
     print(f"Classification complete! Processed {processed_count} samples")
     print(f"Final counts - Positive: {positive_count}, Negative: {negative_count}")
@@ -991,7 +997,7 @@ def generate_balanced_filename(original_path, actual_size, split=None):
 
 
 def grade_data_harmbench(
-    filename, output_path, request_column= "input", response_column= "model_outputs", verbose=False, hf_token=HF_TOKEN, num_balanced=5000, max_samples=None, only_resplit=False, single_set_size= None, use_8bit=False, use_4bit=False
+    filename, output_path, request_column= "input", response_column= "model_outputs", verbose=False, hf_token=HF_TOKEN, num_balanced=5000, max_samples=None, only_resplit=False, single_set_size= None, use_8bit=False, use_4bit=False, autograder_batch_size=1
 ):  
 
 
@@ -1033,6 +1039,7 @@ def grade_data_harmbench(
             num_balanced,
             use_8bit,
             use_4bit,
+            batch_size=autograder_batch_size,
         )
 
         # Print summary
