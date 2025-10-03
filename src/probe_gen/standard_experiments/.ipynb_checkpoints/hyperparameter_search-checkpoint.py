@@ -22,13 +22,13 @@ WEIGHT_DECAY_RANGE = [0, 1e-5, 1e-4]
 def load_best_params_from_search(probe_type, behaviour, datasource, generation_method, response_model, activations_model, layers_list=LAYERS_LIST):
     df = load_probe_eval_dicts_as_df({
         "config.probe/type": probe_type,
-        "behaviour": behaviour,
-        "train/datasource": datasource,
-        "train/generation_method": generation_method,
-        "train/response_model": response_model,
-        "test/datasource": datasource,
-        "test/generation_method": generation_method,
-        "test/response_model": response_model,
+        "config.behaviour": behaviour,
+        "config.train/datasource": datasource,
+        "config.train/generation_method": generation_method,
+        "config.train/response_model": response_model,
+        "config.test/datasource": datasource,
+        "config.test/generation_method": generation_method,
+        "config.test/response_model": response_model,
         "config.activations_model": activations_model,
         "state": "finished"  # Only completed runs
     })
@@ -75,7 +75,7 @@ def load_best_params_from_search(probe_type, behaviour, datasource, generation_m
                     return
 
     best_params_format = {}
-    for key in best_params.keys():
+    for key in list(best_params.keys()):
         if key.startswith('config_probe_') and key != 'config_probe_type':
             best_params_format[key[len('config_probe_'):]] = best_params[key]
         elif key == 'config_layer':

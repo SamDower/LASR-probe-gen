@@ -57,12 +57,13 @@ def get_or_search_for_best_hyperparams(train_setup):
     
     # Run a hyperparameter search since not done before
     best_params_list = []
-    for generation_method in  ["on_policy", "off_policy"]:
-        # Search all layers for mean probes, search only best mean probe layer for attention probes
+    for generation_method in  ["on_policy", "incentivised"]:
         if tr[0][0] == "mean":
+            # Search all layers for mean probes
             layers_list = [6,9,12,15,18,21]
         elif tr[0][0] == "attention_torch":
-            cfg = ConfigDict.from_json(tr[0][3], tr[0][0], tr[0][1])
+            # Search only best mean probe layer for attention probes, or 12 if no mean probe layer found
+            cfg = ConfigDict.from_json(tr[0][3], "mean", tr[0][1])
             if cfg is None or "layer" not in cfg:
                 layers_list = [12]
             else:
@@ -71,12 +72,13 @@ def get_or_search_for_best_hyperparams(train_setup):
             raise ValueError(f"Probe type {tr[0][0]} not supported")
         
         run_full_hyp_search_on_layers(
-            tr[0][0], tr[0][1], tr[0][2], tr[0][3], tr[0][5], generation_method, tr[0][6], layers_list
+            tr[0][0], tr[0][1], tr[0][2], tr[0][3], tr[0][3], generation_method, "train", layers_list
         )
+        
         best_params_list.append(load_best_params_from_search(
-            tr[0][0], tr[0][1], tr[0][2], generation_method, tr[0][5], tr[0][3], layers_list
+            tr[0][0], tr[0][1], tr[0][2], generation_method, tr[0][3], tr[0][3], layers_list
         ))
-
+  
     # Work out the best behaviour hyperparameters based on best policy hyperparameters, then save them to the json
     best_params = ConfigDict()
     if tr[0][0] == "mean":
@@ -124,7 +126,7 @@ def do_single_probe_experiment(train_setup, test_setup):
 def do_probe_experiment_default(probe_type, activations_model, test_incentivised):
     done_experiments = BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL
     if test_incentivised:
-        done_experiments += BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION
+        done_experiments.update(BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION)
         train_gen_methods = ['incentivised', 'prompted', 'off_policy']
         test_gen_method = 'incentivised'
     else:
@@ -132,11 +134,10 @@ def do_probe_experiment_default(probe_type, activations_model, test_incentivised
         test_gen_method = 'on_policy'
     
     # Iterate through all train and test pairs
-    for behaviour in done_experiments.keys():
+    for behaviour in list(done_experiments.keys()):
         for generation_method in train_gen_methods:
             if behaviour in ["deception", "sandbagging"] and generation_method == "on_policy":
                 continue
-            
             ds = list(done_experiments[behaviour].keys())[1:]
             datasource_ID, datasource_OOD = (ds[0], ds[1])
             for datasource in [datasource_ID, datasource_OOD]:
@@ -159,7 +160,8 @@ def do_probe_experiment_combinations(
     new_train_gen_methods, 
     new_test_gen_methods, 
     ):
-    done_experiments = BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL+BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION    
+    done_experiments = BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL
+    done_experiments.update(BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION)    
     # Iterate through all train and test pairs
     for probe_type in new_probe_types:
         for behaviour in new_behaviours:

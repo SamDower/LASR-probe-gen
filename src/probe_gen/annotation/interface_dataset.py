@@ -219,7 +219,7 @@ class BaseDataset(BaseModel, Generic[R]):
 
     @classmethod
     def from_records(cls, records: Sequence[R]) -> Self:
-        field_keys = records[0].other_fields.keys()
+        field_keys = list(records[0].other_fields.keys())
         return cls(
             inputs=[r.input for r in records],
             ids=[r.id for r in records],

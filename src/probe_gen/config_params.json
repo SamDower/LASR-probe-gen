@@ -9,10 +9,6 @@
                 "C": 0.01,
                 "layer": 12
             },
-            "deception_rp": {
-                "C": 0.001,
-                "layer": 9
-            },
             "lists": {
                 "C": 0.01,
                 "layer": 12
@@ -46,11 +42,6 @@
             }
         },
         "attention_torch": {
-            "refusal": {
-                "layer": 12,
-                "lr": 0.0001,
-                "weight_decay": 0.0
-            },
             "lists": {
                 "layer": 12,
                 "lr": 0.0001,
@@ -67,6 +58,11 @@
                 "weight_decay": 1e-05
             },
             "sycophancy": {
+                "layer": 12,
+                "lr": 0.001,
+                "weight_decay": 0
+            },
+            "authority": {
                 "layer": 12,
                 "lr": 0.001,
                 "weight_decay": 1e-05
