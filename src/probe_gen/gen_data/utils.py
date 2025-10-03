@@ -991,7 +991,11 @@ def load_jsonl_data_prompts_included(file_path):
         with open(file_path, "r") as file:
             for line in file:
                 data = json.loads(line)
-                formatted_inputs_list.append(data["input_formatted"])
+                
+                # Safely get "input_formatted", default to None if missing
+                formatted_input = data.get("input_formatted")
+                formatted_inputs_list.append(formatted_input)
+
                 inputs = json.loads(data["inputs"])
 
                 human = inputs[0]["content"]
@@ -1001,7 +1005,7 @@ def load_jsonl_data_prompts_included(file_path):
                 full_list.append(human + " " + assistant)
     except (FileNotFoundError, json.JSONDecodeError, KeyError, IndexError) as e:
         print(f"Error loading data from {file_path}: {e}")
-        return [], [], []
+        return [], [], [], []
 
     return human_list, assistant_list, full_list, formatted_inputs_list
 
