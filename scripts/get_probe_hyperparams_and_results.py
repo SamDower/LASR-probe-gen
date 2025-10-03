@@ -126,7 +126,7 @@ def do_single_probe_experiment(train_setup, test_setup):
 def do_probe_experiment_default(probe_type, activations_model, test_incentivised):
     done_experiments = BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL
     if test_incentivised:
-        done_experiments += BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION
+        done_experiments.update(BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION)
         train_gen_methods = ['incentivised', 'prompted', 'off_policy']
         test_gen_method = 'incentivised'
     else:
@@ -160,7 +160,8 @@ def do_probe_experiment_combinations(
     new_train_gen_methods, 
     new_test_gen_methods, 
     ):
-    done_experiments = BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL+BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION    
+    done_experiments = BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL
+    done_experiments.update(BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION)    
     # Iterate through all train and test pairs
     for probe_type in new_probe_types:
         for behaviour in new_behaviours:

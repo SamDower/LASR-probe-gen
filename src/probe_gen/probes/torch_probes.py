@@ -387,7 +387,8 @@ class TorchAttentionProbe(Probe):
                 shuffle=True,
                 pin_memory=True,
                 num_workers=num_workers,
-                persistent_workers=True if num_workers > 0 else False
+                persistent_workers=True if num_workers > 0 else False,
+                drop_last=False
             )
             
             # Validation setup
@@ -403,7 +404,8 @@ class TorchAttentionProbe(Probe):
                     shuffle=False,
                     pin_memory=True,
                     num_workers=num_workers,
-                    persistent_workers=True if num_workers > 0 else False
+                    persistent_workers=True if num_workers > 0 else False,
+                    drop_last=False
                 )
             
             # Early stopping setup
@@ -463,20 +465,22 @@ class TorchAttentionProbe(Probe):
                         val_loss += loss.item()
                         val_batches += 1
                     
-                    avg_val_loss = val_loss / val_batches
-                    self.theta_q.train()
-                    self.theta_v.train()
-                    
-                    # Early stopping check
-                    if avg_val_loss < best_val_loss:
-                        best_val_loss = avg_val_loss
-                        patience_counter = 0
-                        best_model_state = {
-                            'theta_q': self.theta_q.state_dict().copy(),
-                            'theta_v': self.theta_v.state_dict().copy()
-                        }
-                    else:
-                        patience_counter += 1
+                    # Sometimes is 0 for some reason
+                    if val_batches != 0:
+                        avg_val_loss = val_loss / val_batches
+                        self.theta_q.train()
+                        self.theta_v.train()
+                        
+                        # Early stopping check
+                        if avg_val_loss < best_val_loss:
+                            best_val_loss = avg_val_loss
+                            patience_counter = 0
+                            best_model_state = {
+                                'theta_q': self.theta_q.state_dict().copy(),
+                                'theta_v': self.theta_v.state_dict().copy()
+                            }
+                        else:
+                            patience_counter += 1
                         
                     if patience_counter >= 10: # self.cfg.early_stopping_patience
                         # print(f"Early stopping at epoch {epoch+1}")
