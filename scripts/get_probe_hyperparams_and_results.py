@@ -57,7 +57,11 @@ def get_or_search_for_best_hyperparams(train_setup):
     
     # Run a hyperparameter search since not done before
     best_params_list = []
-    for generation_method in  ["on_policy", "incentivised"]:
+    if tr[0][1] in ["deception", "sandbagging"]:
+        generation_methods = ["incentivised", "prompted"]
+    else:
+        generation_methods = ["on_policy", "incentivised"]
+    for generation_method in  generation_methods:
         if tr[0][0] == "mean":
             # Search all layers for mean probes
             layers_list = [6,9,12,15,18,21]
@@ -189,7 +193,8 @@ if __name__ == "__main__":
     # MAKE SURE TO SET HF_TOKEN IN COMMAND LINE AND WANDB KEY AT TOP OF THIS FILE
     
     # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
-    for test_incentivised in [False, True]:
+    # for test_incentivised in [False, True]:
+    for test_incentivised in [True]:
         do_probe_experiment_default(
             probe_type = ["mean", "attention_torch"][1],
             activations_model = ["llama_3b"][0], # currently the only option
