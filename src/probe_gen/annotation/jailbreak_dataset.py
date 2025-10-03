@@ -42,7 +42,7 @@ class JailbreakDataset(PromptDataset):
     def __init__(
         self, 
         hf_repo_id: str = "lasrprobegen/refusal-activations",
-        csv_filename: str = "jailbreaks/jailbreak_mixed_100k.csv",
+        csv_filename: str = "jailbreak_mixed_100k_v3.csv",
         default_train_test_gap: int = 60000
     ):
         """

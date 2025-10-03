@@ -9,6 +9,7 @@ wheels/
 #.sh scripts
 *.sh
 *.log
+*.out
 
 # virtual environments
 .venv
