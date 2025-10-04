@@ -57,6 +57,9 @@ def check_experiments_are_valid(experiments):
             raise ValueError("Activations model must be a valid model in the config file")
         if exp["off_policy_model"] not in MODELS:
             raise ValueError("Off policy model must be a valid model in the config file")
+        for method in exp["generation_methods"]:
+            if method not in ["on_policy","incentivised", "prompted", "off_policy"]:
+                raise ValueError(f"Generation method '{method}' must one of: on_policy, incentivised, prompted, off_policy")
 
 def get_prompt_dataset(behaviour, datasource):
     if behaviour == "sycophancy":
