@@ -68,37 +68,37 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
         "test_both": False, # whether we have test data for both ID and OOD
         "rlhf": {"llama_3b": "ministral_8b",},
         "jailbreaks": {"llama_3b": "ministral_8b",}},
-    # "lists": {
-    #     "test_both": False,
-    #     "ultrachat": {"llama_3b": "qwen_3b",},
-    #     "shakespeare": {"llama_3b": "qwen_3b",}},
-    # "metaphors": {
-    #     "test_both": False,
-    #     "ultrachat": {"llama_3b": "qwen_3b",},
-    #     "writingprompts": {"llama_3b": "qwen_3b",}},
-    # "science": {
-    #     "test_both": False,
-    #     "ultrachat": {"llama_3b": "qwen_3b",},
-    #     "mmlu": {"llama_3b": "qwen_3b",}},
-    # "sycophancy": {
-    #     "test_both": True,
-    #     "multichoice": {"llama_3b": "ministral_8b",},
-    #     "arguments": {"llama_3b": "qwen_7b",}},
-    # "authority": {
-    #     "test_both": True,
-    #     "multichoice": {"llama_3b": "ministral_8b",},
-    #     "arguments": {"llama_3b": "qwen_7b",}},
+    "lists": {
+        "test_both": False,
+        "ultrachat": {"llama_3b": "qwen_3b",},
+        "shakespeare": {"llama_3b": "qwen_3b",}},
+    "metaphors": {
+        "test_both": False,
+        "ultrachat": {"llama_3b": "qwen_3b",},
+        "writingprompts": {"llama_3b": "qwen_3b",}},
+    "science": {
+        "test_both": False,
+        "ultrachat": {"llama_3b": "qwen_3b",},
+        "mmlu": {"llama_3b": "qwen_3b",}},
+    "sycophancy": {
+        "test_both": True,
+        "multichoice": {"llama_3b": "ministral_8b",},
+        "arguments": {"llama_3b": "qwen_7b",}},
+    "authority": {
+        "test_both": True,
+        "multichoice": {"llama_3b": "ministral_8b",},
+        "arguments": {"llama_3b": "qwen_7b",}},
 }
 
 BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION = {
-    # "deception": {
-    #     "test_both": True,
-    #     "roleplaying": {"llama_3b": "mistral_7b",},
-    #     "trading": {"llama_3b": "deepseek_mixtral",}},
-    # "sandbagging": {
-    #     "test_both": True,
-    #     "wmd": {"llama_3b": "mistral_7b",},
-    #     "multichoice": {"llama_3b": "ministral_8b",}},
+    "deception": {
+        "test_both": True,
+        "roleplaying": {"llama_3b": "mistral_7b",},
+        "trading": {"llama_3b": "deepseek_mixtral",}},
+    "sandbagging": {
+        "test_both": True,
+        "wmd": {"llama_3b": "mistral_7b",},
+        "multichoice": {"llama_3b": "ministral_8b",}},
 }
 
 MODELS = {
