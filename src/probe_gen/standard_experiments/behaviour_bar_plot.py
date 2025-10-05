@@ -137,16 +137,20 @@ def plot_behaviour_barchart(
     ax.set_xticks(x_ticks)
     wrapped_labels = ['\n'.join(textwrap.wrap(label, width=14)) for label in behaviour_labels]
     ax.set_xticklabels(wrapped_labels)
-    ax.tick_params(axis='x', labelsize=8)
+    ax.tick_params(axis='x', labelsize=9)
     
     current_xlim = ax.get_xlim()
     ax.set_xlim(current_xlim[0], current_xlim[1] + extra_whitespace)
     
     #ax.legend(loc='upper right', title="ID Training Set")
-    ax.legend(loc=legend_loc, title=f"{'OOD' if train_OOD else 'ID'} Training Set", fontsize=9, title_fontsize=9)
+    ax.legend(loc=legend_loc, title=f"{'OOD' if train_OOD else 'ID'} Training Set", fontsize=10, title_fontsize=11)
 
     # Add a grid for better readability
     ax.grid(True, alpha=0.3, axis='y')
+    
+    ax.title.set_fontsize(16)     # change font size separately
+    ax.xaxis.label.set_size(13)   # x-axis label font size
+    ax.yaxis.label.set_size(13)   # y-axis label font size
 
     # Adjust layout and display
     plt.ylim(0.5, 1)
@@ -161,9 +165,9 @@ def plot_mean_summary_barchart(
     test_incentivised=False, 
     title=None,
     xlabel=None,
-    ylabel="Test AUROC",
+    ylabel="Mean Test AUROC (± SEM)",
     save_path = None,
-    figsize=(12, 6), 
+    figsize=(5, 3), 
     dpi=300,
     legend_loc="upper right",
     extra_whitespace=1
@@ -216,14 +220,11 @@ def plot_mean_summary_barchart(
     ax.set_ylabel(ylabel)
 
     if title is None:
-        if not test_incentivised:
-            title = "Mean (and standard error) of Linear Probes, Evaluated on ID On-Policy Sets Across All Behaviours" 
-        else:
-            title = "Mean (and standard error) of Linear Probes, Evaluated on ID On-Policy Incentivised Sets Across All Behaviours" 
+        title = f"Linear Probes Evaluated on  On-Policy {'Incentivised ' if test_incentivised else ''}"
     ax.set_title(title)
     ax.set_xticks(x)
 
-    labels = ["Trained on ID Data", "Trained on OOD Data"]
+    labels = ["ID Training Set", "OOD Training Set"]
     wrapped_labels = ['\n'.join(textwrap.wrap(label, width=14)) for label in labels]
     ax.set_xticklabels(wrapped_labels)
 
@@ -231,10 +232,14 @@ def plot_mean_summary_barchart(
     ax.set_xlim(current_xlim[0], current_xlim[1] + extra_whitespace)
 
     #ax.legend(loc='upper right', title="ID Training Set")
-    ax.legend(loc=legend_loc, title="Training Set", fontsize=9, title_fontsize=9)
+    ax.legend(loc=legend_loc, title="Training Set", fontsize=9, title_fontsize=11)
 
     # Add a grid for better readability
     ax.grid(True, alpha=0.3, axis='y')
+    
+    ax.title.set_fontsize(13)     # change font size separately
+    ax.xaxis.label.set_size(12)   # x-axis label font size
+    ax.yaxis.label.set_size(12)   # y-axis label font size
 
     # Adjust layout and display
     plt.ylim(0.5, 1)
