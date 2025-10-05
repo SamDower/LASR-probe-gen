@@ -71,6 +71,16 @@
                 "layer": 12,
                 "lr": 0.001,
                 "weight_decay": 1e-05
+            },
+            "refusal": {
+                "layer": 12,
+                "lr": 0.001,
+                "weight_decay": 1e-05
+            },
+            "sandbagging": {
+                "layer": 12,
+                "lr": 0.001,
+                "weight_decay": 1e-05
             }
         }
     }
