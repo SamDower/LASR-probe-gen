@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import textwrap
+from tqdm import tqdm
 
 from probe_gen.config import ConfigDict
-from probe_gen.probes.wandb_interface import load_probe_eval_dict_batch
+from probe_gen.probes.wandb_interface import load_probe_eval_dicts_as_df #,load_probe_eval_dict_batch 
 from probe_gen.standard_experiments.hyperparameter_search import (
     get_best_hyperparams_for_train_setup
 )
@@ -14,16 +15,18 @@ def get_bar_chart_results_table_from_wandb(train_setup, train_gen_methods, test_
     Gets the results table from wandb for the probes specified in the train_setup.
     Args:
         train_setup (list): 
-            [probe_type, behaviour, [ID datasource, OOD datasource], activations_model, off_policy_model]
+            [probe_type, behaviour, [ID datasource, OOD datasource], activations_model, [ID off_policy_model, OOD off_policy_model]]
         ...
     """
     tr = train_setup
     
-    lookup_dicts = []
-    for i in range(len(tr)):
+    results_list = []
+    for i in tqdm(range(len(tr))):
         for train_gen_method in train_gen_methods:
             # Get the best hyperparameters for each probe if not provided
-            response_model = tr[i][4] if train_gen_method == "off_policy" else tr[i][3]
+            train_datasource = tr[i][2][1] if train_OOD else tr[i][2][0]
+            off_policy_model = tr[i][4][1] if train_OOD else tr[i][4][0]
+            response_model = off_policy_model if train_gen_method == "off_policy" else tr[i][3]
             # format: [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode]
             full_tr_i = [tr[i][0], tr[i][1], tr[i][2][0], tr[i][3], train_gen_method, response_model, "train"]
             cfg = get_best_hyperparams_for_train_setup([full_tr_i])[0][-1]
@@ -31,12 +34,12 @@ def get_bar_chart_results_table_from_wandb(train_setup, train_gen_methods, test_
             search_dict = {
                 "config.probe/type": tr[i][0],
                 "config.behaviour": tr[i][1],
-                "config.train/datasource": tr[i][2][1] if train_OOD else tr[i][2][0],
+                "config.train/datasource": train_datasource,
                 "config.train/generation_method": train_gen_method,
                 "config.train/response_model": response_model,
                 "config.test/datasource": tr[i][2][0],
                 "config.test/generation_method": test_gen_method,
-                "config.test/response_model": response_model,
+                "config.test/response_model": tr[i][3],
                 "config.layer": cfg.layer,
                 "config.probe/use_bias": cfg.use_bias,
                 "config.probe/normalize": cfg.normalize,
@@ -49,10 +52,12 @@ def get_bar_chart_results_table_from_wandb(train_setup, train_gen_methods, test_
                 search_dict["config.probe/lr"] = cfg.lr
                 search_dict["config.probe/weight_decay"] = cfg.weight_decay
                 
-            lookup_dicts.append(search_dict)
+            print(search_dict)
 
-    results_list = load_probe_eval_dict_batch(lookup_dicts)
-    results_table = np.array([results_list[i]['roc_auc'] for i in range(len(results_list))]).reshape(len(tr), len(train_gen_methods)).transpose()
+            run_df = load_probe_eval_dicts_as_df(search_dict)
+            results_list.append(run_df['metric_roc_auc'].iloc[-1])
+
+    results_table = np.array(results_list).reshape(len(tr), len(train_gen_methods)).transpose()
     return results_table
 
 
@@ -74,7 +79,7 @@ def plot_behaviour_barchart(
     Plots a bar chart of the results of the probes specified in the train_setup list.
     Args:
         train_setup (list): 
-            [probe_type, behaviour, [ID datasource, OOD datasource], activations_model, off_policy_model]
+            [probe_type, behaviour, [ID datasource, OOD datasource], activations_model, [ID off_policy_model, OOD off_policy_model]]
         ...
     """
     small_gap = 0.2
@@ -98,7 +103,7 @@ def plot_behaviour_barchart(
     row_means = np.ma.mean(masked_array, axis=1)
     row_stds = np.ma.std(masked_array, axis=1)
 
-    behaviour_labels = [f"{train_setup[i][1]}({train_setup[i][2][1] if train_OOD else train_setup[i][2][0]})" 
+    behaviour_labels = [f"{train_setup[i][1].capitalize()} ({train_setup[i][2][1].capitalize() if train_OOD else train_setup[i][2][0].capitalize()})" 
                         for i in range(len(train_setup))]
     if add_mean_summary:
         behaviour_labels.append('Mean ± MSE')
@@ -167,7 +172,7 @@ def plot_mean_summary_barchart(
     Plots a summary mean bar chart of the results of the probes specified in the train_setup list.
     Args:
         train_setup (list): 
-            [probe_type, behaviour, [ID datasource, OOD datasource], activations_model, off_policy_model]
+            [probe_type, behaviour, [ID datasource, OOD datasource], activations_model, [ID off_policy_model, OOD off_policy_model]]
         ...
     """
     small_gap = 0.2

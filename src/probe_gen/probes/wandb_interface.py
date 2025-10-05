@@ -105,116 +105,118 @@ def load_probe_eval_dict_by_dict(lookup_dict):
     return results[-1]
 
 
-def _extract_common_filters(lookup_dicts_list):
-    """
-    Extract key-value pairs that are common to ALL dictionaries in the list.
-    These can be used as filters in the wandb API call without losing any data.
+# def _extract_common_filters(lookup_dicts_list):
+#     """
+#     Extract key-value pairs that are common to ALL dictionaries in the list.
+#     These can be used as filters in the wandb API call without losing any data.
     
-    Args:
-        lookup_dicts_list (list): List of lookup dictionaries
+#     Args:
+#         lookup_dicts_list (list): List of lookup dictionaries
     
-    Returns:
-        common_filters (dict): Dictionary containing key-value pairs common to all lookups
-        remaining_lookups (list): List of dictionaries with common keys removed
-    """
-    if not lookup_dicts_list:
-        return {}, []
+#     Returns:
+#         common_filters (dict): Dictionary containing key-value pairs common to all lookups
+#         remaining_lookups (list): List of dictionaries with common keys removed
+#     """
+#     if not lookup_dicts_list:
+#         return {}, []
     
-    if len(lookup_dicts_list) == 1:
-        # If only one dict, all keys are "common"
-        return lookup_dicts_list[0].copy(), [{}]
+#     if len(lookup_dicts_list) == 1:
+#         # If only one dict, all keys are "common"
+#         return lookup_dicts_list[0].copy(), [{}]
     
-    # Find keys that exist in ALL dictionaries
-    common_keys = set(lookup_dicts_list[0].keys())
-    for lookup_dict in lookup_dicts_list[1:]:
-        common_keys &= set(lookup_dict.keys())
+#     # Find keys that exist in ALL dictionaries
+#     common_keys = set(lookup_dicts_list[0].keys())
+#     for lookup_dict in lookup_dicts_list[1:]:
+#         common_keys &= set(lookup_dict.keys())
     
-    # Among common keys, find those with the same value in ALL dictionaries
-    common_filters = {}
-    for key in common_keys:
-        first_value = lookup_dicts_list[0][key]
-        if all(lookup_dict[key] == first_value for lookup_dict in lookup_dicts_list):
-            common_filters[key] = first_value
+#     # Among common keys, find those with the same value in ALL dictionaries
+#     common_filters = {}
+#     for key in common_keys:
+#         first_value = lookup_dicts_list[0][key]
+#         if all(lookup_dict[key] == first_value for lookup_dict in lookup_dicts_list):
+#             common_filters[key] = first_value
     
-    # Create remaining lookup dicts with common filters removed
-    remaining_lookups = []
-    for lookup_dict in lookup_dicts_list:
-        remaining_dict = {k: v for k, v in lookup_dict.items() 
-                         if k not in common_filters}
-        remaining_lookups.append(remaining_dict)
+#     # Create remaining lookup dicts with common filters removed
+#     remaining_lookups = []
+#     for lookup_dict in lookup_dicts_list:
+#         remaining_dict = {k: v for k, v in lookup_dict.items() 
+#                          if k not in common_filters}
+#         remaining_lookups.append(remaining_dict)
     
-    return common_filters
+#     return common_filters
 
 
-def load_probe_eval_dict_batch(lookup_dicts_list):
-    """
-    Loads probe evaluation dictionaries for multiple lookup criteria with a single API call.
+# def load_probe_eval_dict_batch(lookup_dicts_list):
+#     """
+#     Loads probe evaluation dictionaries for multiple lookup criteria with a single API call.
     
-    Args:
-        lookup_dicts_list (list): List of lookup dictionaries, each containing config filters
+#     Args:
+#         lookup_dicts_list (list): List of lookup dictionaries, each containing config filters
     
-    Returns:
-        results_dict (dict): Dictionary mapping lookup_dict (as tuple of sorted items) to evaluation results
-    """
-    os.environ["WANDB_SILENT"] = "true"
-    api = wandb.Api()
+#     Returns:
+#         results_dict (dict): Dictionary mapping lookup_dict (as tuple of sorted items) to evaluation results
+#     """
+#     os.environ["WANDB_SILENT"] = "true"
+#     api = wandb.Api()
     
-    common_filters = _extract_common_filters(lookup_dicts_list)
+#     common_filters = _extract_common_filters(lookup_dicts_list)
     
-    # Get all runs from the project with a single API call
-    all_runs = api.runs("LasrProbeGen/LASR_probe_gen", filters=common_filters)
+#     # Get all runs from the project with a single API call
+#     all_runs = api.runs("LasrProbeGen/LASR_probe_gen", filters=common_filters)
 
-    # Convert lookup dicts to tuples for use as dictionary keys
-    lookup_tuples = [tuple(sorted(lookup_dict.items())) for lookup_dict in lookup_dicts_list]
+#     # Convert lookup dicts to tuples for use as dictionary keys
+#     lookup_tuples = [tuple(sorted(lookup_dict.items())) for lookup_dict in lookup_dicts_list]
     
-    # Initialize results for each lookup dict
-    results_dict = {}
-    for lookup_tuple in lookup_tuples:
-        results_dict[lookup_tuple] = []
+#     # Initialize results for each lookup dict
+#     results_dict = {}
+#     for lookup_tuple in lookup_tuples:
+#         results_dict[lookup_tuple] = []
     
-    # Filter runs locally
-    for run in all_runs:
-        run_config = run.config
-        
-        # Check each lookup dict to see if this run matches
-        for i, lookup_dict in enumerate(lookup_dicts_list):
-            lookup_tuple = lookup_tuples[i]
+#     # Filter runs locally
+#     for run in all_runs:
+#         run_config = run.config
+#         if isinstance(run_config, str):
+#             run_config = json.loads(run_config)
             
-            # Check if all key-value pairs in lookup_dict match the run's config
-            if all(not key.startswith("config.") or run_config.get(key[7:]) == value for key, value in lookup_dict.items()):
-                # accuracy = run.summary.get('accuracy', None)
-                roc_auc = run.summary.get('roc_auc', None)
-                # tpr_at_1_fpr = run.summary.get('tpr_at_1_fpr', None)
+#         # Check each lookup dict to see if this run matches
+#         for i, lookup_dict in enumerate(lookup_dicts_list):
+#             lookup_tuple = lookup_tuples[i]
+            
+#             # Check if all key-value pairs in lookup_dict match the run's config
+#             if all(not key.startswith("config.") or run_config.get(key[7:]) == value for key, value in lookup_dict.items()):
+#                 # accuracy = run.summary.get('accuracy', None)
+#                 roc_auc = run.summary.get('roc_auc', None)
+#                 # tpr_at_1_fpr = run.summary.get('tpr_at_1_fpr', None)
                 
-                if roc_auc is not None:
-                    results_dict[lookup_tuple].append({
-                        # 'accuracy': accuracy,
-                        'roc_auc': roc_auc,
-                        # 'tpr_at_1_fpr': tpr_at_1_fpr
-                    })
+#                 if roc_auc is not None:
+#                     results_dict[lookup_tuple].append({
+#                         # 'accuracy': accuracy,
+#                         'roc_auc': roc_auc,
+#                         # 'tpr_at_1_fpr': tpr_at_1_fpr
+#                     })
     
-    # Process results similar to original function (take latest if multiple)
-    final_results = {}
-    for i, lookup_dict in enumerate(lookup_dicts_list):
-        lookup_tuple = lookup_tuples[i]
-        results = results_dict[lookup_tuple]
+#     # Process results similar to original function (take latest if multiple)
+#     final_results = {}
+#     for i, lookup_dict in enumerate(lookup_dicts_list):
+#         lookup_tuple = lookup_tuples[i]
+#         results = results_dict[lookup_tuple]
         
-        if len(results) == 0:
-            print(f"### WARNING ###: could not find run for lookup dict {lookup_dict}, returning None.")
-            final_results[lookup_tuple] = None
-        elif len(results) > 1:
-            # Optionally uncomment the warning below
-            # print(f"### WARNING ###: multiple runs for lookup dict {lookup_dict}, returning latest.")
-            final_results[lookup_tuple] = results[-1]
-        else:
-            final_results[lookup_tuple] = results[0]
+#         if len(results) == 0:
+#             print(f"### WARNING ###: could not find run for lookup dict {lookup_dict}, returning None.")
+#             final_results[lookup_tuple] = None
+#         elif len(results) > 1:
+#             # Optionally uncomment the warning below
+#             # print(f"### WARNING ###: multiple runs for lookup dict {lookup_dict}, returning latest.")
+#             final_results[lookup_tuple] = results[-1]
+#         else:
+#             final_results[lookup_tuple] = results[0]
     
-    results_list = []
-    for lookup_dict in lookup_dicts_list:
-        lookup_tuple = tuple(sorted(lookup_dict.items()))
-        results_list.append(final_results[lookup_tuple])
+#     results_list = []
+#     for lookup_dict in lookup_dicts_list:
+#         lookup_tuple = tuple(sorted(lookup_dict.items()))
+#         results_list.append(final_results[lookup_tuple])
     
-    return results_list
+#     return results_list
 
 
 def unwrap_value(x):
