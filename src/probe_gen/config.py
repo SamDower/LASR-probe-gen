@@ -105,6 +105,7 @@ MODELS = {
     "llama_3b": "meta-llama/Llama-3.2-3B-Instruct",
     "qwen_3b": "Qwen/Qwen2.5-3B-Instruct",
     "qwen_7b": "Qwen/Qwen2.5-7B-Instruct",
+    "qwen_30b": "Qwen/Qwen3-30B-A3B-Instruct-2507",
     "ministral_8b": "mistralai/Ministral-8B-Instruct-2410",
 }
 

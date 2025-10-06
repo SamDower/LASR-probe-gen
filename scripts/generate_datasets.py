@@ -86,7 +86,7 @@ def get_prompt_dataset(behaviour, datasource):
         return MMLUDataset()
     if datasource == "jailbreaks":
         return JailbreakDataset()
-    if datasource == "hh_rlhf":
+    if datasource == "rlhf":
         return RefusalDataset()
     if datasource == "writingprompts":
         return WritingPromptsDataset()
@@ -199,7 +199,7 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
     while not balance_aquired and not ran_out_of_data:
         # Generate another set of prompts
         if datapoints_tried == 0:
-            n_samples = num_balanced * 2
+            n_samples = num_balanced
         else:
             n_samples = next_n_samples
         found_enough_samples = prompt_dataset.generate_data(mode=mode, output_file="data/temp/prompts_latest.jsonl", n_samples=n_samples, skip=datapoints_tried)
