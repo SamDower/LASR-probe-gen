@@ -15,6 +15,7 @@ import pandas as pd
 
 from probe_gen.annotation.interface_dataset import Dataset, Message
 from probe_gen.annotation.prompt_dataset import PromptDataset
+from probe_gen.paths import data
 
 # System prompt that creates sandbagging incentive
 SYSTEM_PROMPT_SANDBAGGING_PREFIX = """\
@@ -43,7 +44,7 @@ class SandbaggingMultiDataset(PromptDataset):
     
     def __init__(
         self, 
-        csv_file_path: Optional[str] = None,
+        csv_file_path: Optional[str] = str(data.data / "open_trivia_shuffled.csv"), # https://huggingface.co/datasets/lasrprobegen/sycophancy-activations/blob/main/multichoice/open_trivia_shuffled.csv
         default_train_test_gap: int = 100
     ):
         """
