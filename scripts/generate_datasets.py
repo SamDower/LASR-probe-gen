@@ -244,7 +244,7 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
         else:
             # Guess how many more samples we need
             guess = ((num_balanced / 2) - smallest_class_length) * datapoints_tried / smallest_class_length + 200
-            next_n_samples = min(int(guess), 500)
+            next_n_samples = max(int(guess), 500)
 
     # Save dataset
     REPO_NAME = f"lasrprobegen/{behaviour}-activations"
