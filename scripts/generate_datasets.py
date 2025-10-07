@@ -20,6 +20,9 @@ from probe_gen.labelling.refusal_autograder import grade_data_harmbench
 from probe_gen.labelling.sycophancy_multichoice_autograder import (
     label_and_save_dataset_sycophancy_multichoice,
 )
+from probe_gen.labelling.sandbagging_multi_autograder import (
+    label_and_save_dataset_sandbagging_multichoice,
+)
 
 # Add the project root to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -118,6 +121,12 @@ def get_labels(behaviour, datasource, prompts_path, responses_path, out_path, nu
         elif behaviour == "authority":
             label_and_save_dataset_authority_multichoice(
                 prompts_file=prompts_path,
+                responses_file=responses_path,
+                out_file=out_path,
+                num_balanced=num_balanced,
+            )
+        elif behaviour == "sandbagging":
+            label_and_save_dataset_sandbagging_multichoice(
                 responses_file=responses_path,
                 out_file=out_path,
                 num_balanced=num_balanced,
