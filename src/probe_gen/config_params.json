@@ -83,5 +83,33 @@
                 "weight_decay": 1e-05
             }
         }
+    },
+    "ministral_8b": {
+        "mean": {
+            "authority": {
+                "C": 0.001,
+                "layer": 14
+            },
+            "lists": {
+                "C": 0.001,
+                "layer": 14
+            },
+            "metaphors": {
+                "C": 0.001,
+                "layer": 14
+            },
+            "refusal": {
+                "C": 0.001,
+                "layer": 14
+            },
+            "science": {
+                "C": 0.001,
+                "layer": 14
+            },
+            "sycophancy": {
+                "C": 0.01,
+                "layer": 14
+            }
+        }
     }
 }
