@@ -51,7 +51,7 @@ def generate_and_save_activations(behaviour, datasource, activations_model, resp
         sample=0,
         layers_str=layers_str,
         save_increment=-1,
-        include_prompt=False
+        include_prompt="included" in generation_method
     )
 
     REPO_NAME = f"lasrprobegen/{behaviour}-activations"
@@ -86,9 +86,14 @@ def main():
     response_model = "ministral_8b"
     activations_model = "ministral_8b"
     generation_methods = ["on_policy"]
-    layers = [10,14,18,22,26]
+    layers = [26]
     experiments = [
-        {"behaviour": "authority", "datasources": ["multichoice"]},
+        # {"behaviour": "authority", "datasources": ["multichoice", "arguments"]},
+        {"behaviour": "sycophancy", "datasources": ["multichoice"]},
+        # {"behaviour": "lists", "datasources": ["ultrachat", "shakespeare"]},
+        # {"behaviour": "metaphors", "datasources": ["ultrachat", "writingprompts"]},
+        # {"behaviour": "science", "datasources": ["ultrachat", "mmlu"]},
+        # {"behaviour": "refusal", "datasources": ["jailbreaks"]},
     ]
     activations_batch_size = 32
     train_test_modes = ["train", "test"]
@@ -110,15 +115,16 @@ def main():
                             repo_id = f"lasrprobegen/{behaviour}-activations"
                             local_dir = "data/temp"
                             os.makedirs(local_dir, exist_ok=True)
+                            generation_method_download_name = generation_method.replace("_included", "")
                             file_path = hf_hub_download(
                                 repo_id=repo_id,
                                 repo_type="dataset",
-                                filename=f"{datasource}/{response_model}_{generation_method}_{mode}.jsonl",
+                                filename=f"{datasource}/{response_model}_{generation_method_download_name}_{mode}.jsonl",
                                 local_dir=local_dir,
                                 token=os.getenv("HF_TOKEN")
                             )
                             print(f"Downloaded to: {file_path}")
-                            generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, mode, layers, f"data/temp/{datasource}/{response_model}_{generation_method}_{mode}.jsonl", activations_batch_size)
+                            generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, mode, layers, f"data/temp/{datasource}/{response_model}_{generation_method_download_name}_{mode}.jsonl", activations_batch_size)
                             # Delete all files that were used
                             wipe_directory(temp_dir)
                         except Exception as e:

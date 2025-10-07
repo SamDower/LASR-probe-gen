@@ -107,8 +107,8 @@
                 "layer": 14
             },
             "sycophancy": {
-                "C": 0.01,
-                "layer": 14
+                "C": 0.001,
+                "layer": 26
             }
         }
     }
