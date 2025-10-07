@@ -8,7 +8,7 @@ import probe_gen.probes as probes
 from probe_gen.paths import data
 from probe_gen.probes.wandb_interface import load_probe_eval_dict_by_dict
 from probe_gen.standard_experiments.hyperparameter_search import (
-    get_best_hyperparams_for_train_setup
+    get_best_hyperparams_for_train_setup,
 )
 
 
@@ -52,6 +52,7 @@ def get_grid_results_table_from_wandb(train_setup, test_setup, metric="roc_auc")
             results = load_probe_eval_dict_by_dict(search_dict)
             results_table[i, j] = results[metric]
             # print(f"{train_dataset_name}, {test_dataset_names[j]}, {results[metric]}")
+    return results_table
 
 
 def plot_grid_experiment_lean(train_setup, test_setup, metric="roc_auc"):
@@ -71,7 +72,7 @@ def plot_grid_experiment_lean(train_setup, test_setup, metric="roc_auc"):
     tr = get_best_hyperparams_for_train_setup(tr)
     
     # Get all results by querying wandb for all run configs
-    results_table = get_results_table_from_wandb(tr, ts, metric)
+    results_table = get_grid_results_table_from_wandb(tr, ts, metric)
 
     # Get tick labels
     train_labels = [tr[i][5]+"_"+tr[i][4] for i in range(len(tr))]
@@ -124,7 +125,7 @@ def plot_grid_experiment_lean_with_means(train_setup, test_setup, metric="roc_au
     tr = get_best_hyperparams_for_train_setup(tr)
     
     # Get all results by querying wandb for all run configs
-    results_table = get_results_table_from_wandb(tr, ts, metric)
+    results_table = get_grid_results_table_from_wandb(tr, ts, metric)
 
     # Get tick labels
     abridge = lambda label: "".join([p[0] for p in label.split("_") if p])  # e.g., llama_3b → l3b

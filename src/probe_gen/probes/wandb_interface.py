@@ -1,6 +1,8 @@
-import os
 import json
+import os
+
 import pandas as pd
+
 import wandb
 
 
@@ -86,14 +88,15 @@ def load_probe_eval_dict_by_dict(lookup_dict):
     
     results = []
     for run in runs:
-        # accuracy = run.summary.get('accuracy', None)
-        roc_auc = run.summary.get('roc_auc', None)
-        # tpr_at_1_fpr = run.summary.get('tpr_at_1_fpr', None)
+        data_dict = json.loads(run.summary._json_dict)
+        accuracy = data_dict.get('accuracy', None)
+        roc_auc = data_dict.get('roc_auc', None)
+        tpr_at_1_fpr = data_dict.get('tpr_at_1_fpr', None)
         if roc_auc is not None:
             results.append({
-                # 'accuracy': accuracy,
+                'accuracy': accuracy,
                 'roc_auc': roc_auc,
-                # 'tpr_at_1_fpr': tpr_at_1_fpr
+                'tpr_at_1_fpr': tpr_at_1_fpr
             })
     
     if len(results) == 0:

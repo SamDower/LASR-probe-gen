@@ -14,7 +14,6 @@ from probe_gen.annotation import (
 from probe_gen.annotation.datasets import *
 from probe_gen.paths import data
 
-
 CFG_DEFAULTS = {"seed": 42, "normalize": True, "use_bias": True}   # set defaults here
 class ConfigDict(dict):
     """A dict with attribute-style access (e.g. cfg.epochs instead of cfg['epochs'])."""
@@ -66,28 +65,28 @@ class ConfigDict(dict):
 BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
     "refusal": {
         "test_both": False, # whether we have test data for both ID and OOD
-        "rlhf": {"llama_3b": "ministral_8b",},
-        "jailbreaks": {"llama_3b": "ministral_8b",}},
+        "rlhf": {"llama_3b": "ministral_8b", "ministral_8b": "llama_3b"},
+        "jailbreaks": {"llama_3b": "ministral_8b", "ministral_8b": "llama_3b"}},
     "lists": {
         "test_both": False,
-        "ultrachat": {"llama_3b": "qwen_3b",},
-        "shakespeare": {"llama_3b": "qwen_3b",}},
+        "ultrachat": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"},
+        "shakespeare": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"}},
     "metaphors": {
         "test_both": False,
-        "ultrachat": {"llama_3b": "qwen_3b",},
-        "writingprompts": {"llama_3b": "qwen_3b",}},
+        "ultrachat": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"},
+        "writingprompts": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"}},
     "science": {
         "test_both": False,
-        "ultrachat": {"llama_3b": "qwen_3b",},
-        "mmlu": {"llama_3b": "qwen_3b",}},
+        "ultrachat": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"},
+        "mmlu": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"}},
     "sycophancy": {
         "test_both": True,
-        "multichoice": {"llama_3b": "ministral_8b",},
-        "arguments": {"llama_3b": "qwen_7b",}},
+        "multichoice": {"llama_3b": "ministral_8b", "ministral_8b": "llama_3b"},
+        "arguments": {"llama_3b": "qwen_7b", "ministral_8b": "llama_3b"}},
     "authority": {
         "test_both": True,
-        "multichoice": {"llama_3b": "ministral_8b",},
-        "arguments": {"llama_3b": "qwen_7b",}},
+        "multichoice": {"llama_3b": "ministral_8b", "ministral_8b": "llama_3b"},
+        "arguments": {"llama_3b": "qwen_7b", "ministral_8b": "llama_3b"}},
 }
 
 BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION = {
