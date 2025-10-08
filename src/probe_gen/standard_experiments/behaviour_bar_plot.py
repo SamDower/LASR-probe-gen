@@ -1,12 +1,14 @@
+import textwrap
+
 import matplotlib.pyplot as plt
 import numpy as np
-import textwrap
 from tqdm import tqdm
 
-from probe_gen.config import ConfigDict
-from probe_gen.probes.wandb_interface import load_probe_eval_dicts_as_df #,load_probe_eval_dict_batch 
+from probe_gen.probes.wandb_interface import (
+    load_probe_eval_dicts_as_df,  #,load_probe_eval_dict_batch 
+)
 from probe_gen.standard_experiments.hyperparameter_search import (
-    get_best_hyperparams_for_train_setup
+    get_best_hyperparams_for_train_setup,
 )
 
 
@@ -73,7 +75,8 @@ def plot_behaviour_barchart(
     figsize=(12, 3), 
     dpi=300,
     legend_loc="upper right",
-    extra_whitespace=1
+    extra_whitespace=1,
+    probe_type="Linear",
     ):
     """
     Plots a bar chart of the results of the probes specified in the train_setup list.
@@ -91,7 +94,7 @@ def plot_behaviour_barchart(
         train_gen_methods = ['incentivised', 'prompted', 'off_policy']
         test_gen_method = 'incentivised'
     else:
-        group_labels =  ['On-Policy', 'On-Policy Incentivised', 'On-Policy Prompted', 'Off-Policy']
+        group_labels =  ['On-Policy Natural', 'On-Policy Incentivised', 'On-Policy Prompted', 'Off-Policy']
         train_gen_methods = ['on_policy', 'incentivised', 'prompted', 'off_policy']
         test_gen_method = 'on_policy'
     print("Fetching results...")
@@ -130,7 +133,7 @@ def plot_behaviour_barchart(
     ax.set_ylabel(ylabel)
 
     if title is None:
-        title = f"Linear Probes Trained on {'OOD' if train_OOD else 'ID'} Training Sets, Evaluated on  On-Policy {'Incentivised ' if test_incentivised else ''}Test Sets for Each Behaviour"
+        title = f"{'Linear' if probe_type == 'mean' else 'Attention'} Probes With {'Different-Domain' if train_OOD else 'Same-Domain'} Train Set, Evaluated Against On-Policy {'Incentivised ' if test_incentivised else 'Natural '}"
     ax.set_title(title)
     
     x_ticks = np.concatenate([x, [len(train_setup) + big_gap - small_gap]]) if add_mean_summary else x
@@ -143,7 +146,7 @@ def plot_behaviour_barchart(
     ax.set_xlim(current_xlim[0], current_xlim[1] + extra_whitespace)
     
     #ax.legend(loc='upper right', title="ID Training Set")
-    ax.legend(loc=legend_loc, title=f"{'OOD' if train_OOD else 'ID'} Training Set", fontsize=10, title_fontsize=11)
+    ax.legend(loc=legend_loc, title="Train Gen. Method", fontsize=10, title_fontsize=11)
 
     # Add a grid for better readability
     ax.grid(True, alpha=0.3, axis='y')
@@ -151,6 +154,17 @@ def plot_behaviour_barchart(
     ax.title.set_fontsize(16)     # change font size separately
     ax.xaxis.label.set_size(13)   # x-axis label font size
     ax.yaxis.label.set_size(13)   # y-axis label font size
+    
+    if test_incentivised:
+        # Insert vertical dashed red line
+        split_index = len(train_setup) - 4  # index where the last 4 behaviours begin
+        ax.axvline(
+            x=split_index - 0.5,   # -0.5 so it appears between bars
+            color='red',
+            linestyle='--',
+            linewidth=1.5,
+            alpha=0.8,
+        )
 
     # Adjust layout and display
     plt.ylim(0.5, 1)
@@ -170,7 +184,8 @@ def plot_mean_summary_barchart(
     figsize=(5, 3), 
     dpi=300,
     legend_loc="upper right",
-    extra_whitespace=1
+    extra_whitespace=1,
+    probe_type="Linear"
     ):
     """
     Plots a summary mean bar chart of the results of the probes specified in the train_setup list.
@@ -187,7 +202,7 @@ def plot_mean_summary_barchart(
         train_gen_methods = ['incentivised', 'prompted', 'off_policy']
         test_gen_method = 'incentivised'
     else:
-        group_labels =  ['On-Policy', 'On-Policy Incentivised', 'On-Policy Prompted', 'Off-Policy']
+        group_labels =  ['On-Policy Natural', 'On-Policy Incentivised', 'On-Policy Prompted', 'Off-Policy']
         train_gen_methods = ['on_policy', 'incentivised', 'prompted', 'off_policy']
         test_gen_method = 'on_policy'
     means = np.full((len(train_gen_methods), 2), 0.6, dtype=float)
@@ -220,11 +235,11 @@ def plot_mean_summary_barchart(
     ax.set_ylabel(ylabel)
 
     if title is None:
-        title = f"Linear Probes Evaluated on  On-Policy {'Incentivised ' if test_incentivised else ''}"
+        title = f"{'Linear' if probe_type == 'mean' else 'Attention'} Probes Evaluated Against On-Policy {'Incentivised ' if test_incentivised else 'Natural '}"
     ax.set_title(title)
     ax.set_xticks(x)
 
-    labels = ["ID Training Set", "OOD Training Set"]
+    labels = ["Same-Domain Train Set", "Diff.-Domain Train Set"]
     wrapped_labels = ['\n'.join(textwrap.wrap(label, width=14)) for label in labels]
     ax.set_xticklabels(wrapped_labels)
 
@@ -232,7 +247,7 @@ def plot_mean_summary_barchart(
     ax.set_xlim(current_xlim[0], current_xlim[1] + extra_whitespace)
 
     #ax.legend(loc='upper right', title="ID Training Set")
-    ax.legend(loc=legend_loc, title="Training Set", fontsize=9, title_fontsize=11)
+    ax.legend(loc=legend_loc, title="Train Gen. Method", fontsize=9, title_fontsize=11)
 
     # Add a grid for better readability
     ax.grid(True, alpha=0.3, axis='y')
@@ -242,7 +257,7 @@ def plot_mean_summary_barchart(
     ax.yaxis.label.set_size(12)   # y-axis label font size
 
     # Adjust layout and display
-    plt.ylim(0.5, 1)
+    plt.ylim(0.5, 1.09)
     plt.tight_layout()
     if save_path is not None:
         plt.savefig(save_path, dpi=dpi)
