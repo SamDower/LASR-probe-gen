@@ -90,6 +90,8 @@ def get_prompt_dataset(behaviour, datasource):
         return RefusalDataset()
     if datasource == "writingprompts":
         return WritingPromptsDataset()
+    if datasource == "coding":
+        return CodingQuestionsDataset()
 
     return None
 
