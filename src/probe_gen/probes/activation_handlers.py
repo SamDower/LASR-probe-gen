@@ -113,7 +113,8 @@ def load_hf_activations_at_layer(
             raise e
         
     if and_labels:
-        labels_filepath = f"{datasource}/{response_model}_{generation_method}_{mode}.jsonl"
+        generation_method_for_labels = generation_method.replace("_included", "")
+        labels_filepath = f"{datasource}/{response_model}_{generation_method_for_labels}_{mode}.jsonl"
         labels_localpath = data.data / behaviour
         try:
             if not os.path.exists(labels_localpath / labels_filepath):
