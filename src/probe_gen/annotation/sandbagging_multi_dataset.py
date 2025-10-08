@@ -44,8 +44,8 @@ class SandbaggingMultiDataset(PromptDataset):
     
     def __init__(
         self, 
-        csv_file_path: Optional[str] = str(data.data / "open_trivia_shuffled.csv"), # https://huggingface.co/datasets/lasrprobegen/sycophancy-activations/blob/main/multichoice/open_trivia_shuffled.csv
-        default_train_test_gap: int = 100
+        csv_file_path: Optional[str] = str(data.data / "open_trivia_shuffled.csv"),
+        default_train_test_gap: int = 25000
     ):
         """
         Initialize Sandbagging Multi-Choice prompt dataset.
@@ -91,7 +91,7 @@ class SandbaggingMultiDataset(PromptDataset):
             print(f"✓ Successfully loaded {len(self._cached_df)} multiple choice questions")
             
         except Exception as e:
-            raise ValueError(f"Failed to load CSV file: {e}")
+            raise ValueError(f"Failed to load CSV file: {e}. You can download the data from https://huggingface.co/datasets/lasrprobegen/sycophancy-activations/blob/main/multichoice/open_trivia_shuffled.csv")
     
     def _format_question(self, row: pd.Series) -> str:
         """
