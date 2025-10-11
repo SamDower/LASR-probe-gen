@@ -106,6 +106,7 @@ MODELS = {
     "qwen_7b": "Qwen/Qwen2.5-7B-Instruct",
     "qwen_30b": "Qwen/Qwen3-30B-A3B-Instruct-2507",
     "ministral_8b": "mistralai/Ministral-8B-Instruct-2410",
+    "gemma_27b": "google/gemma-3-27b-it"
 }
 
 LABELLING_SYSTEM_PROMPTS = {

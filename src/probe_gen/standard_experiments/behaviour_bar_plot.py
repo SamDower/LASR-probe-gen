@@ -262,3 +262,91 @@ def plot_mean_summary_barchart(
     if save_path is not None:
         plt.savefig(save_path, dpi=dpi)
     plt.show()
+
+
+
+
+
+
+
+
+
+
+def plot_mean_summary_barchart_for_including_prompts_or_not(
+    train_setup, 
+    title=None,
+    xlabel=None,
+    ylabel="Mean Test AUROC (± SEM)",
+    save_path = None,
+    figsize=(8, 3), 
+    dpi=300,
+    legend_loc="upper right",
+    extra_whitespace=1
+    ):
+    """
+    Plots a summary mean bar chart of the results of the probes specified in the train_setup list.
+    Args:
+        train_setup (list): 
+            [probe_type, behaviour, [ID datasource, OOD datasource], activations_model, [ID off_policy_model, OOD off_policy_model]]
+        ...
+    """
+    small_gap = 0.2
+
+    # Get all results by querying wandb for all run configs
+    group_labels =  ['On-Policy Incentivised (incentive not included)', 'On-Policy Incentivised (incentive included)', 'On-Policy Prompted (prompt not included)', 'On-Policy Prompted (prompt included)']
+    train_gen_methods = ['incentivised', 'incentivised_included', 'prompted', 'prompted_included']
+    test_gen_method = 'on_policy'
+    means = np.full((len(train_gen_methods), 1), 0.6, dtype=float)
+    standard_errors = np.full((len(train_gen_methods), 1), 0.6, dtype=float)
+    print("Fetching results...")
+    results_table = get_bar_chart_results_table_from_wandb(train_setup, train_gen_methods, test_gen_method, False)
+    masked_array = np.ma.masked_equal(results_table, 0)
+    means[:,0] = np.ma.mean(masked_array, axis=1)
+    standard_errors[:,0] = np.ma.std(masked_array, axis=1) / np.sqrt(masked_array.shape[1])
+    print("Fetched")
+    x = np.arange(1)  # Positions 0, 1, 2, ..., 8
+
+    # Create the figure and axis
+    fig, ax = plt.subplots(figsize=figsize)
+    train_colors = ['#2A9D8F', '#8DC7BF', '#E76F51', '#F2B5A5']
+
+    # Create the grouped bars - separate first groups from mean group
+    num_groups = results_table.shape[0]
+    bar_width = (1 - small_gap) / num_groups
+    for i in range(num_groups):
+        group_offset = (i - num_groups / 2 + 0.5) * bar_width
+        bars = ax.bar(x + group_offset, means[i], bar_width, label=group_labels[i], color=train_colors[i % 4], alpha=0.8, 
+                    yerr=standard_errors[i], capsize=4) #error_kw={'elinewidth': 2, 'capthick': 2}, 
+
+    # Customize the plot
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
+    if title is None:
+        title = "Effect of including prompt / incentive activations on linear probe generalization"
+    ax.set_title(title)
+    ax.set_xticks(x)
+
+    labels = ["Training Set"]
+    wrapped_labels = ['\n'.join(textwrap.wrap(label, width=14)) for label in labels]
+    ax.set_xticklabels(wrapped_labels)
+
+    current_xlim = ax.get_xlim()
+    ax.set_xlim(current_xlim[0], current_xlim[1] + extra_whitespace)
+
+    #ax.legend(loc='upper right', title="ID Training Set")
+    ax.legend(loc=legend_loc, title="Training Set", fontsize=9, title_fontsize=11)
+
+    # Add a grid for better readability
+    ax.grid(True, alpha=0.3, axis='y')
+    
+    ax.title.set_fontsize(13)     # change font size separately
+    ax.xaxis.label.set_size(12)   # x-axis label font size
+    ax.yaxis.label.set_size(12)   # y-axis label font size
+
+    # Adjust layout and display
+    plt.ylim(0.5, 1)
+    plt.tight_layout()
+    if save_path is not None:
+        plt.savefig(save_path, dpi=dpi)
+    plt.show()

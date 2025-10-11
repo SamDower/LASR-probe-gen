@@ -17,11 +17,11 @@ from probe_gen.labelling.authority_multichoice_autograder import (
 )
 from probe_gen.labelling.label_dataset import label_and_save_dataset
 from probe_gen.labelling.refusal_autograder import grade_data_harmbench
-from probe_gen.labelling.sycophancy_multichoice_autograder import (
-    label_and_save_dataset_sycophancy_multichoice,
-)
 from probe_gen.labelling.sandbagging_multi_autograder import (
     label_and_save_dataset_sandbagging_multichoice,
+)
+from probe_gen.labelling.sycophancy_multichoice_autograder import (
+    label_and_save_dataset_sycophancy_multichoice,
 )
 
 # Add the project root to Python path
@@ -52,8 +52,6 @@ def check_experiments_are_valid(experiments):
     for exp in experiments:
         if exp["train_size"] < 0 or exp["test_size"] < 0:
             raise ValueError("Train size and test size must be greater than 0, or 0 to skip")
-        if len(exp["layers"]) == 0:
-            raise ValueError("Layers must be a non-empty list")
         if exp["temperature"] < 0:
             raise ValueError("Temperature must be non negative")
         if exp["activations_model"] not in MODELS:
@@ -210,7 +208,7 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
     while not balance_aquired and not ran_out_of_data:
         # Generate another set of prompts
         if datapoints_tried == 0:
-            n_samples = num_balanced
+            n_samples = 500
         else:
             n_samples = next_n_samples
         found_enough_samples = prompt_dataset.generate_data(mode=mode, output_file="data/temp/prompts_latest.jsonl", n_samples=n_samples, skip=datapoints_tried)
@@ -385,7 +383,8 @@ def main():
                     try:
                         if train_size > 0:
                             generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, "train", train_size, generation_batch_size)
-                            generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "train", layers, "data/temp/balanced_labelled_responses_all.jsonl", activations_batch_size)
+                            if len(layers) > 0:
+                                generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "train", layers, "data/temp/balanced_labelled_responses_all.jsonl", activations_batch_size)
                             # Delete all files that were used
                             wipe_directory(temp_dir)
                     except Exception as e:
@@ -396,7 +395,8 @@ def main():
                     if test_size > 0:
                         try:
                             generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, "test", test_size, generation_batch_size)
-                            generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "test", layers, "data/temp/balanced_labelled_responses_all.jsonl", activations_batch_size)
+                            if len(layers) > 0:
+                                generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "test", layers, "data/temp/balanced_labelled_responses_all.jsonl", activations_batch_size)
                             # Delete all files that were used
                             wipe_directory(temp_dir)
                         except Exception as e:

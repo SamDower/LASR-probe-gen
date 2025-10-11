@@ -73,28 +73,30 @@ def _cleanup_gpu_memory():
         torch.cuda.empty_cache()
 
 
-# * model utils
 def get_pad_token(model_id, tokenizer):
     if tokenizer.pad_token is not None:
         return tokenizer.pad_token
-    model_to_pad_token = {
-        "meta-llama/Llama-3.2-3B-Instruct": "<|finetune_right_pad_id|>",
-        "google/gemma-7b-it": "<pad>",
-        "mistralai/Ministral-8B-Instruct-2410": "<pad>",
-        "meta-llama/Llama-3.1-8B-Instruct": "<|finetune_right_pad_id|>",
-    }
-    pad_token = model_to_pad_token[model_id]
-    return pad_token
+    # Try some heuristics
+    if "gemma" in model_id.lower():
+        return "<pad>"
+    if "llama" in model_id.lower():
+        return "<|finetune_right_pad_id|>"
+    if "mistral" in model_id.lower():
+        return "<pad>"
+    # Default fallback
+    return tokenizer.eos_token or tokenizer.unk_token
 
 
 def get_model(model_name: str):
     # Load the model with float16 precision
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch.float16,  # Added float16 precision
+        torch_dtype=torch.bfloat16,  # Added float16 precision
         device_map="auto",
         trust_remote_code=True,
     )
+    
+    #model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16)
 
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -104,6 +106,7 @@ def get_model(model_name: str):
 
     # Set the pad token using the same logic as control experiments
     tokenizer.pad_token = get_pad_token(model_name, tokenizer)
+    model.to("cuda:0")
 
     return model, tokenizer
 
@@ -213,30 +216,14 @@ def _generate_sequences(model, tokenizer, inputs, max_new_tokens=75, temperature
     """
     model.eval()
     with torch.no_grad():
-        # Prepare base generation arguments
-        pad_id = (
-            tokenizer.pad_token_id
-            if tokenizer.pad_token_id is not None
-            else tokenizer.eos_token_id
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=max_new_tokens, 
+            pad_token_id=tokenizer.pad_token_id, #if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
+            eos_token_id=tokenizer.eos_token_id,
+            do_sample=(temperature > 0),
+            temperature=temperature if temperature > 0 else None,
         )
-        base_args = {**inputs, "max_new_tokens": max_new_tokens, "pad_token_id": pad_id}
-
-        # Smart temperature handling with clean parameter passing
-        if temperature == 0.0:
-            # Use greedy decoding - only pass necessary parameters (no temperature/top_p)
-            generation_args = {
-                **base_args,
-                "do_sample": False,  # Greedy decoding
-            }
-        else:
-            # Use sampling with temperature - only pass sampling parameters when needed
-            generation_args = {
-                **base_args,
-                "do_sample": True,
-                "temperature": temperature,
-            }
-
-        outputs = model.generate(**generation_args)  # this gives input + output
     return outputs
 
 
@@ -340,8 +327,7 @@ def get_batch_outputs_only(
             - input_length: Original input sequence length
     """
     # Step 1: Prepare inputs
-    inputs = _prepare_batch_inputs(tokenizer, prompts, max_length)
-    inputs = inputs.to(model.device)
+    inputs = tokenizer(prompts, return_tensors="pt", padding="longest", truncation=True, max_length=1024).to(model.device)
 
     input_length = inputs.input_ids.shape[1]
     batch_size = inputs.input_ids.shape[0]
@@ -706,17 +692,34 @@ def _create_result_entry(
     }
 
 
-def _extract_assistant_response(full_output):
-    """Extract just the assistant response from a full model output sequence."""
-    # Look for the assistant response after "assistant\n\n" pattern
-    if "assistant\n\n" in full_output:
-        # Split on "assistant\n\n" and take the last part
-        parts = full_output.split("assistant\n\n")
-        if len(parts) > 1:
-            return parts[-1].strip()
+# def _extract_assistant_response(full_output):
+#     """Extract just the assistant response from a full model output sequence."""
+#     # Look for the assistant response after "assistant\n\n" pattern
+#     if "assistant\n\n" in full_output:
+#         # Split on "assistant\n\n" and take the last part
+#         parts = full_output.split("assistant\n\n")
+#         if len(parts) > 1:
+#             return parts[-1].strip()
 
-    # Fallback: look for other patterns or return as-is
-    # If no clear pattern found, return the full output
+#     # Fallback: look for other patterns or return as-is
+#     # If no clear pattern found, return the full output
+#     return full_output.strip()
+
+def _extract_assistant_response(full_output):
+    """Extract just the assistant/model response from a full model output sequence."""
+    # Support both role names used by different instruction-tuned models
+    for role_name in ["assistant", "model"]:
+        pattern = f"{role_name}\n\n"
+        if pattern in full_output:
+            parts = full_output.split(pattern)
+            if len(parts) > 1:
+                return parts[-1].strip()
+
+    # Fallback: try to trim at the final <end_of_turn> marker if present
+    if "<end_of_turn>" in full_output:
+        return full_output.split("<end_of_turn>")[0].split("\n")[-1].strip()
+
+    # Default fallback: return full text
     return full_output.strip()
 
 
@@ -1499,7 +1502,12 @@ def process_file_outputs_only(
             elif direct_or_incentivised == "incentivised":
                 positive_prompt = BEHAVIOUR_PROMPTS[prompts_key]['positive_incentive']
                 negative_prompt = BEHAVIOUR_PROMPTS[prompts_key]['negative_incentive']
-            modified_human_list = [f"{positive_prompt if (i // 3) % 2 == 0 else negative_prompt} {human}" for i, human in enumerate(human_list)]
+            prompt_in_xs = 3
+            if datasource == "multichoice" and behaviour == "authority":
+                prompt_in_xs = 4
+            elif datasource == "multichoice" and behaviour == "sycophancy":
+                prompt_in_xs = 5
+            modified_human_list = [f"{positive_prompt if (i // prompt_in_xs) % 2 == 0 else negative_prompt} {human}" for i, human in enumerate(human_list)]
         else:
             prompt = BEHAVIOUR_PROMPTS[prompts_key][prompt_type]
             modified_human_list = [f"{prompt} {human}" for i, human in enumerate(human_list)]

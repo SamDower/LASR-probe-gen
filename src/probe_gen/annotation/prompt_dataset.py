@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any, Dict
 
 from probe_gen.annotation.interface_dataset import Dataset
-from probe_gen.paths import data
 
 
 class PromptDataset(ABC):
