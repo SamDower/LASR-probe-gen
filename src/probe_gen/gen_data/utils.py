@@ -122,7 +122,7 @@ def get_res_layers_to_enumerate(model):
     elif "mistral" in model_name:
         return model.model.layers
     elif "gemma" in model_name:
-        return model.model.layers
+        return model.model.language_model.layers
     elif "llama" in model_name:
         return model.model.layers
     elif "qwen" in model_name.lower():
