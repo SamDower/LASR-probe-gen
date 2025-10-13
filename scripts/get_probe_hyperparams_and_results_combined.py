@@ -30,8 +30,7 @@ from probe_gen.standard_experiments.hyperparameter_search import (
 os.environ["WANDB_SILENT"] = "true"
 import wandb
 
-#wandb.login(key="f3492efdb4233ddef665aa4da3647e95800df2dc")
-wandb.login(key="6be1451a94426ad005abefd2c95fad7e45022122")
+wandb.login(key="")
 
 
 hf_token = os.getenv("HF_TOKEN")
@@ -469,7 +468,7 @@ def do_combined_probe_experiment(
         generation_methods=generation_methods,
         test_setup=test_setup,
         response_model=response_model,
-        save_locally=True
+        save_locally=False
     )
     
     # Delete activation files to save space
@@ -539,12 +538,22 @@ if __name__ == "__main__":
     #     test_datasources=["shakespeare"]
     # )
 
+    # Experiment 1: Train on writingprompts + ultrachat, test on ultrachat (ID)
     do_combined_probe_experiment_default(
         probe_type="mean",
         activations_model="llama_3b",
         behaviour="lists",
         datasource_pairs=[("writingprompts", "ultrachat")],
-        test_datasources=["ultrachat", "shakespeare"]  # ID first, then OOD
+        test_datasources=["ultrachat"]
+    )
+    
+    # Experiment 2: Train on writingprompts + shakespeare, test on ultrachat (OOD)
+    do_combined_probe_experiment_default(
+        probe_type="mean",
+        activations_model="llama_3b",
+        behaviour="lists",
+        datasource_pairs=[("writingprompts", "shakespeare")],
+        test_datasources=["ultrachat"]
     )
     
     # =============================================================================
