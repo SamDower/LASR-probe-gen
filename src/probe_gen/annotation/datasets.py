@@ -27,6 +27,7 @@ from .sandbagging_multi_dataset import SandbaggingMultiDataset
 from .shakespeare_dataset import ShakespeareDataset
 from .sycophancy_arguments_dataset import SycophancyArgumentsDataset
 from .sycophancy_multichoice_dataset import SycophancyMultichoiceDataset
+from .sycophancy_poems_dataset import SycophancyPoemsDataset
 from .tinystories_dataset import TinyStoriesDataset
 from .ultrachat_dataset import UltrachatDataset
 from .writingprompts_dataset import WritingPromptsDataset
@@ -48,6 +49,7 @@ __all__ = [
     'ShakespeareDataset',
     'SycophancyArgumentsDataset',
     'SycophancyMultichoiceDataset',
+    'SycophancyPoemsDataset',
     'TinyStoriesDataset',
     'JailbreakDataset',
     'HarmfulRequestDataset',

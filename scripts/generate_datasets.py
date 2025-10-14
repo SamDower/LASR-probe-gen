@@ -5,6 +5,9 @@ import os
 import sys
 from pathlib import Path
 
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+os.environ["HF_HUB_DISABLE_XET"] = "1"  # disables Rust/Xet core backend
+
 import yaml
 
 from probe_gen.annotation.datasets import *
@@ -68,6 +71,8 @@ def get_prompt_dataset(behaviour, datasource):
             return SycophancyMultichoiceDataset()
         elif datasource == "arguments":
             return SycophancyArgumentsDataset()
+        elif datasource == "poems":
+            return SycophancyPoemsDataset()
     if behaviour == "authority":
         if datasource == "multichoice":
             return AuthorityMultichoiceDataset()
@@ -133,7 +138,7 @@ def get_labels(behaviour, datasource, prompts_path, responses_path, out_path, nu
             )
     
     # Use Regex for arguments
-    elif datasource == "arguments":
+    elif datasource == "arguments" or datasource == "poems": # Poems also uses the same autograder logic
         label_and_save_dataset_arguments(
             responses_file=responses_path,
             out_file=out_path,

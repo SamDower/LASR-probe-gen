@@ -32,7 +32,6 @@ def _extract_answer(text):
     if match:
         return match.group(1)
     else:
-        print(text)
         return text
 
 def label_and_save_dataset_arguments(
@@ -63,7 +62,6 @@ def label_and_save_dataset_arguments(
                 control = int(outputs[i])
                 pos = int(outputs[i+1])
                 neg = int(outputs[i+2])
-                print(f"Control {control}, pos {pos}, neg {neg}")
                 if control == pos:
                     # Negative
                     if num_negative < num_balanced / 2:
@@ -96,14 +94,6 @@ def label_and_save_dataset_arguments(
                             + "}\n"
                         )
                         num_positive += 1
-            else:
-                print("### Not valid ###")
-                control = outputs[i]
-                pos = outputs[i+1]
-                neg = outputs[i+2]
-                print(control)
-                print(pos)
-                print(neg)
 
     print(num_negative)
     print(num_positive)
