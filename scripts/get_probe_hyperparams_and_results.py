@@ -144,8 +144,7 @@ def do_probe_experiment_default(probe_type, activations_model, test_incentivised
                 continue
             ds = list(done_experiments[behaviour].keys())[1:]
             datasource_ID, datasource_OOD = (ds[0], ds[1])
-            # for datasource in [datasource_ID, datasource_OOD]:
-            for datasource in [datasource_ID]:
+            for datasource in [datasource_ID, datasource_OOD]:
                 # Get experiments into format
                 # [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
                 off_policy_model = done_experiments[behaviour][datasource][activations_model]
@@ -196,8 +195,8 @@ if __name__ == "__main__":
     # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
     for test_incentivised in [False, True]:
         do_probe_experiment_default(
-            probe_type = ["mean", "attention_torch"][1],
-            activations_model = ["llama_3b"][0], # currently the only option
+            probe_type = ["mean", "attention_torch"][0],
+            activations_model = ["llama_3b", "ministral_8b"][0], # currently the only option
             test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
         )
     

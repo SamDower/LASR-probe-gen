@@ -257,7 +257,7 @@ def plot_mean_summary_barchart(
     ax.yaxis.label.set_size(12)   # y-axis label font size
 
     # Adjust layout and display
-    plt.ylim(0.5, 1.09)
+    plt.ylim(0.5, 1.19)
     plt.tight_layout()
     if save_path is not None:
         plt.savefig(save_path, dpi=dpi)
