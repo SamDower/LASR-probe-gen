@@ -70,7 +70,8 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
     "lists": {
         "test_both": False,
         "ultrachat": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"},
-        "shakespeare": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"}},
+        # "shakespeare": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"}},
+        "writingprompts": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"}},
     "metaphors": {
         "test_both": False,
         "ultrachat": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"},

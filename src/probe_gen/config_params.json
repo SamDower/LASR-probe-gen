@@ -110,6 +110,38 @@
                 "C": 0.001,
                 "layer": 26
             }
+        },
+        "attention_torch": {
+            "refusal": {
+                "layer": 14,
+                "lr": 0.001,
+                "weight_decay": 1e-05
+            },
+            "lists": {
+                "layer": 14,
+                "lr": 0.0001,
+                "weight_decay": 1e-05
+            },
+            "metaphors": {
+                "layer": 14,
+                "lr": 0.001,
+                "weight_decay": 0
+            },
+            "science": {
+                "layer": 14,
+                "lr": 0.0001,
+                "weight_decay": 1e-05
+            },
+            "sycophancy": {
+                "layer": 26,
+                "lr": 0.001,
+                "weight_decay": 1e-05
+            },
+            "authority": {
+                "layer": 14,
+                "lr": 0.0001,
+                "weight_decay": 1e-05
+            }
         }
     }
 }
