@@ -71,8 +71,10 @@ def get_prompt_dataset(behaviour, datasource):
             return SycophancyMultichoiceDataset()
         elif datasource == "arguments":
             return SycophancyArgumentsDataset()
-        elif datasource == "poems":
-            return SycophancyPoemsDataset()
+        # elif datasource == "poems":
+        #     return SycophancyPoemsDataset()
+        elif datasource == "haikus":
+            return SycophancyHaikusDataset()
     if behaviour == "authority":
         if datasource == "multichoice":
             return AuthorityMultichoiceDataset()
@@ -138,7 +140,7 @@ def get_labels(behaviour, datasource, prompts_path, responses_path, out_path, nu
             )
     
     # Use Regex for arguments
-    elif datasource == "arguments" or datasource == "poems": # Poems also uses the same autograder logic
+    elif datasource == "arguments" or datasource == "haikus": # Poems also uses the same autograder logic
         label_and_save_dataset_arguments(
             responses_file=responses_path,
             out_file=out_path,

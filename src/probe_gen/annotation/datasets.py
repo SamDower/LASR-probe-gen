@@ -26,6 +26,7 @@ from .refusal_dataset import RefusalDataset
 from .sandbagging_multi_dataset import SandbaggingMultiDataset
 from .shakespeare_dataset import ShakespeareDataset
 from .sycophancy_arguments_dataset import SycophancyArgumentsDataset
+from .sycophancy_haikus_dataset import SycophancyHaikusDataset
 from .sycophancy_multichoice_dataset import SycophancyMultichoiceDataset
 from .sycophancy_poems_dataset import SycophancyPoemsDataset
 from .tinystories_dataset import TinyStoriesDataset
@@ -50,6 +51,7 @@ __all__ = [
     'SycophancyArgumentsDataset',
     'SycophancyMultichoiceDataset',
     'SycophancyPoemsDataset',
+    'SycophancyHaikusDataset',
     'TinyStoriesDataset',
     'JailbreakDataset',
     'HarmfulRequestDataset',
