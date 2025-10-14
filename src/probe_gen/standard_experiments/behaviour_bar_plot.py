@@ -11,6 +11,11 @@ from probe_gen.standard_experiments.hyperparameter_search import (
     get_best_hyperparams_for_train_setup,
 )
 
+import sys
+from pathlib import Path
+project_root = Path(__file__).parent.parent
+sys.path.append(str(project_root))
+
 
 def get_bar_chart_results_table_from_wandb(train_setup, train_gen_methods, test_gen_method, train_OOD):
     """
@@ -343,6 +348,195 @@ def plot_mean_summary_barchart_for_including_prompts_or_not(
     ax.title.set_fontsize(13)     # change font size separately
     ax.xaxis.label.set_size(12)   # x-axis label font size
     ax.yaxis.label.set_size(12)   # y-axis label font size
+
+    # Adjust layout and display
+    plt.ylim(0.5, 1)
+    plt.tight_layout()
+    if save_path is not None:
+        plt.savefig(save_path, dpi=dpi)
+    plt.show()
+
+
+def get_combined_bar_chart_results_table_from_wandb(train_setup, train_gen_methods, test_gen_method):
+    """
+    Gets the results table from wandb for combined probe experiments.
+    Args:
+        train_setup (list): 
+            [probe_type, behaviour, [datasource1, datasource2, ...], activations_model, test_datasource]
+            Example: ["mean", "lists", ["writingprompts", "ultrachat"], "llama_3b", "shakespeare"]
+        train_gen_methods (list): List of generation methods to query, e.g., ['on_policy', 'incentivised']
+        test_gen_method (str): Generation method for test set, e.g., 'on_policy'
+    """
+    tr = train_setup
+    
+    results_list = []
+    for i in tqdm(range(len(tr)), desc="Querying WandB for combined probes"):
+        probe_type = tr[i][0]
+        behaviour = tr[i][1]
+        datasource_pair = tr[i][2]
+        activations_model = tr[i][3]
+        test_datasource = tr[i][4]
+        response_model = activations_model
+        
+        # Get hyperparameters from first datasource in the pair
+        # format: [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode]
+        # We use the first datasource to get best hyperparameters (they should be the same)
+        full_tr_i = [probe_type, behaviour, datasource_pair[0], activations_model, 
+                     train_gen_methods[0], response_model, "train"]
+        cfg = get_best_hyperparams_for_train_setup([full_tr_i])[0][-1]
+        
+        for train_gen_method in train_gen_methods:
+            # Create combined train datasource name
+            combined_train_desc = "+".join([f"{ds}_{train_gen_method}" for ds in datasource_pair])
+            
+            search_dict = {
+                "config.probe/type": probe_type,
+                "config.behaviour": behaviour,
+                "config.train/datasource": combined_train_desc,
+                "config.train/generation_method": "combined",
+                "config.train/response_model": response_model,
+                "config.test/datasource": test_datasource,
+                "config.test/generation_method": test_gen_method,
+                "config.test/response_model": response_model,
+                "config.layer": cfg.layer,
+                "config.probe/use_bias": cfg.use_bias,
+                "config.probe/normalize": cfg.normalize,
+                "config.activations_model": activations_model,
+                "state": "finished"
+            }
+            
+            if probe_type == "mean":
+                search_dict["config.probe/C"] = cfg.C
+            elif "torch" in probe_type:
+                search_dict["config.probe/lr"] = cfg.lr
+                search_dict["config.probe/weight_decay"] = cfg.weight_decay
+            
+            run_df = load_probe_eval_dicts_as_df(search_dict)
+            
+            if len(run_df) > 0:
+                results_list.append(run_df['metric_roc_auc'].iloc[-1])
+            else:
+                print(f"⚠ No results found for {behaviour} with {train_gen_method}")
+                results_list.append(np.nan)
+    
+    results_table = np.array(results_list).reshape(len(tr), len(train_gen_methods)).transpose()
+    return results_table
+
+
+def plot_combined_behaviour_barchart(
+    train_setup,
+    test_incentivised=False,
+    add_mean_summary=False,
+    title=None,
+    xlabel="Combined Training Sets",
+    ylabel="Test AUROC",
+    save_path=None,
+    figsize=(12, 3),
+    dpi=300,
+    legend_loc="upper right",
+    extra_whitespace=1,
+    probe_type="mean",
+):
+    """
+    Plots a bar chart for combined probe experiments (training on multiple datasets).
+    
+    Args:
+        train_setup (list of lists): Each element is:
+            [probe_type, behaviour, [datasource1, datasource2, ...], activations_model, test_datasource]
+            Example: [["mean", "lists", ["writingprompts", "ultrachat"], "llama_3b", "shakespeare"]]
+        test_incentivised (bool): If True, test on incentivised data; otherwise on_policy
+        add_mean_summary (bool): If True, add a summary bar showing mean and std
+        title (str): Plot title (auto-generated if None)
+        xlabel (str): X-axis label
+        ylabel (str): Y-axis label
+        save_path (str): Path to save figure (if None, don't save)
+        figsize (tuple): Figure size
+        dpi (int): DPI for saved figure
+        legend_loc (str): Legend location
+        extra_whitespace (float): Extra whitespace on right side
+        probe_type (str): "mean" or "attention_torch"
+    """
+    small_gap = 0.2
+    big_gap = 0.5
+
+    # Get all results by querying wandb for all run configs
+    if test_incentivised:
+        group_labels = ['On-Policy Incentivised', 'On-Policy Prompted', 'Off-Policy']
+        train_gen_methods = ['incentivised', 'prompted', 'off_policy']
+        test_gen_method = 'incentivised'
+    else:
+        group_labels = ['On-Policy Natural', 'On-Policy Incentivised', 'On-Policy Prompted', 'Off-Policy']
+        train_gen_methods = ['on_policy', 'incentivised', 'prompted', 'off_policy']
+        test_gen_method = 'on_policy'
+    
+    print("Fetching combined probe results from WandB...")
+    results_table = get_combined_bar_chart_results_table_from_wandb(
+        train_setup, train_gen_methods, test_gen_method
+    )
+    print("Fetched.")
+    
+    x = np.arange(len(train_setup))
+    masked_array = np.ma.masked_invalid(results_table)
+    row_means = np.ma.mean(masked_array, axis=1)
+    row_stds = np.ma.std(masked_array, axis=1)
+
+    # Create labels for each combined training set
+    behaviour_labels = []
+    for i in range(len(train_setup)):
+        behaviour = train_setup[i][1].capitalize()
+        datasources = train_setup[i][2]
+        test_ds = train_setup[i][4].capitalize()
+        
+        # Abbreviate datasource names
+        ds_abbrev = "+".join([ds[:3].upper() for ds in datasources])
+        behaviour_labels.append(f"{behaviour}\n({ds_abbrev}→{test_ds[:3].upper()})")
+    
+    if add_mean_summary:
+        behaviour_labels.append('Mean ± Std')
+
+    # Create the figure and axis
+    fig, ax = plt.subplots(figsize=figsize)
+    train_colors = ['#264653', '#2A9D8F', '#E76F51', '#F18F01'] if not test_incentivised else ['#2A9D8F', '#E76F51', '#F18F01']
+
+    # Create the grouped bars
+    num_groups = results_table.shape[0]
+    bar_width = (1 - small_gap) / num_groups
+    
+    for i in range(num_groups):
+        group_offset = (i - num_groups / 2 + 0.5) * bar_width
+        ax.bar(x + group_offset, results_table[i], bar_width, 
+               label=group_labels[i], color=train_colors[i % 4], alpha=0.8)
+        
+        if add_mean_summary:
+            ax.bar(np.array([len(train_setup) + big_gap - small_gap]) + group_offset, 
+                   row_means[i], bar_width, color=train_colors[i % 4], alpha=0.8,
+                   yerr=row_stds[i], capsize=5, 
+                   error_kw={'elinewidth': 2, 'capthick': 2})
+
+    # Customize the plot
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
+    if title is None:
+        title = f"{'Linear' if probe_type == 'mean' else 'Attention'} Probes on Combined Training Sets, Evaluated Against {'Incentivised' if test_incentivised else 'On-Policy Natural'}"
+    ax.set_title(title)
+    
+    x_ticks = np.concatenate([x, [len(train_setup) + big_gap - small_gap]]) if add_mean_summary else x
+    ax.set_xticks(x_ticks)
+    ax.set_xticklabels(behaviour_labels)
+    ax.tick_params(axis='x', labelsize=9)
+    
+    current_xlim = ax.get_xlim()
+    ax.set_xlim(current_xlim[0], current_xlim[1] + extra_whitespace)
+    
+    ax.legend(loc=legend_loc, title="Train Gen. Method", fontsize=10, title_fontsize=11)
+
+    # Add a grid for better readability
+    ax.grid(True, alpha=0.3, axis='y')
+    
+    ax.title.set_fontsize(16)
+    ax.xaxis.label.set_size(13)
+    ax.yaxis.label.set_size(13)
 
     # Adjust layout and display
     plt.ylim(0.5, 1)
