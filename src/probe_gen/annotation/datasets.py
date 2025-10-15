@@ -14,6 +14,7 @@ Usage:
 
 # Base classes
 from .authority_arguments_dataset import AuthorityArgumentsDataset
+from .authority_haikus_dataset import AuthorityHaikusDataset
 from .authority_multichoice_dataset import AuthorityMultichoiceDataset
 from .coding_dataset import CodingQuestionsDataset
 from .interface_dataset import Dataset, Message
@@ -57,6 +58,7 @@ __all__ = [
     'HarmfulRequestDataset',
     'AuthorityArgumentsDataset',
     'AuthorityMultichoiceDataset',
+    'AuthorityHaikusDataset',
     'WritingPromptsDataset',
     'CodingQuestionsDataset',
 ]

@@ -80,6 +80,8 @@ def get_prompt_dataset(behaviour, datasource):
             return AuthorityMultichoiceDataset()
         elif datasource == "arguments":
             return AuthorityArgumentsDataset()
+        elif datasource == "haikus":
+            return AuthorityHaikusDataset()
     
     if behaviour == "sandbagging" and datasource == "multichoice":
         return SandbaggingMultiDataset()
