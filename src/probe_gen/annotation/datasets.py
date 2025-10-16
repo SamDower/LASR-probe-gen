@@ -14,6 +14,7 @@ Usage:
 
 # Base classes
 from .authority_arguments_dataset import AuthorityArgumentsDataset
+from .authority_haikus_dataset import AuthorityHaikusDataset
 from .authority_multichoice_dataset import AuthorityMultichoiceDataset
 from .coding_dataset import CodingQuestionsDataset
 from .interface_dataset import Dataset, Message
@@ -26,7 +27,9 @@ from .refusal_dataset import RefusalDataset
 from .sandbagging_multi_dataset import SandbaggingMultiDataset
 from .shakespeare_dataset import ShakespeareDataset
 from .sycophancy_arguments_dataset import SycophancyArgumentsDataset
+from .sycophancy_haikus_dataset import SycophancyHaikusDataset
 from .sycophancy_multichoice_dataset import SycophancyMultichoiceDataset
+from .sycophancy_poems_dataset import SycophancyPoemsDataset
 from .tinystories_dataset import TinyStoriesDataset
 from .ultrachat_dataset import UltrachatDataset
 from .writingprompts_dataset import WritingPromptsDataset
@@ -48,11 +51,14 @@ __all__ = [
     'ShakespeareDataset',
     'SycophancyArgumentsDataset',
     'SycophancyMultichoiceDataset',
+    'SycophancyPoemsDataset',
+    'SycophancyHaikusDataset',
     'TinyStoriesDataset',
     'JailbreakDataset',
     'HarmfulRequestDataset',
     'AuthorityArgumentsDataset',
     'AuthorityMultichoiceDataset',
+    'AuthorityHaikusDataset',
     'WritingPromptsDataset',
     'CodingQuestionsDataset',
 ]
