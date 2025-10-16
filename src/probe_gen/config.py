@@ -70,8 +70,8 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
     "lists": {
         "test_both": False,
         "ultrachat": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"},
-        "shakespeare": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"}},
-        # "writingprompts": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"}},
+        # "shakespeare": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"}},
+        "writingprompts": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"}},
     "metaphors": {
         "test_both": False,
         "ultrachat": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"},
@@ -92,13 +92,13 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
 
 BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION = {
     "deception": {
-        "test_both": True,
-        "roleplaying": {"llama_3b": "mistral_7b",},
-        "trading": {"llama_3b": "deepseek_mixtral",}},
+        "test_both": False,
+        "roleplaying": {"llama_3b": "mistral_7b", "mistral_7b": "llama_3b"},
+        "trading": {"llama_3b": "deepseek_mixtral", "mixtral": "llama_3b"}},
     "sandbagging": {
-        "test_both": True,
-        "wmd": {"llama_3b": "mistral_7b",},
-        "multichoice": {"llama_3b": "ministral_8b",}},
+        "test_both": False,
+        "wmd": {"llama_3b": "mistral_7b", "mistral_7b": "llama_3b"},
+        "multichoice": {"llama_3b": "ministral_8b", "ministral_8b": "llama_3b"}},
 }
 
 MODELS = {
