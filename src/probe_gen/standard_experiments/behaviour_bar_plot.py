@@ -532,46 +532,82 @@ def get_combined_bar_chart_results_table_from_wandb(train_setup, train_gen_metho
                      train_gen_methods[0], response_model, "train"]
         cfg = get_best_hyperparams_for_train_setup([full_tr_i])[0][-1]
         
-        for train_gen_method in train_gen_methods:
-            # Create combined train datasource name
-            combined_train_desc = "+".join([f"{ds}_{train_gen_method}" for ds in datasource_pair])
-            
-            search_dict = {
-                "config.probe/type": probe_type,
-                "config.behaviour": behaviour,
-                "config.train/datasource": combined_train_desc,
-                "config.train/generation_method": "combined",
-                "config.train/response_model": response_model,
-                "config.test/datasource": test_datasource,
-                "config.test/generation_method": test_gen_method,
-                "config.test/response_model": response_model,
-                "config.layer": cfg.layer,
-                "config.probe/use_bias": cfg.use_bias,
-                "config.probe/normalize": cfg.normalize,
-                "config.activations_model": activations_model,
-                "state": "finished"
-            }
-            
-            if probe_type == "mean":
-                search_dict["config.probe/C"] = cfg.C
-            elif "torch" in probe_type:
-                search_dict["config.probe/lr"] = cfg.lr
-                search_dict["config.probe/weight_decay"] = cfg.weight_decay
-            
-            run_df = load_probe_eval_dicts_as_df(search_dict)
-            
-            if len(run_df) > 0:
-                results_list.append(run_df['metric_roc_auc'].iloc[-1])
-            else:
-                print(f"⚠ No results found for {behaviour} with {train_gen_method}")
-                results_list.append(np.nan)
+        if len(datasource_pair) > 1:
+            for train_gen_method in train_gen_methods:
+                # Create combined train datasource name
+                combined_train_desc = "+".join([f"{ds}_{train_gen_method}" for ds in datasource_pair])
+                
+                search_dict = {
+                    "config.probe/type": probe_type,
+                    "config.behaviour": behaviour,
+                    "config.train/datasource": combined_train_desc,
+                    "config.train/generation_method": "combined",
+                    "config.train/response_model": response_model,
+                    "config.test/datasource": test_datasource,
+                    "config.test/generation_method": test_gen_method,
+                    "config.test/response_model": response_model,
+                    "config.layer": cfg.layer,
+                    "config.probe/use_bias": cfg.use_bias,
+                    "config.probe/normalize": cfg.normalize,
+                    "config.activations_model": activations_model,
+                    "state": "finished"
+                }
+                
+                if probe_type == "mean":
+                    search_dict["config.probe/C"] = cfg.C
+                elif "torch" in probe_type:
+                    search_dict["config.probe/lr"] = cfg.lr
+                    search_dict["config.probe/weight_decay"] = cfg.weight_decay
+                
+                run_df = load_probe_eval_dicts_as_df(search_dict)
+                
+                if len(run_df) > 0:
+                    results_list.append(run_df['metric_roc_auc'].iloc[-1])
+                else:
+                    print(f"⚠ No results found for {behaviour} with {train_gen_method}")
+                    results_list.append(np.nan)
+        else:
+            for train_gen_method in train_gen_methods:
+                # Create combined train datasource name
+                combined_train_desc = "+".join([f"{ds}_{train_gen_method}" for ds in datasource_pair])
+                
+                search_dict = {
+                    "config.probe/type": probe_type,
+                    "config.behaviour": behaviour,
+                    "config.train/datasource": datasource_pair[0],
+                    "config.train/generation_method": train_gen_method,
+                    "config.test/datasource": test_datasource,
+                    "config.test/generation_method": test_gen_method,
+                    "config.test/response_model": response_model,
+                    "config.layer": cfg.layer,
+                    "config.probe/use_bias": cfg.use_bias,
+                    "config.probe/normalize": cfg.normalize,
+                    "config.activations_model": activations_model,
+                    "state": "finished"
+                }
+                
+                if probe_type == "mean":
+                    search_dict["config.probe/C"] = cfg.C
+                elif "torch" in probe_type:
+                    search_dict["config.probe/lr"] = cfg.lr
+                    search_dict["config.probe/weight_decay"] = cfg.weight_decay
+                
+                run_df = load_probe_eval_dicts_as_df(search_dict)
+                
+                if len(run_df) > 0:
+                    results_list.append(run_df['metric_roc_auc'].iloc[-1])
+                else:
+                    print(f"⚠ No results found for {behaviour} with {train_gen_method}")
+                    results_list.append(np.nan)
     
     results_table = np.array(results_list).reshape(len(tr), len(train_gen_methods)).transpose()
     return results_table
 
 
 def plot_combined_behaviour_barchart(
-    train_setup,
+    behaviour,
+    datasources,
+    activations_model,
     test_incentivised=False,
     add_mean_summary=False,
     title=None,
@@ -607,14 +643,18 @@ def plot_combined_behaviour_barchart(
     big_gap = 0.5
 
     # Get all results by querying wandb for all run configs
-    if test_incentivised:
-        group_labels = ['On-Policy Incentivised', 'On-Policy Prompted', 'Off-Policy']
-        train_gen_methods = ['incentivised', 'prompted', 'off_policy']
-        test_gen_method = 'incentivised'
-    else:
-        group_labels = ['On-Policy Natural', 'On-Policy Incentivised', 'On-Policy Prompted', 'Off-Policy']
-        train_gen_methods = ['on_policy', 'incentivised', 'prompted', 'off_policy']
-        test_gen_method = 'on_policy'
+    group_labels = ['On-Policy Natural', 'On-Policy Incentivised', 'On-Policy Prompted', 'Off-Policy']
+    train_gen_methods = ['on_policy', 'incentivised', 'prompted', 'off_policy']
+    test_gen_method = 'on_policy'
+
+    train_setup = [
+        [probe_type, behaviour, [datasources[0], datasources[1], datasources[2]], activations_model, datasources[0]],
+        [probe_type, behaviour, [datasources[0], datasources[1]], activations_model, datasources[0]],
+        [probe_type, behaviour, [datasources[1], datasources[2]], activations_model, datasources[0]],
+        [probe_type, behaviour, [datasources[0]], activations_model, datasources[0]],
+        [probe_type, behaviour, [datasources[1]], activations_model, datasources[0]],
+        [probe_type, behaviour, [datasources[2]], activations_model, datasources[0]],
+    ]
     
     print("Fetching combined probe results from WandB...")
     results_table = get_combined_bar_chart_results_table_from_wandb(
