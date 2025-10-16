@@ -1,9 +1,10 @@
 # Standard library imports
-import argparse
 import os
 import sys
-import json
 import shutil
+import torch
+import gc
+from transformers.utils import TRANSFORMERS_CACHE
 
 # Add the project root to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -64,7 +65,16 @@ def get_or_search_for_best_hyperparams(train_setup):
     for generation_method in  generation_methods:
         if tr[0][0] == "mean":
             # Search all layers for mean probes
-            layers_list = [6,9,12,15,18,21]
+            if tr[0][3] == "llama_3b":
+                layers_list = [6,9,12,15,18,21]
+            elif tr[0][3] == "ministral_8b":
+                layers_list = [10,14,18,22,26]
+            elif tr[0][3] == "mistral_7b":
+                layers_list = [8,12,16,20,24]
+            elif tr[0][3] == "mixtral":
+                layers_list = [12,16,20,24]
+            else:
+                raise ValueError(f"Activations model {tr[0][3]} not supported")
         elif tr[0][0] == "attention_torch":
             # Search only best mean probe layer for attention probes, or 12 if no mean probe layer found
             cfg = ConfigDict.from_json(tr[0][3], "mean", tr[0][1])
@@ -87,7 +97,7 @@ def get_or_search_for_best_hyperparams(train_setup):
     best_params = ConfigDict()
     if tr[0][0] == "mean":
         best_layers = [params["layer"] for params in best_params_list]
-        best_params.layer = pick_popular_hyperparam(best_layers, "layer")
+        best_params.layer = pick_popular_hyperparam(best_layers, "layer", layers_list)
         best_c = [params["C"] for params in best_params_list]
         best_params.C = pick_popular_hyperparam(best_c, "c")
     elif tr[0][0] == "attention_torch":
@@ -127,6 +137,49 @@ def do_single_probe_experiment(train_setup, test_setup):
         shutil.rmtree(hf_home)
 
 
+def do_probe_experiment_deception_sandbagging():
+    done_experiments = {
+        "sandbagging": {
+            "test_both": False,
+            "wmd": {"mistral_7b": "llama_3b"},
+            "multichoice": {"ministral_8b": "llama_3b"}},
+        "deception": {
+            "test_both": False,
+            "roleplaying": {"mistral_7b": "llama_3b"},
+            "trading": {"mixtral": "llama_3b"}}
+    }
+    train_gen_methods = ['incentivised', 'prompted', 'off_policy']
+    test_gen_method = 'incentivised'
+    
+    # Iterate through all train and test pairs
+    for behaviour in list(done_experiments.keys()):
+        for generation_method in train_gen_methods:
+            ds = list(done_experiments[behaviour].keys())[1:]
+            datasource_ID, datasource_OOD = (ds[0], ds[1])
+            for datasource in [datasource_ID, datasource_OOD]:
+                for probe_type in ["mean", "attention_torch"]: # Might as well train both probes when have dataset downloaded
+                    # Get experiments into format
+                    # [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
+                    activations_model = list(done_experiments[behaviour][datasource].keys())[0]
+                    off_policy_model = done_experiments[behaviour][datasource][activations_model]
+                    response_model = activations_model if generation_method != "off_policy" else off_policy_model
+                    train_setup = [[probe_type, behaviour, datasource, activations_model, generation_method, response_model, "train"]]
+                    
+                    for test_gen_method in ['incentivised']:#, 'prompted', 'off_policy']:
+                        test_setup = [[behaviour, datasource_ID, activations_model, test_gen_method, activations_model, "test"]]
+                        if done_experiments[behaviour]["test_both"]:
+                            test_setup.append([behaviour, datasource_OOD, activations_model, test_gen_method, activations_model, "test"])
+                            
+                    do_single_probe_experiment(train_setup, test_setup)
+            
+                # Clear Huggingface cache before next experiment
+                if hasattr(torch.cuda, 'empty_cache'):
+                    torch.cuda.empty_cache()  # Clear GPU cache if using CUDA
+                gc.collect()
+                if os.path.exists(TRANSFORMERS_CACHE):
+                    shutil.rmtree(TRANSFORMERS_CACHE)
+                    
+
 def do_probe_experiment_default(probe_type, activations_model, test_incentivised):
     done_experiments = BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL
     if test_incentivised:
@@ -155,8 +208,8 @@ def do_probe_experiment_default(probe_type, activations_model, test_incentivised
                 if done_experiments[behaviour]["test_both"]:
                     test_setup.append([behaviour, datasource_OOD, activations_model, test_gen_method, activations_model, "test"])
                 do_single_probe_experiment(train_setup, test_setup)
+                    
             
-
 def do_probe_experiment_combinations(
     new_probe_types, 
     new_behaviours, 
@@ -192,13 +245,15 @@ def do_probe_experiment_combinations(
 if __name__ == "__main__":
     # MAKE SURE TO SET HF_TOKEN IN COMMAND LINE AND WANDB KEY AT TOP OF THIS FILE
     
-    # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
-    for test_incentivised in [False, True]:
-        do_probe_experiment_default(
-            probe_type = ["mean", "attention_torch"][0],
-            activations_model = ["llama_3b", "ministral_8b"][0], # currently the only option
-            test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
-        )
+    do_probe_experiment_deception_sandbagging()
+    
+    # # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
+    # for test_incentivised in [False, True]:
+    #     do_probe_experiment_default(
+    #         probe_type = ["mean", "attention_torch"][0],
+    #         activations_model = ["llama_3b", "ministral_8b"][0], # currently the only option
+    #         test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
+    #     )
     
     # # Option 2: Set parameters based on all combinations
     # do_probe_experiment_combinations(

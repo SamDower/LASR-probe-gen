@@ -143,5 +143,18 @@
                 "weight_decay": 1e-05
             }
         }
+    },
+    "mistral_7b": {
+        "mean": {
+            "sandbagging": {
+                "layer": 12,
+                "C": 0.01
+            }
+        },
+        "attention_torch": {}
+    },
+    "mixtral": {
+        "mean": {},
+        "attention_torch": {}
     }
 }
