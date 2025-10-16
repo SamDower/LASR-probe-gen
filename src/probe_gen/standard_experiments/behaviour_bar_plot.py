@@ -1,7 +1,11 @@
+import sys
 import textwrap
+from pathlib import Path
 
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import gaussian_kde
 from tqdm import tqdm
 
 from probe_gen.probes.wandb_interface import (
@@ -10,6 +14,9 @@ from probe_gen.probes.wandb_interface import (
 from probe_gen.standard_experiments.hyperparameter_search import (
     get_best_hyperparams_for_train_setup,
 )
+
+project_root = Path(__file__).parent.parent
+sys.path.append(str(project_root))
 
 
 def get_bar_chart_results_table_from_wandb(train_setup, train_gen_methods, test_gen_method, train_OOD):
@@ -257,19 +264,164 @@ def plot_mean_summary_barchart(
     ax.yaxis.label.set_size(12)   # y-axis label font size
 
     # Adjust layout and display
-    plt.ylim(0.5, 1.09)
+    plt.ylim(0.5, 1.19)
     plt.tight_layout()
     if save_path is not None:
         plt.savefig(save_path, dpi=dpi)
     plt.show()
 
 
+def plot_mean_summary_dotchart(
+    train_setup, 
+    test_incentivised=False, 
+    title=None,
+    xlabel=None,
+    ylabel="Test AUROC",
+    save_path = None,
+    figsize=(7, 4), 
+    dpi=300,
+    legend_loc="upper right",
+    extra_whitespace=1,
+    probe_type="mean",
+    draw_blobs=True
+    ):
+    if test_incentivised:
+        group_labels =  ['On-Policy Incentivised', 'On-Policy Prompted', 'Off-Policy']
+        train_gen_methods = ['incentivised', 'prompted', 'off_policy']
+        test_gen_method = 'incentivised'
+    else:
+        group_labels =  ['On-Policy Natural', 'On-Policy Incentivised', 'On-Policy Prompted', 'Off-Policy']
+        train_gen_methods = ['on_policy', 'incentivised', 'prompted', 'off_policy']
+        test_gen_method = 'on_policy'
 
+    train_colors = ['#264653', '#2A9D8F', '#E76F51', '#F18F01'] if not test_incentivised else ['#2A9D8F', '#E76F51', '#F18F01']
 
+    # Fetch data
+    print("Fetching results...")
+    results_same = get_bar_chart_results_table_from_wandb(train_setup, train_gen_methods, test_gen_method, train_OOD=False)
+    results_diff = get_bar_chart_results_table_from_wandb(train_setup, train_gen_methods, test_gen_method, train_OOD=True)
+    print("Fetched")
 
+    # Ensure arrays are numpy arrays of float and use np.nan for missing if needed
+    results_same = np.array(results_same, dtype=float)
+    results_diff = np.array(results_diff, dtype=float)
 
+    # If your missing values are represented by 0 (as before), convert them to np.nan so plotting skips them:
+    results_same[results_same == 0] = np.nan
+    results_diff[results_diff == 0] = np.nan
 
+    title=None
+    xlabel=None
+    ylabel="Test AUROC"
+    figsize=(7, 4)
+    dpi=300
+    save_path="linear_id_vs_ood_onpolicy.pdf"
+    jitter=0.08
+    alpha_dots=0.75
+    alpha_lines=0.35
+    blob_alpha=0.15  # transparency for background blobs
+    blob_scale=0.25  # how wide the blobs appear
 
+    num_policies, n_cases = results_same.shape
+    assert results_diff.shape == (num_policies, n_cases)
+
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+
+    # Pre-generate jitter offsets (same jittering logic across domains)
+    jitter_same = np.random.normal(0, jitter, size=(num_policies, n_cases))
+    jitter_diff = np.random.normal(0, jitter, size=(num_policies, n_cases))
+
+    # X positions
+    x_positions_same = np.arange(num_policies)
+    x_positions_diff = x_positions_same + num_policies + 1  # +1 gap between groups
+
+    def draw_blob(ax, center_x, y_vals, color, scale=blob_scale, alpha=blob_alpha):
+        y_vals = y_vals[(y_vals != 0) & ~np.isnan(y_vals)]
+        if len(y_vals) < 3:
+            return
+        kde = gaussian_kde(y_vals)
+        y_grid = np.linspace(min(y_vals), max(y_vals), 100)
+        dens = kde(y_grid)
+        dens = dens / dens.max() * scale  # normalize width
+        ax.fill_betweenx(
+            y_grid,
+            center_x - dens,
+            center_x + dens,
+            color=color,
+            alpha=alpha,
+            linewidth=0,       # ✅ no stroke width
+            edgecolor='none',  # ✅ suppress any outline
+            zorder=0
+        )
+
+    if draw_blobs:
+        # --- DRAW BLOBS (before dots/lines) ---
+        for i in range(num_policies):
+            color = train_colors[i % len(train_colors)]
+            draw_blob(ax, x_positions_same[i], results_same[i, :], color)
+            draw_blob(ax, x_positions_diff[i], results_diff[i, :], color)
+
+    # --- CONTINUOUS CONNECTED LINES ACROSS DOMAINS ---
+    for j in range(n_cases):
+        y_same = results_same[:, j]
+        y_diff = results_diff[:, j]
+        y_combined = np.concatenate([y_same, y_diff])
+        valid = (y_combined != 0) & ~np.isnan(y_combined)
+        if np.any(valid):
+            xs_same = x_positions_same + jitter_same[:, j]
+            xs_diff = x_positions_diff + jitter_diff[:, j]
+            xs_combined = np.concatenate([xs_same, xs_diff])
+            ax.plot(xs_combined[valid], y_combined[valid],
+                    color="gray", alpha=alpha_lines, linewidth=0.9, zorder=1)
+
+    # --- DOTS (Same-domain) ---
+    for i in range(num_policies):
+        color = train_colors[i % len(train_colors)]
+        y_vals = results_same[i, :]
+        valid = (y_vals != 0) & ~np.isnan(y_vals)
+        xs = x_positions_same[i] + jitter_same[i, valid]
+        ax.scatter(xs, y_vals[valid], color=color, alpha=alpha_dots, s=24, edgecolors='none', zorder=2)
+
+    # --- DOTS (Diff-domain) ---
+    for i in range(num_policies):
+        color = train_colors[i % len(train_colors)]
+        y_vals = results_diff[i, :]
+        valid = (y_vals != 0) & ~np.isnan(y_vals)
+        xs = x_positions_diff[i] + jitter_diff[i, valid]
+        ax.scatter(xs, y_vals[valid], color=color, alpha=alpha_dots, s=24, edgecolors='none', zorder=2)
+
+    # --- Formatting ---
+    ax.axvline(x=num_policies, color="gray", alpha=0.2, linewidth=1)
+
+    patches = [mpatches.Patch(color=train_colors[i], label=group_labels[i]) for i in range(num_policies)]
+    ax.legend(handles=patches, title="Train Gen. Method", loc="upper right", fontsize=10, title_fontsize=12)
+
+    ax.set_xticks(list(x_positions_same) + list(x_positions_diff))
+    ax.set_xticklabels([""] * (len(x_positions_same) + len(x_positions_diff)))
+
+    # Add centered domain labels
+    mid_same = np.mean(x_positions_same)
+    mid_diff = np.mean(x_positions_diff)
+    ax.text(mid_same, ax.get_ylim()[0] - 0.03, "Same-Domain Train Set", ha="center", va="top", fontsize=12)
+    ax.text(mid_diff, ax.get_ylim()[0] - 0.03, "Diff.-Domain Train Set", ha="center", va="top", fontsize=12)
+
+    title = f"{'Linear' if probe_type == 'mean' else 'Attention'} Probes Evaluated Against On-Policy {'Incentivised ' if test_incentivised else 'Natural '}"
+    ax.set_title(title)
+
+    ax.set_ylabel(ylabel)
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    ax.grid(True, axis='y', alpha=0.25)
+    ax.set_ylim(0.5, 1.19)
+
+    ax.title.set_fontsize(15)
+    ax.xaxis.label.set_size(13)
+    ax.yaxis.label.set_size(13)
+
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=dpi)
+    plt.show()
 
 
 def plot_mean_summary_barchart_for_including_prompts_or_not(
