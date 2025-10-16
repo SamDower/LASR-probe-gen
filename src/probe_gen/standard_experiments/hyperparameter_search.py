@@ -232,21 +232,22 @@ def get_best_hyperparams_for_train_setup(train_setup):
     return tr
 
 
-def pick_popular_hyperparam(best_params_list, param_name):
+def pick_popular_hyperparam(best_params_list, param_name, params_range=None):
     """
     best_params_list: list of best hyperparameters for each policy
     param_name: name of the hyperparameter to pick (e.g. "layer", "c", "lr", "weight_decay")
+    params_range: range of the hyperparameter to pick from (e.g. LAYERS_LIST, C_RANGE, LR_RANGE, WEIGHT_DECAY_RANGE)
     """
-    if param_name == "layer":
+    if param_name == "layer" and params_range is None:
         params_range = LAYERS_LIST
-    elif param_name == "c":
+    elif param_name == "c" and params_range is None:
         params_range = C_RANGE
-    elif param_name == "lr":
+    elif param_name == "lr" and params_range is None:
         params_range = LR_RANGE
-    elif param_name == "weight_decay":
+    elif param_name == "weight_decay" and params_range is None:
         params_range = WEIGHT_DECAY_RANGE
-    else:
-        raise ValueError(f"Parameter name {param_name} not valid.")
+    elif params_range is None:
+        raise ValueError(f"Parameter name {param_name} not valid or params_range not provided.")
         
     n = len(best_params_list)
     counts = Counter(best_params_list)

@@ -192,7 +192,8 @@ def plot_mean_summary_barchart(
     dpi=300,
     legend_loc="upper right",
     extra_whitespace=1,
-    probe_type="Linear"
+    probe_type="Linear",
+    verbose=False
     ):
     """
     Plots a summary mean bar chart of the results of the probes specified in the train_setup list.
@@ -222,6 +223,10 @@ def plot_mean_summary_barchart(
         standard_errors[:,i] = np.ma.std(masked_array, axis=1) / np.sqrt(masked_array.shape[1])
     print("Fetched")
     x = np.arange(2)  # Positions 0, 1, 2, ..., 8
+    
+    if verbose:
+        print(f"Means: {means}")
+        print(f"Standard errors: {standard_errors}")
 
     # Create the figure and axis
     fig, ax = plt.subplots(figsize=figsize)
