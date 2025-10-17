@@ -105,7 +105,7 @@ class AuthorityHaikusDataset(PromptDataset):
             self.raw_data_dir = str(data.authority / "raw_data")
     
     def download_data(self) -> None:
-        print(f"Loading haikus data from HuggingFace: {self.hf_repo_id}/{self.csv_filename}")
+        print("Loading haikus data from HuggingFace")
         
         try:
             # Step 1: Download CSV from HuggingFace repository
