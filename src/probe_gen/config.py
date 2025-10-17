@@ -70,7 +70,6 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
     "lists": {
         "test_both": False,
         "ultrachat": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"},
-        # "shakespeare": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"}},
         "writingprompts": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"}},
     "metaphors": {
         "test_both": False,
@@ -81,14 +80,13 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
         "ultrachat": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"},
         "mmlu": {"llama_3b": "qwen_3b", "ministral_8b": "llama_3b"}},
     "sycophancy": {
-        "test_both": False,
-        # "multichoice": {"llama_3b": "ministral_8b", "ministral_8b": "llama_3b"},
-        # "arguments": {"llama_3b": "qwen_7b", "ministral_8b": "llama_3b"}},
-        "haikus": {"llama_3b": "qwen_7b"}},
-    # "authority": {
-    #     "test_both": True,
-    #     "multichoice": {"llama_3b": "ministral_8b", "ministral_8b": "llama_3b"},
-    #     "arguments": {"llama_3b": "qwen_7b", "ministral_8b": "llama_3b"}},
+        "test_both": True,
+        "multichoice": {"llama_3b": "ministral_8b", "ministral_8b": "llama_3b"},
+        "arguments": {"llama_3b": "qwen_7b", "ministral_8b": "llama_3b"}},
+    "authority": {
+        "test_both": True,
+        "multichoice": {"llama_3b": "ministral_8b", "ministral_8b": "llama_3b"},
+        "arguments": {"llama_3b": "qwen_7b", "ministral_8b": "llama_3b"}},
 }
 
 BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION = {
