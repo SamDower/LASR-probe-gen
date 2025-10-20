@@ -279,7 +279,7 @@ if __name__ == "__main__":
     for test_incentivised in [False, True]:
         do_probe_experiment_default(
             probe_type = ["mean", "attention_torch"][0],
-            activations_model = ["llama_3b", "ministral_8b"][0], # currently the only option
+            activations_model = ["llama_3b", "ministral_8b", "qwen_30b", "gemma_27b"][0], 
             test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
         )
     
