@@ -83,7 +83,7 @@ def plot_behaviour_barchart(
     dpi=300,
     legend_loc="upper right",
     extra_whitespace=1,
-    probe_type="Linear",
+    probe_type="mean",
     ):
     """
     Plots a bar chart of the results of the probes specified in the train_setup list.
@@ -153,7 +153,7 @@ def plot_behaviour_barchart(
     ax.set_xlim(current_xlim[0], current_xlim[1] + extra_whitespace)
     
     #ax.legend(loc='upper right', title="ID Training Set")
-    ax.legend(loc=legend_loc, title="Train Gen. Method", fontsize=10, title_fontsize=11)
+    ax.legend(loc=legend_loc, fontsize=10, title_fontsize=11)
 
     # Add a grid for better readability
     ax.grid(True, alpha=0.3, axis='y')
@@ -192,7 +192,7 @@ def plot_mean_summary_barchart(
     dpi=300,
     legend_loc="upper right",
     extra_whitespace=1,
-    probe_type="Linear",
+    probe_type="mean",
     verbose=False
     ):
     """
@@ -259,7 +259,7 @@ def plot_mean_summary_barchart(
     ax.set_xlim(current_xlim[0], current_xlim[1] + extra_whitespace)
 
     #ax.legend(loc='upper right', title="ID Training Set")
-    ax.legend(loc=legend_loc, title="Train Gen. Method", fontsize=9, title_fontsize=11)
+    ax.legend(loc=legend_loc, fontsize=9, title_fontsize=11)
 
     # Add a grid for better readability
     ax.grid(True, alpha=0.3, axis='y')
@@ -399,7 +399,7 @@ def plot_mean_summary_dotchart(
     ax.axvline(x=num_policies, color="gray", alpha=0.2, linewidth=1)
 
     patches = [mpatches.Patch(color=train_colors[i], label=group_labels[i]) for i in range(num_policies)]
-    ax.legend(handles=patches, title="Train Gen. Method", loc="upper right", fontsize=10, title_fontsize=12)
+    ax.legend(handles=patches, loc="upper right", fontsize=10, title_fontsize=12)
 
     ax.set_xticks(list(x_positions_same) + list(x_positions_diff))
     ax.set_xticklabels([""] * (len(x_positions_same) + len(x_positions_diff)))
@@ -721,7 +721,7 @@ def plot_combined_behaviour_barchart(
     current_xlim = ax.get_xlim()
     ax.set_xlim(current_xlim[0], current_xlim[1] + extra_whitespace)
     
-    ax.legend(loc=legend_loc, title="Train Gen. Method", fontsize=10, title_fontsize=11)
+    ax.legend(loc=legend_loc, fontsize=10, title_fontsize=11)
 
     # Add a grid for better readability
     ax.grid(True, alpha=0.3, axis='y')
