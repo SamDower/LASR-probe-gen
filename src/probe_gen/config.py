@@ -92,11 +92,11 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
 
 BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION = {
     "deception": {
-        "test_both": False,
+        "test_both": True,
         "roleplaying": {"llama_3b": "mistral_7b", "mistral_7b": "llama_3b"},
         "trading": {"llama_3b": "deepseek_mixtral", "mixtral": "llama_3b"}},
     "sandbagging": {
-        "test_both": False,
+        "test_both": True,
         "wmd": {"llama_3b": "mistral_7b", "mistral_7b": "llama_3b"},
         "multichoice": {"llama_3b": "ministral_8b", "ministral_8b": "llama_3b"}},
 }
