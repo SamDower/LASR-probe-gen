@@ -178,7 +178,27 @@ def do_probe_experiment_deception_sandbagging():
                 gc.collect()
                 if os.path.exists(TRANSFORMERS_CACHE):
                     shutil.rmtree(TRANSFORMERS_CACHE)
-                    
+
+
+def do_same_train_test_experiment(probe_type, activations_model, test_incentivised):
+    done_experiments = BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL
+    if test_incentivised:
+        done_experiments.update(BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION)
+    
+    # Iterate through all train and test pairs
+    for behaviour in list(done_experiments.keys()):
+        for generation_method in ["prompted", "off_policy"]:
+            ds = list(done_experiments[behaviour].keys())[1:]
+            datasource_list = [ds[0], ds[1]] if done_experiments[behaviour]["test_both"] else [ds[0]]
+            for datasource in datasource_list:
+                # Get experiments into format
+                # [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
+                off_policy_model = done_experiments[behaviour][datasource][activations_model]
+                response_model = activations_model if generation_method != "off_policy" else off_policy_model
+                train_setup = [[probe_type, behaviour, datasource, activations_model, generation_method, response_model, "train"]]
+                test_setup = [[behaviour, datasource, activations_model, generation_method, response_model, "test"]]
+                do_single_probe_experiment(train_setup, test_setup)
+                                    
 
 def do_probe_experiment_default(probe_type, activations_model, test_incentivised):
     done_experiments = BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL
@@ -209,7 +229,7 @@ def do_probe_experiment_default(probe_type, activations_model, test_incentivised
                     test_setup.append([behaviour, datasource_OOD, activations_model, test_gen_method, activations_model, "test"])
                 do_single_probe_experiment(train_setup, test_setup)
                     
-            
+                    
 def do_probe_experiment_combinations(
     new_probe_types, 
     new_behaviours, 
@@ -245,15 +265,23 @@ def do_probe_experiment_combinations(
 if __name__ == "__main__":
     # MAKE SURE TO SET HF_TOKEN IN COMMAND LINE AND WANDB KEY AT TOP OF THIS FILE
     
-    do_probe_experiment_deception_sandbagging()
+    # Special experiment of just deception and sandbagging
+    # do_probe_experiment_deception_sandbagging()
     
-    # # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
-    # for test_incentivised in [False, True]:
-    #     do_probe_experiment_default(
-    #         probe_type = ["mean", "attention_torch"][0],
-    #         activations_model = ["llama_3b", "ministral_8b"][0], # currently the only option
-    #         test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
-    #     )
+    # # Special experiment of just getting missing prompted and off policy 'same train and test' data
+    # do_same_train_test_experiment(
+    #     probe_type = ["mean", "attention_torch"][0],
+    #     activations_model = ["llama_3b", "ministral_8b"][0], # currently the only option
+    #     test_incentivised = True,
+    # )
+    
+    # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
+    for test_incentivised in [False, True]:
+        do_probe_experiment_default(
+            probe_type = ["mean", "attention_torch"][0],
+            activations_model = ["llama_3b", "ministral_8b", "qwen_30b", "gemma_27b"][0], 
+            test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
+        )
     
     # # Option 2: Set parameters based on all combinations
     # do_probe_experiment_combinations(
