@@ -73,6 +73,10 @@ def get_or_search_for_best_hyperparams(train_setup):
                 layers_list = [8,12,16,20,24]
             elif tr[0][3] == "mixtral":
                 layers_list = [12,16,20,24]
+            elif tr[0][3] == "qwen_30b":
+                layers_list = [24]
+            elif tr[0][3] == "gemma_27b":
+                layers_list = [26]
             else:
                 raise ValueError(f"Activations model {tr[0][3]} not supported")
         elif tr[0][0] == "attention_torch":
@@ -227,6 +231,40 @@ def do_probe_experiment_default(probe_type, activations_model, test_incentivised
                 test_setup = [[behaviour, datasource_ID, activations_model, test_gen_method, activations_model, "test"]]
                 if done_experiments[behaviour]["test_both"]:
                     test_setup.append([behaviour, datasource_OOD, activations_model, test_gen_method, activations_model, "test"])
+                do_single_probe_experiment(train_setup, test_setup)
+                
+                
+def do_probe_experiment_default_test_everything(probe_type, activations_model, test_incentivised):
+    done_experiments = BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL
+    if test_incentivised:
+        done_experiments.update(BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION)
+        train_gen_methods = ['incentivised', 'prompted', 'off_policy']
+    else:
+        train_gen_methods = ['on_policy', 'incentivised', 'prompted', 'off_policy']
+    
+    # Iterate through all train and test pairs
+    for behaviour in list(done_experiments.keys()):
+        for generation_method in train_gen_methods:
+            if behaviour in ["deception", "sandbagging"] and generation_method == "on_policy":
+                continue
+            ds = list(done_experiments[behaviour].keys())[1:]
+            datasource_ID, datasource_OOD = (ds[0], ds[1])
+            for datasource in [datasource_ID, datasource_OOD]:
+                # Get experiments into format
+                # [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
+                off_policy_model = done_experiments[behaviour][datasource][activations_model]
+                response_model = activations_model if generation_method != "off_policy" else off_policy_model
+                train_setup = [[probe_type, behaviour, datasource, activations_model, generation_method, response_model, "train"]]
+                
+                if (generation_method != 'on_policy' and generation_method != 'incentivised') and (datasource == datasource_ID or done_experiments[behaviour]["test_both"]):
+                    test_setup = [[behaviour, datasource, activations_model, generation_method, activations_model, "test"]]
+                test_setup = [[behaviour, datasource_ID, activations_model, 'on_policy', activations_model, "test"]]
+                if generation_method != 'on_policy':
+                    test_setup = [[behaviour, datasource_ID, activations_model, 'incentivised', activations_model, "test"]]
+                if done_experiments[behaviour]["test_both"]:
+                    test_setup.append([behaviour, datasource_OOD, activations_model,'on_policy', activations_model, "test"])
+                    if generation_method != 'on_policy':
+                        test_setup.append([behaviour, datasource_OOD, activations_model, 'incentivised', activations_model, "test"])
                 do_single_probe_experiment(train_setup, test_setup)
                     
                     

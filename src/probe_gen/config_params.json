@@ -156,5 +156,29 @@
     "mixtral": {
         "mean": {},
         "attention_torch": {}
+    },
+    "gemma_27b": {
+        "mean": {
+            "sycophancy": {
+                "layer": 26,
+                "C": 0.001
+            },
+            "authority": {
+                "layer": 26,
+                "C": 0.001
+            }
+        },
+        "attention_torch": {
+            "sycophancy": {
+                "layer": 26,
+                "lr": 0.0001,
+                "weight_decay": 1e-05
+            },
+            "authority": {
+                "layer": 26,
+                "lr": 0.001,
+                "weight_decay": 1e-05
+            }
+        }
     }
 }
