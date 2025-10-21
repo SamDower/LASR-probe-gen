@@ -256,15 +256,14 @@ def do_probe_experiment_default_test_everything(probe_type, activations_model, t
                 response_model = activations_model if generation_method != "off_policy" else off_policy_model
                 train_setup = [[probe_type, behaviour, datasource, activations_model, generation_method, response_model, "train"]]
                 
+                test_setup = []
                 if (generation_method != 'on_policy' and generation_method != 'incentivised') and (datasource == datasource_ID or done_experiments[behaviour]["test_both"]):
-                    test_setup = [[behaviour, datasource, activations_model, generation_method, activations_model, "test"]]
-                test_setup = [[behaviour, datasource_ID, activations_model, 'on_policy', activations_model, "test"]]
-                if generation_method != 'on_policy':
-                    test_setup = [[behaviour, datasource_ID, activations_model, 'incentivised', activations_model, "test"]]
+                    test_setup.append([behaviour, datasource, activations_model, generation_method, activations_model, "test"])
+                test_setup.append([behaviour, datasource_ID, activations_model, 'on_policy', activations_model, "test"])
+                test_setup.append([behaviour, datasource_ID, activations_model, 'incentivised', activations_model, "test"])
                 if done_experiments[behaviour]["test_both"]:
                     test_setup.append([behaviour, datasource_OOD, activations_model,'on_policy', activations_model, "test"])
-                    if generation_method != 'on_policy':
-                        test_setup.append([behaviour, datasource_OOD, activations_model, 'incentivised', activations_model, "test"])
+                    test_setup.append([behaviour, datasource_OOD, activations_model, 'incentivised', activations_model, "test"])
                 do_single_probe_experiment(train_setup, test_setup)
                     
                     
