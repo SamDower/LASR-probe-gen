@@ -181,7 +181,7 @@
         "mean": {
             "deception": {
                 "layer": 16,
-                "C": 0.001
+                "C": 0.01
             }
         },
         "attention_torch": {
