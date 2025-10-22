@@ -84,6 +84,7 @@ def plot_behaviour_barchart(
     legend_loc="upper right",
     extra_whitespace=1,
     probe_type="mean",
+    do_seperator_line=True, 
     ):
     """
     Plots a bar chart of the results of the probes specified in the train_setup list.
@@ -162,7 +163,7 @@ def plot_behaviour_barchart(
     ax.xaxis.label.set_size(13)   # x-axis label font size
     ax.yaxis.label.set_size(13)   # y-axis label font size
     
-    if test_incentivised:
+    if test_incentivised and (do_seperator_line != False):
         # Insert vertical dashed red line
         split_index = len(train_setup) - 4  # index where the last 4 behaviours begin
         ax.axvline(
