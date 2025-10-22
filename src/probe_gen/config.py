@@ -113,7 +113,7 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
         "mmlu": {
             "llama_3b": "qwen_3b", 
             "ministral_8b": "llama_3b",
-            "qwen_30b": "llama_3b",
+            "qwen_30b": "ministral_8b",
         }},
     "sycophancy": {
         "test_both": True,
