@@ -109,6 +109,10 @@
             "sycophancy": {
                 "C": 0.001,
                 "layer": 26
+            },
+            "sandbagging": {
+                "layer": 15,
+                "C": 0.001
             }
         },
         "attention_torch": {
@@ -141,6 +145,11 @@
                 "layer": 14,
                 "lr": 0.0001,
                 "weight_decay": 1e-05
+            },
+            "sandbagging": {
+                "layer": 15,
+                "lr": 0.0001,
+                "weight_decay": 1e-05
             }
         }
     },
@@ -149,13 +158,81 @@
             "sandbagging": {
                 "layer": 12,
                 "C": 0.01
+            },
+            "deception": {
+                "layer": 12,
+                "C": 0.01
             }
         },
-        "attention_torch": {}
+        "attention_torch": {
+            "sandbagging": {
+                "layer": 12,
+                "lr": 0.0001,
+                "weight_decay": 1e-05
+            },
+            "deception": {
+                "layer": 12,
+                "lr": 0.0001,
+                "weight_decay": 1e-05
+            }
+        }
     },
     "mixtral": {
-        "mean": {},
-        "attention_torch": {}
+        "mean": {
+            "deception": {
+                "layer": 16,
+                "C": 0.01
+            }
+        },
+        "attention_torch": {
+            "deception": {
+                "layer": 16,
+                "lr": 0.0001,
+                "weight_decay": 1e-5
+            }
+        }
+    },
+    "qwen_30b": {
+        "mean": {
+            "refusal": {
+                "layer": 24,
+                "C": 0.001
+            },
+            "lists": {
+                "layer": 24,
+                "C": 0.001
+            },
+            "metaphors": {
+                "layer": 24,
+                "C": 0.001
+            },
+            "science": {
+                "layer": 24,
+                "C": 0.001
+            }
+        },
+        "attention_torch": {
+            "refusal": {
+                "layer": 24,
+                "lr": 0.0001,
+                "weight_decay": 1e-05
+            },
+            "lists": {
+                "layer": 24,
+                "lr": 0.0001,
+                "weight_decay": 1e-05
+            },
+            "metaphors": {
+                "layer": 24,
+                "lr": 0.001,
+                "weight_decay": 1e-05
+            },
+            "science": {
+                "layer": 24,
+                "lr": 0.0001,
+                "weight_decay": 1e-05
+            }
+        }
     },
     "gemma_27b": {
         "mean": {
