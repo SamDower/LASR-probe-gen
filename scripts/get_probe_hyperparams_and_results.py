@@ -258,7 +258,7 @@ def do_probe_experiment_default_test_everything(probe_type, activations_model, t
                 
                 test_setup = []
                 if (generation_method != 'on_policy' and generation_method != 'incentivised') and (datasource == datasource_ID or done_experiments[behaviour]["test_both"]):
-                    test_setup.append([behaviour, datasource, activations_model, generation_method, activations_model, "test"])
+                    test_setup.append([behaviour, datasource, activations_model, generation_method, response_model, "test"])
                 test_setup.append([behaviour, datasource_ID, activations_model, 'on_policy', activations_model, "test"])
                 test_setup.append([behaviour, datasource_ID, activations_model, 'incentivised', activations_model, "test"])
                 if done_experiments[behaviour]["test_both"]:
