@@ -249,9 +249,7 @@ def run_grid_experiment_lean(train_setup, test_setup):
                 activations_tensor = probes.MeanAggregation()(activations_tensor, attention_mask)
             
             # TODO: Make sure this is correct
-            if ts[j][1] == "jailbreaks":
-                _, _, test_dataset = probes.create_activation_datasets(activations_tensor, labels_tensor, splits=[3500, 500, 1000])
-            elif ts[j][1] == "trading":
+            if ts[j][1] == "trading":
                 _, _, test_dataset = probes.create_activation_datasets(activations_tensor, labels_tensor, splits=[2500, 500, 500])
             elif ts[j][0] in ["deception", "sandbagging"]:
                 _, _, test_dataset = probes.create_activation_datasets(activations_tensor, labels_tensor, splits=[0, 0, 500])
