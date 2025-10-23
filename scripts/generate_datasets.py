@@ -44,7 +44,7 @@ hf_token = os.getenv("HF_TOKEN")
 if hf_token:
     login(token=hf_token)
 else:
-    print("HF_TOKEN is not set")
+    raise ValueError("HF_TOKEN is not set")
 
 
 def check_experiments_are_valid(experiments):
