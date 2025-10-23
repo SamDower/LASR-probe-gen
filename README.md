@@ -1,5 +1,5 @@
 # The Impact of Off-Policy Training Data on Probe Performance
-See notebooks/DataPipeline.ipynb to get the datasets of inputs, outputs, labels and activations.
+See the instructions bellow to get the datasets of inputs, outputs, labels and activations (See also notebooks/DataPipeline.ipynb but it is old).
 - See scripts/generate_datasets.py for automating this, reading in a dataset config file from the configs folder.
 - Resulting datasets of labels and activations are stored at: https://huggingface.co/lasrprobegen
     

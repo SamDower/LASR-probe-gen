@@ -39,9 +39,12 @@ import torch
 from huggingface_hub import HfApi, login
 from transformers.utils import TRANSFORMERS_CACHE
 
+# os.environ["HF_TOKEN"] = ""
 hf_token = os.getenv("HF_TOKEN")
 if hf_token:
     login(token=hf_token)
+else:
+    print("HF_TOKEN is not set")
 
 
 def check_experiments_are_valid(experiments):

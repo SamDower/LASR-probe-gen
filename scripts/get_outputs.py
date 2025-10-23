@@ -12,9 +12,12 @@ from huggingface_hub import login
 from probe_gen.config import MODELS
 from probe_gen.gen_data.utils import get_model, process_file_outputs_only
 
+# os.environ["HF_TOKEN"] = ""
 hf_token = os.getenv("HF_TOKEN")
 if hf_token:
     login(token=hf_token)
+else:
+    print("HF_TOKEN is not set")
 
 def yes_no_str(v):
     v = v.lower()

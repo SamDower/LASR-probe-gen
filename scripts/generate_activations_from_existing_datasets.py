@@ -16,9 +16,12 @@ import shutil
 
 from huggingface_hub import HfApi, hf_hub_download, login
 
+# os.environ["HF_TOKEN"] = ""
 hf_token = os.getenv("HF_TOKEN")
 if hf_token:
     login(token=hf_token)
+else:
+    print("HF_TOKEN is not set")
 
 def wipe_directory(dir_path: Path):
     """Delete all files and subdirectories inside dir_path, but keep dir_path itself."""

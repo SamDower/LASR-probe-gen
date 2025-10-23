@@ -18,9 +18,12 @@ from probe_gen.gen_data.utils import (
 )
 from probe_gen.labelling.label_dataset import label_and_save_dataset
 
+# os.environ["HF_TOKEN"] = ""
 hf_token = os.getenv("HF_TOKEN")
 if hf_token:
     login(token=hf_token)
+else:
+    print("HF_TOKEN is not set")
 
 def yes_no_str(v):
     v = v.lower()
