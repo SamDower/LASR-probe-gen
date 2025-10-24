@@ -17,7 +17,7 @@ hf_token = os.getenv("HF_TOKEN")
 if hf_token:
     login(token=hf_token)
 else:
-    print("HF_TOKEN is not set")
+    raise ValueError("HF_TOKEN is not set")
 
 def yes_no_str(v):
     v = v.lower()

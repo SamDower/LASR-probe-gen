@@ -35,7 +35,7 @@ wandb_token = os.getenv("WANDB_API_KEY")
 if wandb_token:
     wandb.login(key=wandb_token)
 else:
-    print("WANDB_API_KEY is not set")
+    raise ValueError("WANDB_API_KEY is not set")
 
 # os.environ["HF_TOKEN"] = ""
 hf_token = os.getenv("HF_TOKEN")
@@ -319,13 +319,13 @@ if __name__ == "__main__":
     #     test_incentivised = True,
     # )
     
-    # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
-    for test_incentivised in [False, True]:
-        do_probe_experiment_default(
-            probe_type = ["mean", "attention_torch"][0],
-            activations_model = ["llama_3b", "ministral_8b", "qwen_30b", "gemma_27b"][0], 
-            test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
-        )
+    # # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
+    # for test_incentivised in [False, True]:
+    #     do_probe_experiment_default(
+    #         probe_type = ["mean", "attention_torch"][0],
+    #         activations_model = ["llama_3b", "ministral_8b", "qwen_30b", "gemma_27b"][0], 
+    #         test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
+    #     )
     
     # # Option 2: Set parameters based on all combinations
     # do_probe_experiment_combinations(
@@ -336,15 +336,13 @@ if __name__ == "__main__":
     #     new_test_gen_methods = ["on_policy", "incentivised", "prompted", "off_policy"],
     # )
 
-    # # Option 3: Set experiments manually
-    # # [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
-    # train_setup = [
-    #     ["mean", "refusal", "rlhf", "llama_3b", "on_policy", "llama_3b", "train"],
-    #     ["mean", "refusal", "jailbreaks", "llama_3b", "on_policy", "llama_3b", "train"],
-    # ]
-    # test_setup = [
-    #     ["refusal", "rlhf", "llama_3b", "on_policy", "llama_3b", "test"],
-    #     ["refusal", "jailbreaks", "llama_3b", "on_policy", "llama_3b", "test"],
-    # ]
-    # for tr in train_setup:
-    #     do_single_probe_experiment([tr], test_setup)
+    # Option 3: Set experiments manually
+    # [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
+    train_setup = [
+        ["mean", "sycophancy", "multichoice", "llama_3b", "on_policy", "llama_3b", "train"],
+    ]
+    test_setup = [
+        ["sycophancy", "multichoice", "llama_3b", "on_policy", "llama_3b", "test"],
+    ]
+    for tr in train_setup:
+        do_single_probe_experiment([tr], test_setup)

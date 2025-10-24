@@ -21,7 +21,7 @@ hf_token = os.getenv("HF_TOKEN")
 if hf_token:
     login(token=hf_token)
 else:
-    print("HF_TOKEN is not set")
+    raise ValueError("HF_TOKEN is not set")
 
 def wipe_directory(dir_path: Path):
     """Delete all files and subdirectories inside dir_path, but keep dir_path itself."""
@@ -86,10 +86,10 @@ def generate_and_save_activations(behaviour, datasource, activations_model, resp
 
 def main():
     # ====== All settings to change are here ======
-    response_model = "ministral_8b"
-    activations_model = "ministral_8b"
+    response_model = "llama_3b"
+    activations_model = "llama_3b"
     generation_methods = ["on_policy"]
-    layers = [26]
+    layers = [12]
     experiments = [
         # {"behaviour": "authority", "datasources": ["multichoice", "arguments"]},
         {"behaviour": "sycophancy", "datasources": ["multichoice"]},
