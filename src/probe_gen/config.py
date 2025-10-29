@@ -69,11 +69,13 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
             "llama_3b": "ministral_8b", 
             "ministral_8b": "llama_3b", 
             "qwen_30b": "ministral_8b",
+            "gemma_27b": "ministral_8b",
         },
         "jailbreaks": {
             "llama_3b": "ministral_8b", 
             "ministral_8b": "llama_3b",
             "qwen_30b": "ministral_8b",
+            "gemma_27b": "ministral_8b",
         }},
     "lists": {
         "test_both": False,
@@ -81,27 +83,32 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
             "llama_3b": "qwen_3b", 
             "ministral_8b": "llama_3b",
             "qwen_30b": "ministral_8b",
+            "gemma_27b": "ministral_8b",
         },
-        # "writingprompts": {
-        #     "llama_3b": "qwen_3b",
-        #     "ministral_8b": "llama_3b"
-        # }},
-        "shakespeare": {
-            "llama_3b": "qwen_3b", 
+        "writingprompts": {
+            "llama_3b": "qwen_3b",
             "ministral_8b": "llama_3b",
-            "qwen_30b": "llama_3b",
+            "gemma_27b": "ministral_8b",
         }},
+        # "shakespeare": {
+        #     "llama_3b": "qwen_3b", 
+        #     "ministral_8b": "llama_3b",
+        #     "qwen_30b": "llama_3b",
+        #     "gemma_27b": "ministral_8b",
+        # }},
     "metaphors": {
         "test_both": False,
         "ultrachat": {
             "llama_3b": "qwen_3b", 
             "ministral_8b": "llama_3b",
             "qwen_30b": "ministral_8b",
+            "gemma_27b": "ministral_8b",
         },
         "writingprompts": {
             "llama_3b": "qwen_3b", 
             "ministral_8b": "llama_3b",
             "qwen_30b": "ministral_8b",
+            "gemma_27b": "ministral_8b",
         }},
     "science": {
         "test_both": False,
@@ -109,36 +116,38 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
             "llama_3b": "qwen_3b", 
             "ministral_8b": "llama_3b",
             "qwen_30b": "ministral_8b",
+            "gemma_27b": "ministral_8b",
         },
         "mmlu": {
             "llama_3b": "qwen_3b", 
             "ministral_8b": "llama_3b",
             "qwen_30b": "ministral_8b",
-        }},
-    "sycophancy": {
-        "test_both": True,
-        "multichoice": {
-            "llama_3b": "ministral_8b", 
-            "ministral_8b": "llama_3b",
-            "gemma_27b": "ministral_8b",
-        },
-        "arguments": {
-            "llama_3b": "qwen_7b", 
-            "ministral_8b": "llama_3b",
             "gemma_27b": "ministral_8b",
         }},
-    "authority": {
-        "test_both": True,
-        "multichoice": {
-            "llama_3b": "ministral_8b", 
-            "ministral_8b": "llama_3b",
-            "gemma_27b": "ministral_8b",
-        },
-        "arguments": {
-            "llama_3b": "qwen_7b", 
-            "ministral_8b": "llama_3b",
-            "gemma_27b": "ministral_8b",
-        }},
+    # "sycophancy": {
+    #     "test_both": True,
+    #     "multichoice": {
+    #         "llama_3b": "ministral_8b", 
+    #         "ministral_8b": "llama_3b",
+    #         "gemma_27b": "ministral_8b",
+    #     },
+    #     "arguments": {
+    #         "llama_3b": "qwen_7b", 
+    #         "ministral_8b": "llama_3b",
+    #         "gemma_27b": "ministral_8b",
+    #     }},
+    # "authority": {
+    #     "test_both": True,
+    #     "multichoice": {
+    #         "llama_3b": "ministral_8b", 
+    #         "ministral_8b": "llama_3b",
+    #         "gemma_27b": "ministral_8b",
+    #     },
+    #     "arguments": {
+    #         "llama_3b": "qwen_7b", 
+    #         "ministral_8b": "llama_3b",
+    #         "gemma_27b": "ministral_8b",
+    #     }},
 }
 
 BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION = {

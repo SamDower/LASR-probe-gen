@@ -83,7 +83,7 @@ def get_or_search_for_best_hyperparams(train_setup):
             elif tr[0][3] == "qwen_30b":
                 layers_list = [24]
             elif tr[0][3] == "gemma_27b":
-                layers_list = [26]
+                layers_list = [24]
             else:
                 raise ValueError(f"Activations model {tr[0][3]} not supported")
         elif tr[0][0] == "attention_torch":
@@ -257,6 +257,8 @@ def do_probe_experiment_default_test_everything(probe_type, activations_model, t
             ds = list(done_experiments[behaviour].keys())[1:]
             datasource_ID, datasource_OOD = (ds[0], ds[1])
             for datasource in [datasource_ID, datasource_OOD]:
+                if datasource == "rlhf":
+                    continue
                 # Get experiments into format
                 # [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
                 off_policy_model = done_experiments[behaviour][datasource][activations_model]
@@ -320,12 +322,19 @@ if __name__ == "__main__":
     # )
     
     # # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
-    # for test_incentivised in [False, True]:
-    #     do_probe_experiment_default(
+    # for test_incentivised in [False]:
+    #     do_probe_experiment_default_test_everything(
     #         probe_type = ["mean", "attention_torch"][0],
-    #         activations_model = ["llama_3b", "ministral_8b", "qwen_30b", "gemma_27b"][0], 
+    #         activations_model = ["llama_3b", "ministral_8b", "qwen_30b", "gemma_27b"][-1], 
     #         test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
     #     )
+
+    for test_incentivised in [False]:
+        do_probe_experiment_default_test_everything(
+            probe_type = ["mean", "attention_torch"][1],
+            activations_model = ["llama_3b", "ministral_8b", "qwen_30b", "gemma_27b"][-1], 
+            test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
+        )
     
     # # Option 2: Set parameters based on all combinations
     # do_probe_experiment_combinations(
@@ -336,13 +345,13 @@ if __name__ == "__main__":
     #     new_test_gen_methods = ["on_policy", "incentivised", "prompted", "off_policy"],
     # )
 
-    # Option 3: Set experiments manually
-    # [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
-    train_setup = [
-        ["mean", "sycophancy", "multichoice", "llama_3b", "on_policy", "llama_3b", "train"],
-    ]
-    test_setup = [
-        ["sycophancy", "multichoice", "llama_3b", "on_policy", "llama_3b", "test"],
-    ]
-    for tr in train_setup:
-        do_single_probe_experiment([tr], test_setup)
+    # # Option 3: Set experiments manually
+    # # [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
+    # train_setup = [
+    #     ["mean", "sycophancy", "multichoice", "llama_3b", "on_policy", "llama_3b", "train"],
+    # ]
+    # test_setup = [
+    #     ["sycophancy", "multichoice", "llama_3b", "on_policy", "llama_3b", "test"],
+    # ]
+    # for tr in train_setup:
+    #     do_single_probe_experiment([tr], test_setup)

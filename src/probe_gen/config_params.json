@@ -188,7 +188,7 @@
             "deception": {
                 "layer": 16,
                 "lr": 0.0001,
-                "weight_decay": 1e-5
+                "weight_decay": 1e-05
             }
         }
     },
@@ -243,6 +243,22 @@
             "authority": {
                 "layer": 26,
                 "C": 0.001
+            },
+            "refusal": {
+                "layer": 24,
+                "C": 0.001
+            },
+            "lists": {
+                "layer": 24,
+                "C": 0.001
+            },
+            "metaphors": {
+                "layer": 24,
+                "C": 0.001
+            },
+            "science": {
+                "layer": 24,
+                "C": 0.001
             }
         },
         "attention_torch": {
@@ -254,6 +270,11 @@
             "authority": {
                 "layer": 26,
                 "lr": 0.001,
+                "weight_decay": 1e-05
+            },
+            "refusal": {
+                "layer": 24,
+                "lr": 0.0001,
                 "weight_decay": 1e-05
             }
         }
