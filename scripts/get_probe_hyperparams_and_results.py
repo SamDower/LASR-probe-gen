@@ -257,8 +257,6 @@ def do_probe_experiment_default_test_everything(probe_type, activations_model, t
             ds = list(done_experiments[behaviour].keys())[1:]
             datasource_ID, datasource_OOD = (ds[0], ds[1])
             for datasource in [datasource_ID, datasource_OOD]:
-                if datasource == "rlhf":
-                    continue
                 # Get experiments into format
                 # [probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, cfg]
                 off_policy_model = done_experiments[behaviour][datasource][activations_model]
