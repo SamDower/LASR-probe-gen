@@ -4,10 +4,11 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import torch
 
 # Load the JSONL file that contains questions, model outputs, and labels from HuggingFace
 from huggingface_hub import hf_hub_download
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
 
 import probe_gen.probes as probes
 from probe_gen.config import ConfigDict
@@ -209,6 +210,7 @@ def visualize_token_heatmap(
     activations_tensor,
     probe,
     labels_tensor,
+    behaviour,
     figsize=(20, 12),
     ):
 
@@ -223,6 +225,9 @@ def visualize_token_heatmap(
     n_bins = 100
     cmap = LinearSegmentedColormap.from_list('prob_cmap', colors, N=n_bins)
     
+    # Create normalizer centered at 0 with actual data range
+    norm = TwoSlopeNorm(vmin=min(scores), vcenter=0, vmax=max(scores))
+    
     # Dynamically calculate figure height based on number of tokens and wrapping
     max_width = 100  # Maximum width before wrapping
     estimated_rows = sum(len(t) * 0.6 + 0.1 for t in tokens) / max_width + 1
@@ -234,27 +239,29 @@ def visualize_token_heatmap(
     # Plot tokens as colored rectangles
     x_pos = 0
     y_pos = 0
+    rect_height = 0.4
     
     for i, (token, prob) in enumerate(zip(tokens, scores)):
-        # Wrap to new line if needed
-        if x_pos > max_width:
-            x_pos = 0
-            y_pos -= 1
-        
+
         # Determine width based on token length
         token_width = max(len(token) * 0.6, 0.5)
+
+        # Wrap to new line if needed
+        if x_pos + token_width > max_width:
+            x_pos = 0
+            y_pos -= rect_height + 0.1
         
         # Color based on probability
-        color = cmap(prob)
+        color = cmap(norm(prob))
         
         # Draw rectangle
-        rect = mpatches.Rectangle((x_pos, y_pos), token_width, 0.8, 
+        rect = mpatches.Rectangle((x_pos, y_pos), token_width, rect_height, 
                                   facecolor=color, edgecolor='gray', linewidth=0.5)
         ax.add_patch(rect)
         
         # Add text
-        ax.text(x_pos + token_width/2, y_pos + 0.4, token, 
-               ha='center', va='center', fontsize=8, 
+        ax.text(x_pos + token_width/2, y_pos + rect_height/2, token, 
+               ha='center', va='center', fontsize=11, 
                fontfamily='monospace', weight='bold') #, weight='bold' if section == 'Q' else 'normal')
         
         x_pos += token_width + 0.1
@@ -265,24 +272,45 @@ def visualize_token_heatmap(
     ax.axis('off')
     
     # Add title and legend
-    title = f'Token-Level Probe Probabilities - Example {index} (Label={label}, Prediction={predicted_label})\n'
-    title += f'Showing {len(tokens)} tokens'
+    title = f'Token-Level Probe Probabilities - {behaviour} (Label={label}, Prediction={predicted_label})\n'
+    title += f'{len(tokens)} tokens'
     ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
     
     # Create colorbar
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=1))
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=ax, orientation='horizontal', pad=0.02, aspect=50)
-    cbar.set_label('Probability (sigmoid of probe score)', fontsize=12, fontweight='bold')
+    cbar.set_label('Probe score', fontsize=12, fontweight='bold')
+
+    # Create ticks that span both negative and positive ranges
+    negative_ticks = np.linspace(min(scores), 0, num=5)  # 5 ticks from min to 0
+    positive_ticks = np.linspace(0, max(scores), num=5)[1:]  # 4 ticks from 0 to max (excluding 0)
+    tick_values = np.concatenate([negative_ticks, positive_ticks])
+    cbar.set_ticks(tick_values)
+    cbar.set_ticklabels([f'{val:.1f}' for val in tick_values])
+
     cbar.ax.tick_params(labelsize=10)
-    
-    # Add text box with statistics
-    # stats_text = f'Question tokens: {len(q_probs)}, Mean prob: {np.mean(q_probs):.3f}\n'
-    # stats_text += f'Answer tokens: {len(a_probs)}, Mean prob: {np.mean(a_probs):.3f}\n'
-    # stats_text += f'Overall mean: {np.mean(probs):.3f}'
-    # ax.text(0.98, 0.98, stats_text, transform=ax.transAxes,
-    #        fontsize=10, verticalalignment='top', horizontalalignment='right',
-    #        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
     
     plt.tight_layout()
     plt.show()
+
+
+
+def get_indices_for_each_prediction_type(activations_tensor, attention_mask, labels_tensor, probe):
+    """Get indices of correctly classified examples for a given label"""
+
+    predicted_labels = torch.tensor(probe.predict(probes.MeanAggregation()(activations_tensor, attention_mask)))
+
+    # True Positives: predicted 1, actual 1
+    tp_indices = ((predicted_labels == 1) & (labels_tensor == 1)).nonzero(as_tuple=True)[0]
+
+    # False Positives: predicted 1, actual 0
+    fp_indices = ((predicted_labels == 1) & (labels_tensor == 0)).nonzero(as_tuple=True)[0]
+
+    # True Negatives: predicted 0, actual 0
+    tn_indices = ((predicted_labels == 0) & (labels_tensor == 0)).nonzero(as_tuple=True)[0]
+
+    # False Negatives: predicted 0, actual 1
+    fn_indices = ((predicted_labels == 0) & (labels_tensor == 1)).nonzero(as_tuple=True)[0]
+    
+    return tp_indices, fp_indices, fn_indices, tn_indices
