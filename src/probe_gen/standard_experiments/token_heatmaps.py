@@ -118,7 +118,7 @@ def load_labelled_responses_and_activations(probe_type, behaviour, datasource, a
 
     generation_method_for_labels = generation_method.replace("_included", "")
     if generation_method == "off_policy":
-        generation_method = "on_policy"
+        generation_method_for_labels = "on_policy"
     labels_filename = f"{datasource}/{response_model}_{generation_method_for_labels}_{mode}.jsonl"
 
     # Download from HuggingFace
@@ -193,7 +193,7 @@ def get_probe_scores_and_tokens(tokenizer, index, responses_df, activations_tens
     scores = []
     for i in range(len(tokens)):
         activation = activations_tensor[index][i]
-        score = np.dot(activation.numpy(), probe_weights) + probe_bias
+        score = np.dot((activation.numpy() - probe.transformation_mean.flatten()) / probe.transformation_std.flatten(), probe_weights) + probe_bias
         scores.append(score)
         tokens[i] = tokens[i].replace('Ġ', ' ').replace('Ċ', '\\n')
     
@@ -208,8 +208,8 @@ def visualize_token_heatmap(
     index,
     responses_df,
     activations_tensor,
-    probe,
     labels_tensor,
+    probe,
     behaviour,
     figsize=(20, 12),
     ):
