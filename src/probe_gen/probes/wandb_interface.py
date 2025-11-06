@@ -88,7 +88,7 @@ def load_probe_eval_dict_by_dict(lookup_dict):
     
     results = []
     for run in runs:
-        data_dict = json.loads(run.summary._json_dict)
+        data_dict = run.summary._json_dict
         accuracy = data_dict.get('accuracy', None)
         roc_auc = data_dict.get('roc_auc', None)
         tpr_at_1_fpr = data_dict.get('tpr_at_1_fpr', None)

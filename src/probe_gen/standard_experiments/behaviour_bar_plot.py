@@ -774,9 +774,7 @@ def get_combined_bar_chart_results_table_from_wandb(train_setup, train_gen_metho
 
 
 def plot_combined_behaviour_barchart(
-    behaviour,
-    datasources,
-    activations_model,
+    train_setup,
     test_incentivised=False,
     add_mean_summary=False,
     title=None,
@@ -816,14 +814,14 @@ def plot_combined_behaviour_barchart(
     train_gen_methods = ['on_policy', 'incentivised', 'prompted', 'off_policy']
     test_gen_method = 'on_policy'
 
-    train_setup = [
-        [probe_type, behaviour, [datasources[0], datasources[1], datasources[2]], activations_model, datasources[0]],
-        [probe_type, behaviour, [datasources[0], datasources[1]], activations_model, datasources[0]],
-        [probe_type, behaviour, [datasources[1], datasources[2]], activations_model, datasources[0]],
-        [probe_type, behaviour, [datasources[0]], activations_model, datasources[0]],
-        [probe_type, behaviour, [datasources[1]], activations_model, datasources[0]],
-        [probe_type, behaviour, [datasources[2]], activations_model, datasources[0]],
-    ]
+    # train_setup = [
+    #     [probe_type, behaviour, [datasources[0], datasources[1], datasources[2]], activations_model, datasources[0]],
+    #     [probe_type, behaviour, [datasources[0], datasources[1]], activations_model, datasources[0]],
+    #     [probe_type, behaviour, [datasources[1], datasources[2]], activations_model, datasources[0]],
+    #     [probe_type, behaviour, [datasources[0]], activations_model, datasources[0]],
+    #     [probe_type, behaviour, [datasources[1]], activations_model, datasources[0]],
+    #     [probe_type, behaviour, [datasources[2]], activations_model, datasources[0]],
+    # ]
     
     print("Fetching combined probe results from WandB...")
     results_table = get_combined_bar_chart_results_table_from_wandb(

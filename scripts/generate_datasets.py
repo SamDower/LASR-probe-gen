@@ -26,6 +26,9 @@ from probe_gen.labelling.sandbagging_multi_autograder import (
 from probe_gen.labelling.sycophancy_multichoice_autograder import (
     label_and_save_dataset_sycophancy_multichoice,
 )
+from probe_gen.labelling.haikus_autograder import (
+    label_and_save_dataset_haikus,
+)
 
 # Add the project root to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -144,14 +147,22 @@ def get_labels(behaviour, datasource, prompts_path, responses_path, out_path, nu
                 num_balanced=num_balanced,
             )
     
-    # Use Regex for arguments
-    elif datasource == "arguments" or datasource == "haikus": # Poems also uses the same autograder logic
+    # Use Regex for arguments and haikus
+    elif datasource == "arguments":
         label_and_save_dataset_arguments(
             responses_file=responses_path,
             out_file=out_path,
             num_balanced=num_balanced,
         )
-    
+    elif datasource == "haikus":
+        print("labelling haikus")
+        label_and_save_dataset_haikus(
+            prompts_file=prompts_path,
+            responses_file=responses_path,
+            out_file=out_path,
+            num_balanced=num_balanced,
+        )
+
     # Otherwise use the LLM autograder
     else:
         try:
@@ -216,6 +227,8 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
     ran_out_of_data = False
     datapoints_tried = 0
     next_n_samples = 2000
+
+    print("loaded model")
     
     while not balance_aquired and not ran_out_of_data:
         # Generate another set of prompts
@@ -226,6 +239,8 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
         found_enough_samples = prompt_dataset.generate_data(mode=mode, output_file="data/temp/prompts_latest.jsonl", n_samples=n_samples, skip=datapoints_tried)
         datapoints_tried += n_samples
         ran_out_of_data = not found_enough_samples
+
+        print("generated prompts")
 
         # Generate responses to those prompts
         process_file_outputs_only(
@@ -247,6 +262,8 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
         # Clean up any existing labelled responses file before labeling
         if os.path.exists("data/temp/labelled_responses_latest.jsonl"):
             os.remove("data/temp/labelled_responses_latest.jsonl")
+
+        print("begin labelling")
         
         get_labels(behaviour, datasource, "data/temp/prompts_latest.jsonl", "data/temp/responses_latest.jsonl", "data/temp/labelled_responses_latest.jsonl", num_balanced)
 
@@ -394,6 +411,7 @@ def main():
 
                     try:
                         if train_size > 0:
+                            print("started generating")
                             generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, "train", train_size, generation_batch_size)
                             if len(layers) > 0:
                                 generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, "train", layers, "data/temp/balanced_labelled_responses_all.jsonl", activations_batch_size)
