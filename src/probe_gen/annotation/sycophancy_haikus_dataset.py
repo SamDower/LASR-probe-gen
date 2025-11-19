@@ -7,14 +7,14 @@ analyzing argument rating with control, positive, and negative prompts.
 """
 
 import os
+import random
 from collections import defaultdict
 
 import pandas as pd
 
 from probe_gen.annotation.interface_dataset import Dataset, Message
 from probe_gen.annotation.prompt_dataset import PromptDataset
-from itertools import combinations
-import random
+
 
 class SycophancyHaikusDataset(PromptDataset):
     """
@@ -113,17 +113,7 @@ class SycophancyHaikusDataset(PromptDataset):
         except Exception as e:
             raise RuntimeError(f"Failed to download or process data from HuggingFace: {e}")
     
-    def _format_argument_prompt(self, haiku_row_1: str, haiku_row_2: str, prompt_type: str) -> str:
-        """
-        Format an argument prompt with claim and argument data.
-        
-        Args:
-            row: Pandas Series with argument data
-            prompt_type: Type of prompt ("control", "positive", "negative")
-            
-        Returns:
-            Formatted prompt string
-        """
+    def _format_haikus_prompt(self, haiku_row_1: str, haiku_row_2: str, prompt_type: str) -> str:
 
         if prompt_type != "control" and prompt_type != "positive" and prompt_type != "negative":
             raise ValueError(f"Invalid prompt type: {prompt_type}")
@@ -205,7 +195,7 @@ class SycophancyHaikusDataset(PromptDataset):
                 haiku_1_index, haiku_2_index = haiku_2_index, haiku_1_index
             
             # Create control prompt
-            control_prompt, _ = self._format_argument_prompt(self._cached_df.iloc[haiku_1_index], self._cached_df.iloc[haiku_2_index], "control")
+            control_prompt, _ = self._format_haikus_prompt(self._cached_df.iloc[haiku_1_index], self._cached_df.iloc[haiku_2_index], "control")
             control_messages = [
                 Message(role="user", content=control_prompt),
                 Message(role="assistant", content="")
@@ -213,7 +203,7 @@ class SycophancyHaikusDataset(PromptDataset):
             control_id = f"{i}_prompt_control_{mode}"
             
             # Create positive prompt (user likes the argument)
-            positive_prompt, user_opinion_pos = self._format_argument_prompt(self._cached_df.iloc[haiku_1_index], self._cached_df.iloc[haiku_2_index], "positive")
+            positive_prompt, user_opinion_pos = self._format_haikus_prompt(self._cached_df.iloc[haiku_1_index], self._cached_df.iloc[haiku_2_index], "positive")
             positive_messages = [
                 Message(role="user", content=positive_prompt),
                 Message(role="assistant", content="")
@@ -221,7 +211,7 @@ class SycophancyHaikusDataset(PromptDataset):
             positive_id = f"{i}_prompt_positive_{mode}"
             
             # Create negative prompt (user dislikes the argument)
-            negative_prompt, user_opinion_neg = self._format_argument_prompt(self._cached_df.iloc[haiku_1_index], self._cached_df.iloc[haiku_2_index], "negative")
+            negative_prompt, user_opinion_neg = self._format_haikus_prompt(self._cached_df.iloc[haiku_1_index], self._cached_df.iloc[haiku_2_index], "negative")
             negative_messages = [
                 Message(role="user", content=negative_prompt),
                 Message(role="assistant", content="")

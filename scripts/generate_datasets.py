@@ -18,6 +18,9 @@ from probe_gen.labelling.arguments_autograder import label_and_save_dataset_argu
 from probe_gen.labelling.authority_multichoice_autograder import (
     label_and_save_dataset_authority_multichoice,
 )
+from probe_gen.labelling.haikus_autograder import (
+    label_and_save_dataset_haikus,
+)
 from probe_gen.labelling.label_dataset import label_and_save_dataset
 from probe_gen.labelling.refusal_autograder import grade_data_harmbench
 from probe_gen.labelling.sandbagging_multi_autograder import (
@@ -25,9 +28,6 @@ from probe_gen.labelling.sandbagging_multi_autograder import (
 )
 from probe_gen.labelling.sycophancy_multichoice_autograder import (
     label_and_save_dataset_sycophancy_multichoice,
-)
-from probe_gen.labelling.haikus_autograder import (
-    label_and_save_dataset_haikus,
 )
 
 # Add the project root to Python path

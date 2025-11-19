@@ -1,20 +1,10 @@
 experiments:
-  - behaviour: sycophancy
-    datasources: ["multichoice"]
-    generation_methods: ["on_policy", "prompted"]
-    off_policy_model: "qwen_7b"
-    activations_model: "llama_3b"
-    layers: [12]
-    train_size: 10
-    test_size: 10
-    temperature: 0.0
-
-  - behaviour: science
-    datasources: ["ultrachat", 'mmlu']
+  - behaviour: authority
+    datasources: ["haikus"]
     generation_methods: ["on_policy", "prompted", "incentivised", "off_policy"]
-    off_policy_model: "qwen_7b"
+    off_policy_model: "ministral_8b"
     activations_model: "llama_3b"
     layers: [12]
     train_size: 4000
     test_size: 1000
-    temperature: 1.0
+    temperature: 0.0
