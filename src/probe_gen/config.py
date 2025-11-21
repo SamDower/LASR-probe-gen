@@ -135,6 +135,9 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
             "llama_3b": "qwen_7b", 
             "ministral_8b": "llama_3b",
             "gemma_27b": "ministral_8b",
+        },
+        "haikus": {
+            "llama_3b": "qwen_7b",
         }},
     "authority": {
         "test_both": True,
@@ -147,6 +150,9 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
             "llama_3b": "qwen_7b", 
             "ministral_8b": "llama_3b",
             "gemma_27b": "ministral_8b",
+        },
+        "haikus": {
+            "llama_3b": "ministral_8b",
         }},
 }
 
