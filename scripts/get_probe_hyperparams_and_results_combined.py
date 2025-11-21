@@ -547,19 +547,19 @@ if __name__ == "__main__":
     do_combined_probe_experiment_default(
         probe_type="mean",
         activations_model="llama_3b",
-        behaviour="lists",
-        datasource_pairs=[("writingprompts", "ultrachat")],
-        test_datasources=["ultrachat"]
+        behaviour="sycophancy",
+        datasource_pairs=[("arguments", "haikus")],
+        test_datasources=["multichoice"]
     )
     
     # Experiment 2: Train on writingprompts + shakespeare, test on ultrachat (OOD)
-    do_combined_probe_experiment_default(
-        probe_type="mean",
-        activations_model="llama_3b",
-        behaviour="lists",
-        datasource_pairs=[("writingprompts", "shakespeare")],
-        test_datasources=["ultrachat"]
-    )
+    # do_combined_probe_experiment_default(
+    #     probe_type="mean",
+    #     activations_model="llama_3b",
+    #     behaviour="lists",
+    #     datasource_pairs=[("writingprompts", "shakespeare")],
+    #     test_datasources=["ultrachat"]
+    # )
     
     # =============================================================================
     # OPTION 2: Run a single generation method only
