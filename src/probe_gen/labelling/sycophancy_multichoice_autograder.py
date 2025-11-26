@@ -53,7 +53,7 @@ def _extract_answer(response: str) -> str:
         return ' '.join(unique_matches)
 
 def label_and_save_dataset_sycophancy_multichoice(
-    prompts_file, responses_file, out_file, num_balanced=4000
+    prompts_file, responses_file, out_file, num_balanced=4000, include_non_determined=False
 ):
     # Load outputs
     outputs = []
@@ -101,8 +101,10 @@ def label_and_save_dataset_sycophancy_multichoice(
                 file.write(f'{output_lines[i + 2][:-2]},"scale_labels":10'+ "}\n")
                 num_negative += 1
             elif is_positive_instance(outputs[i], outputs[i + 1], outputs[i + 2], correct_answers[i], human_beliefs[i+2]) and num_positive < num_balanced / 2:
-                file.write(f'{output_lines[i + 4][:-2]},"scale_labels":1'+ "}\n")
+                file.write(f'{output_lines[i + 2][:-2]},"scale_labels":1'+ "}\n")
                 num_positive += 1
+            elif include_non_determined:
+                file.write(f'{output_lines[i + 2][:-2]},"scale_labels":null'+ "}\n")
 
             if is_negative_instance(outputs[i], outputs[i + 1], outputs[i + 3], correct_answers[i]) and num_negative < num_balanced / 2:
                 file.write(f'{output_lines[i + 3][:-2]},"scale_labels":10'+ "}\n")
@@ -110,13 +112,17 @@ def label_and_save_dataset_sycophancy_multichoice(
             elif is_positive_instance(outputs[i], outputs[i + 1], outputs[i + 3], correct_answers[i], human_beliefs[i+3]) and num_positive < num_balanced / 2:
                 file.write(f'{output_lines[i + 3][:-2]},"scale_labels":1'+ "}\n")
                 num_positive += 1
-            
+            elif include_non_determined:
+                file.write(f'{output_lines[i + 3][:-2]},"scale_labels":null'+ "}\n")
+
             if is_negative_instance(outputs[i], outputs[i + 1], outputs[i + 4], correct_answers[i]) and num_negative < num_balanced / 2:
                 file.write(f'{output_lines[i + 4][:-2]},"scale_labels":10'+ "}\n")
                 num_negative += 1
             elif is_positive_instance(outputs[i], outputs[i + 1], outputs[i + 4], correct_answers[i], human_beliefs[i+4]) and num_positive < num_balanced / 2:
                 file.write(f'{output_lines[i + 4][:-2]},"scale_labels":1'+ "}\n")
                 num_positive += 1
+            elif include_non_determined:
+                file.write(f'{output_lines[i + 4][:-2]},"scale_labels":null'+ "}\n")
 
     print(num_negative)
     print(num_positive)

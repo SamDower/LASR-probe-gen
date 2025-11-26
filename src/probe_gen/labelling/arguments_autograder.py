@@ -35,7 +35,7 @@ def _extract_answer(text):
         return text
 
 def label_and_save_dataset_arguments(
-    responses_file, out_file, num_balanced=4000
+    responses_file, out_file, num_balanced=4000, include_non_determined=False
 ):
     # Load outputs
     outputs = []
@@ -70,6 +70,19 @@ def label_and_save_dataset_arguments(
                             + "}\n"
                         )
                         num_negative += 1
+                elif control + 1 <= pos:
+                    # Very positive
+                    if num_positive < num_balanced / 2:
+                        file.write(
+                            f'{output_lines[i+1][:-2]},"scale_labels":1'
+                            + "}\n"
+                        )
+                        num_positive += 1
+                elif include_non_determined:
+                    file.write(
+                        f'{output_lines[i+1][:-2]},"scale_labels":null'
+                        + "}\n"
+                    )
                 if control == neg:
                     # Negative
                     if num_negative < num_balanced / 2:
@@ -78,15 +91,7 @@ def label_and_save_dataset_arguments(
                             + "}\n"
                         )
                         num_negative += 1
-                if control + 1 <= pos:
-                    # Very positive
-                    if num_positive < num_balanced / 2:
-                        file.write(
-                            f'{output_lines[i+1][:-2]},"scale_labels":1'
-                            + "}\n"
-                        )
-                        num_positive += 1
-                if control - 1 >= neg:
+                elif control - 1 >= neg:
                     # Very positive
                     if num_positive < num_balanced / 2:
                         file.write(
@@ -94,6 +99,20 @@ def label_and_save_dataset_arguments(
                             + "}\n"
                         )
                         num_positive += 1
+                elif include_non_determined:
+                    file.write(
+                        f'{output_lines[i+2][:-2]},"scale_labels":null'
+                        + "}\n"
+                    )
+            elif include_non_determined:
+                file.write(
+                    f'{output_lines[i+1][:-2]},"scale_labels":null'
+                    + "}\n"
+                )
+                file.write(
+                    f'{output_lines[i+2][:-2]},"scale_labels":null'
+                    + "}\n"
+                )
 
     print(num_negative)
     print(num_positive)
