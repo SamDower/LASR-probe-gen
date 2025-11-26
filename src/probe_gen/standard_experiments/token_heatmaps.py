@@ -5,18 +5,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
+from torch.nn.utils.rnn import pad_sequence
 
 # Load the JSONL file that contains questions, model outputs, and labels from HuggingFace
 from huggingface_hub import hf_hub_download
 from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
 
 import probe_gen.probes as probes
-from probe_gen.config import ConfigDict
-from probe_gen.gen_data.utils import format_prompts_from_pairs
+from probe_gen.config import ConfigDict, MODELS
+from probe_gen.gen_data.utils import format_prompts_from_pairs, get_activations_for_example
 
 
 def train_probe_on(probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, verbose=False):
-
     # Load the best hyperparameters or set your own
     cfg = ConfigDict.from_json(activations_model, probe_type, behaviour)
     if verbose:
@@ -25,7 +25,7 @@ def train_probe_on(probe_type, behaviour, datasource, activations_model, generat
         print(f"  Use bias: {cfg.use_bias}")
         print(f"  Normalize: {cfg.normalize}")
         if hasattr(cfg, 'C'):
-            print(f"  C (inverse ofregularization): {cfg.C}")
+            print(f"  C (inverse of regularization): {cfg.C}")
 
     # Load activations and labels from HuggingFace
     activations_tensor, attention_mask, labels_tensor = probes.load_hf_activations_at_layer(
@@ -87,7 +87,6 @@ def train_probe_on(probe_type, behaviour, datasource, activations_model, generat
     return probe
 
 
-
 def extract_probe_weights(probe):
     # Extract probe weights
     if isinstance(probe, probes.SklearnLogisticProbe):
@@ -113,9 +112,7 @@ def extract_probe_weights(probe):
     return probe_weights, probe_bias
 
 
-
 def load_labelled_responses_and_activations(probe_type, behaviour, datasource, activations_model, generation_method, response_model, mode, verbose=False):
-
     generation_method_for_labels = generation_method.replace("_included", "")
     if generation_method == "off_policy":
         generation_method_for_labels = "on_policy"
@@ -155,22 +152,42 @@ def load_labelled_responses_and_activations(probe_type, behaviour, datasource, a
 
     # Convert to DataFrame for easier manipulation
     dataset_df = pd.DataFrame(data_rows)
-
-    # if 'input' in dataset_df.columns:
-    #     print(f"  Input: {dataset_df.iloc[0]['input'][:200]}...")
-    # if 'model_outputs' in dataset_df.columns:
-    #     print(f"  Output: {dataset_df.iloc[0]['model_outputs'][:200]}...")
-    # if 'scale_labels' in dataset_df.columns:
-    #     print(f"  Label: {dataset_df.iloc[0]['scale_labels']}")
-    
     return dataset_df, activations_tensor, attention_mask, labels_tensor
 
 
+def get_responses_and_activations_manual(model, tokenizer, input_text, output_text, activations_model, probe_type, behaviour):
+    # Load the best hyperparameters
+    cfg = ConfigDict.from_json(activations_model, probe_type, behaviour)
+    
+    # Get the responses df and activations df
+    responses_df, activations_df = get_activations_for_example(
+        model,
+        tokenizer,
+        input_text,
+        output_text,
+        cfg.layer,
+    )
 
+    # Extract all activations
+    all_activations = []
+    for i in range(len(activations_df)):
+        all_activations.append(activations_df.loc[i]["activations"])
+    activations_tensor = pad_sequence(all_activations, batch_first=True, padding_value=0.0).to(torch.float32)
+    max_len = activations_tensor.shape[1]
+    masks = []
+    for tensor in all_activations:
+        current_len = tensor.shape[0]
+        mask = torch.ones(1, current_len)
+        if current_len < max_len:
+            padding_mask = torch.zeros(1, max_len - current_len)
+            mask = torch.cat([mask, padding_mask], dim=1)
+        masks.append(mask)
+    attention_mask = torch.cat(masks, dim=0)
+
+    return responses_df, activations_tensor, attention_mask
 
 
 def get_probe_scores_and_tokens(tokenizer, index, responses_df, activations_tensor, probe):
-
     inputs = json.loads(responses_df.iloc[index]["inputs"])
     human = inputs[0]["content"]
     assistant = inputs[1]["content"]
@@ -200,9 +217,6 @@ def get_probe_scores_and_tokens(tokenizer, index, responses_df, activations_tens
     return scores, tokens
 
 
-
-
-
 def visualize_token_heatmap(
     tokenizer,
     index,
@@ -211,14 +225,17 @@ def visualize_token_heatmap(
     labels_tensor,
     probe,
     behaviour,
-    figsize=(20, 12),
+    figsize=(16, 8),
     ):
-
     """Create a matplotlib heatmap of token probabilities for the ENTIRE question and answer"""
 
-    label = labels_tensor[index].item()
-    predicted_label = probe.predict(activations_tensor[index].mean(dim=0).unsqueeze(0))[0].item()
+    if labels_tensor is not None:
+        label = labels_tensor[index].item()
+        predicted_label = probe.predict(activations_tensor[index].mean(dim=0).unsqueeze(0))[0].item()
     scores, tokens = get_probe_scores_and_tokens(tokenizer, index, responses_df, activations_tensor, probe)
+    
+    avg_score = np.mean(scores)
+    sigmoid_avg_score = 1 / (1 + np.exp(-np.mean(scores)))
     
     # Create custom colormap: red (0) -> white (0.5) -> blue (1)
     colors = ['#ff4444', '#ffffff', '#4444ff']
@@ -231,7 +248,7 @@ def visualize_token_heatmap(
     # Dynamically calculate figure height based on number of tokens and wrapping
     max_width = 100  # Maximum width before wrapping
     estimated_rows = sum(len(t) * 0.6 + 0.1 for t in tokens) / max_width + 1
-    dynamic_height = max(12, estimated_rows * 1.2)  # At least 12, scale with content
+    dynamic_height = max(6, estimated_rows * 0.7)  # Reduced from 12 and 1.2
     
     # Create figure with dynamic height
     fig, ax = plt.subplots(figsize=(figsize[0], dynamic_height))
@@ -239,7 +256,7 @@ def visualize_token_heatmap(
     # Plot tokens as colored rectangles
     x_pos = 0
     y_pos = 0
-    rect_height = 0.4
+    rect_height = 0.25  # Reduced from 0.4
     
     for i, (token, prob) in enumerate(zip(tokens, scores)):
 
@@ -249,7 +266,7 @@ def visualize_token_heatmap(
         # Wrap to new line if needed
         if x_pos + token_width > max_width:
             x_pos = 0
-            y_pos -= rect_height + 0.1
+            y_pos -= rect_height + 0.05  # Reduced spacing from 0.1
         
         # Color based on probability
         color = cmap(norm(prob))
@@ -261,39 +278,42 @@ def visualize_token_heatmap(
         
         # Add text
         ax.text(x_pos + token_width/2, y_pos + rect_height/2, token, 
-               ha='center', va='center', fontsize=11, 
-               fontfamily='monospace', weight='bold') #, weight='bold' if section == 'Q' else 'normal')
+               ha='center', va='center', fontsize=9,  # Reduced from 11
+               fontfamily='monospace', weight='bold')
         
         x_pos += token_width + 0.1
     
-    # Set axis properties with enough vertical space
+    # Set axis properties with less vertical space
     ax.set_xlim(0, max_width)
-    ax.set_ylim(y_pos - 1.5, 1)  # Extra space at bottom
+    ax.set_ylim(y_pos - 0.5, 0.5)  # Reduced from -1.5 to 1
     ax.axis('off')
     
     # Add title and legend
-    title = f'Token-Level Probe Probabilities - {behaviour} (Label={label}, Prediction={predicted_label})\n'
+    if labels_tensor is not None:
+        title = f'Token-Level Probe Probabilities - {behaviour} (Label={label}, Prediction={predicted_label})\n'
+    else:
+        title = f'Token-Level Probe Probabilities - {behaviour}\n'
     title += f'{len(tokens)} tokens'
-    ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+    title += f'\nAverage score: {avg_score:.2f}, Sigmoid average score: {sigmoid_avg_score:.2f}'
+    ax.set_title(title, fontsize=12, fontweight='bold', pad=10)  # Reduced fontsize and padding
     
     # Create colorbar
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
-    cbar = plt.colorbar(sm, ax=ax, orientation='horizontal', pad=0.02, aspect=50)
-    cbar.set_label('Probe score', fontsize=12, fontweight='bold')
+    cbar = plt.colorbar(sm, ax=ax, orientation='horizontal', pad=0.01, aspect=60)  # Reduced pad
+    cbar.set_label('Probe score', fontsize=10, fontweight='bold')  # Reduced fontsize
 
     # Create ticks that span both negative and positive ranges
-    negative_ticks = np.linspace(min(scores), 0, num=5)  # 5 ticks from min to 0
-    positive_ticks = np.linspace(0, max(scores), num=5)[1:]  # 4 ticks from 0 to max (excluding 0)
+    negative_ticks = np.linspace(min(scores), 0, num=5)
+    positive_ticks = np.linspace(0, max(scores), num=5)[1:]
     tick_values = np.concatenate([negative_ticks, positive_ticks])
     cbar.set_ticks(tick_values)
     cbar.set_ticklabels([f'{val:.1f}' for val in tick_values])
 
-    cbar.ax.tick_params(labelsize=10)
+    cbar.ax.tick_params(labelsize=9)  # Reduced from 10
     
     plt.tight_layout()
     plt.show()
-
 
 
 def get_indices_for_each_prediction_type(activations_tensor, attention_mask, labels_tensor, probe):

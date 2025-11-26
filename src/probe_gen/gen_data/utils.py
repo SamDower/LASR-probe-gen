@@ -1452,6 +1452,7 @@ def process_file(
         save_increment=save_increment,
     )
 
+
 def process_file_outputs_only(
     model,
     tokenizer,
@@ -1602,3 +1603,74 @@ def process_file_multiturn(
         layers_str=layers_str,
         save_increment=save_increment,
     )
+    
+
+def get_activations_for_example(
+    model,
+    tokenizer,
+    input_text: str,
+    output_text: str,
+    layer: str = "auto",
+):
+    """Get activations for one example."""
+
+    # For all policies, we format the complete conversations and extract activations
+    prompts = [{"role": "user", "content": input_text}, {"role": "assistant", "content": output_text}]
+    formatted_prompts = [tokenizer.apply_chat_template(
+        prompts, tokenize=False, add_generation_prompt=False
+    )]
+    human_inputs = ["X" for _ in range(len(formatted_prompts))]
+    
+    # Convert responses to DataFrame
+    responses_df = pd.DataFrame(
+        [{
+            "inputs": json.dumps(prompts),
+            "ids": "X", # Dummy value
+            "input_formatted": formatted_prompts[0],
+            "input": input_text,
+            "model_outputs": output_text,
+            "scale_labels": 1.0, # Dummy value
+        }]
+    )
+
+    # Process batches
+    try:
+        # Clear GPU memory and get activations
+        _cleanup_gpu_memory()
+        batch_activations, batch_outputs, _ = get_batch_res_activations(
+            model,
+            tokenizer,
+            formatted_prompts,
+            verbose=False,
+            layers_str=str(layer),
+        )
+
+        # Process successful batch
+        results = _process_successful_batch(
+            batch_activations, batch_outputs, formatted_prompts, human_inputs, 0
+        )
+
+        # Clean up GPU memory
+        del batch_activations
+        _cleanup_gpu_memory()
+        gc.collect()
+
+    except Exception as e:
+        print(f"Error processing batch: {e}")
+        # Process failed batch
+        results = _process_failed_batch(
+            formatted_prompts, human_inputs, 0
+        )
+
+    # Build DataFrame directly from results
+    activations_df = pd.DataFrame(
+        {
+            "input_formatted": [r["input_formatted"] for r in results],
+            "input": [r["input"] for r in results],
+            "model_outputs": [r["model_outputs"] for r in results],
+            "activations": [
+                r["activations"][layer].clone().detach() for r in results
+            ],
+        }
+    )
+    return responses_df, activations_df
