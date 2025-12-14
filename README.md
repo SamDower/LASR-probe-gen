@@ -1,8 +1,9 @@
 # The Impact of Off-Policy Training Data on Probe Performance
 See the instructions bellow to get the datasets of inputs, outputs, labels and activations (See also notebooks/DataPipeline.ipynb but it is old).
 - See scripts/generate_datasets.py for automating this, reading in a dataset config file from the configs folder.
+- For running the above do ```uv run scripts/generate_datasets.py --config bias_config``` for running configs/bias_config.yaml
 - Resulting datasets of labels and activations are stored at: https://huggingface.co/lasrprobegen
-    
+
 See notebooks/TrainProbes.ipynb to train and evaluate probes on the datasets.
 - Experiment results are written to: https://wandb.ai/LasrProbeGen, these are read when generating result plots.
 - See scripts/get_probe_hyperparams_and_results.py for automating this, with the experiments config being specified in the file.

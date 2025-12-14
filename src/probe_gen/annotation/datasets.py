@@ -13,26 +13,28 @@ Usage:
 """
 
 # Base classes
-from .authority_arguments_dataset import AuthorityArgumentsDataset
-from .authority_haikus_dataset import AuthorityHaikusDataset
-from .authority_multichoice_dataset import AuthorityMultichoiceDataset
-from .coding_dataset import CodingQuestionsDataset
 from .interface_dataset import Dataset, Message
-from .jailbreak_dataset import HarmfulRequestDataset, JailbreakDataset
-from .mmlu_dataset import MMLUDataset
 from .prompt_dataset import PromptDataset
 
 # Specific dataset implementations
 from .refusal_dataset import RefusalDataset
 from .sandbagging_multi_dataset import SandbaggingMultiDataset
 from .shakespeare_dataset import ShakespeareDataset
+from .authority_arguments_dataset import AuthorityArgumentsDataset
+from .authority_haikus_dataset import AuthorityHaikusDataset
+from .authority_multichoice_dataset import AuthorityMultichoiceDataset
 from .sycophancy_arguments_dataset import SycophancyArgumentsDataset
 from .sycophancy_haikus_dataset import SycophancyHaikusDataset
 from .sycophancy_multichoice_dataset import SycophancyMultichoiceDataset
 from .sycophancy_poems_dataset import SycophancyPoemsDataset
+from .bias_arguments_dataset import BiasArgumentsDataset
+from .bias_haikus_dataset import BiasHaikusDataset
+from .coding_dataset import CodingQuestionsDataset
 from .tinystories_dataset import TinyStoriesDataset
 from .ultrachat_dataset import UltrachatDataset
 from .writingprompts_dataset import WritingPromptsDataset
+from .jailbreak_dataset import HarmfulRequestDataset, JailbreakDataset
+from .mmlu_dataset import MMLUDataset
 
 # Define what gets imported with "from datasets import *"
 __all__ = [

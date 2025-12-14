@@ -78,7 +78,7 @@ class BiasHaikusDataset(PromptDataset):
         return list(pairs)
     
     def download_data(self) -> None:
-        print(f"Loading haikus data from HuggingFace: {self.hf_repo_id}/{self.csv_filename}")
+        print(f"Loading haikus data from HuggingFace: lasrprobegen/sycophancy-activations/{self.csv_filename}")
         
         try:
             # Step 1: Download CSV from HuggingFace repository
@@ -86,7 +86,7 @@ class BiasHaikusDataset(PromptDataset):
             
             os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
             csv_path = hf_hub_download(
-                repo_id=self.hf_repo_id,
+                repo_id="lasrprobegen/sycophancy-activations",
                 filename=self.csv_filename,
                 repo_type="dataset"
             )

@@ -1,12 +1,12 @@
 experiments:
-  - behaviour: refusal
-    datasources: ["jailbreaks"]
+  - behaviour: bias
+    datasources: ["arguments", "haikus"]
     generation_methods: ["incentivised", "prompted", "off_policy"]
-    off_policy_model: "ministral_8b"
+    off_policy_model: "qwen_7b"
     activations_model: "llama_3b"
     layers: [0,3,6,9,12,15,18,21,24,27]
     train_size: 4000
-    test_size: 0
+    test_size: 1000
     temperature: 1.0
-    generation_batch_size: 30
-    activations_batch_size: 15
+    generation_batch_size: 50
+    activations_batch_size: 32

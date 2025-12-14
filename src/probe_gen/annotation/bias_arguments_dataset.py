@@ -61,14 +61,14 @@ class BiasArgumentsDataset(PromptDataset):
         Process: Download CSV from HF repo → Filter valid rows → Shuffle → Cache
         This ensures consistent shuffling across different skip/sample requests.
         """
-        print(f"Loading arguments data from HuggingFace: {self.hf_repo_id}/{self.csv_filename}")
+        print(f"Loading arguments data from HuggingFace: lasrprobegen/sycophancy-activations/{self.csv_filename}")
         
         try:
             # Step 1: Download CSV from HuggingFace repository
             from huggingface_hub import hf_hub_download
             
             csv_path = hf_hub_download(
-                repo_id=self.hf_repo_id,
+                repo_id="lasrprobegen/sycophancy-activations",
                 filename=self.csv_filename,
                 repo_type="dataset"
             )
