@@ -56,3 +56,4 @@ class data:
     authority = SmartPath(DATA_DIR / "authority")
     deception = SmartPath(DATA_DIR / "deception")
     sandbagging = SmartPath(DATA_DIR / "sandbagging")
+    bias = SmartPath(DATA_DIR / "bias")
