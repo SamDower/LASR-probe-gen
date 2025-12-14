@@ -53,6 +53,8 @@ __all__ = [
     'SycophancyMultichoiceDataset',
     'SycophancyPoemsDataset',
     'SycophancyHaikusDataset',
+    'BiasArgumentsDataset',
+    'BiasHaikusDataset',
     'TinyStoriesDataset',
     'JailbreakDataset',
     'HarmfulRequestDataset',

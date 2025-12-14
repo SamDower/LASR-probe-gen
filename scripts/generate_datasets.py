@@ -1,25 +1,32 @@
-# Standard library imports
 import argparse
 import json
 import os
 import sys
 from pathlib import Path
+import yaml
+import gc
+import shutil
+import torch
+from huggingface_hub import HfApi, login
+from transformers.utils import TRANSFORMERS_CACHE
 
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 os.environ["HF_HUB_DISABLE_XET"] = "1"  # disables Rust/Xet core backend
-
-import yaml
 
 from probe_gen.annotation.datasets import *
 from probe_gen.annotation.interface_dataset import Dataset, LabelledDataset
 from probe_gen.config import LABELLING_SYSTEM_PROMPTS, MODELS
 from probe_gen.gen_data.utils import get_model, process_file, process_file_outputs_only
-from probe_gen.labelling.arguments_autograder import label_and_save_dataset_arguments
+from probe_gen.labelling.arguments_autograder import (
+    label_and_save_dataset_arguments,
+    label_and_save_dataset_arguments_2outputs,
+)
 from probe_gen.labelling.authority_multichoice_autograder import (
     label_and_save_dataset_authority_multichoice,
 )
 from probe_gen.labelling.haikus_autograder import (
     label_and_save_dataset_haikus,
+    label_and_save_dataset_haikus_2outputs,
 )
 from probe_gen.labelling.label_dataset import label_and_save_dataset
 from probe_gen.labelling.refusal_autograder import grade_data_harmbench
@@ -32,15 +39,6 @@ from probe_gen.labelling.sycophancy_multichoice_autograder import (
 
 # Add the project root to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Third-party imports
-import gc
-import os
-import shutil
-
-import torch
-from huggingface_hub import HfApi, login
-from transformers.utils import TRANSFORMERS_CACHE
 
 # os.environ["HF_TOKEN"] = ""
 hf_token = os.getenv("HF_TOKEN")
@@ -71,6 +69,7 @@ def check_experiments_are_valid(experiments):
             if method not in ["on_policy","incentivised", "prompted", "off_policy"]:
                 raise ValueError(f"Generation method '{method}' must one of: on_policy, incentivised, prompted, off_policy")
 
+
 def get_prompt_dataset(behaviour, datasource):
     if behaviour == "sycophancy":
         if datasource == "multichoice":
@@ -88,7 +87,11 @@ def get_prompt_dataset(behaviour, datasource):
             return AuthorityArgumentsDataset()
         elif datasource == "haikus":
             return AuthorityHaikusDataset()
-    
+    if behaviour == "bias":
+        if datasource == "arguments":
+            return BiasArgumentsDataset()
+        elif datasource == "haikus":
+            return BiasHaikusDataset()
     if behaviour == "sandbagging" and datasource == "multichoice":
         return SandbaggingMultiDataset()
     
@@ -108,11 +111,10 @@ def get_prompt_dataset(behaviour, datasource):
         return WritingPromptsDataset()
     if datasource == "coding":
         return CodingQuestionsDataset()
-
     return None
 
-def get_labels(behaviour, datasource, prompts_path, responses_path, out_path, num_balanced):
 
+def get_labels(behaviour, datasource, prompts_path, responses_path, out_path, num_balanced):
     # Use HarmBench for jailbreaks
     if datasource == "jailbreaks":
         grade_data_harmbench(
@@ -124,7 +126,6 @@ def get_labels(behaviour, datasource, prompts_path, responses_path, out_path, nu
             single_set_size = False #args.single_set_size,   # Nathalie I don't know what these are meant to do
         )
     
-    # Use Regex for multichoice
     elif datasource == "multichoice":
         if behaviour == "sycophancy":
             label_and_save_dataset_sycophancy_multichoice(
@@ -147,21 +148,34 @@ def get_labels(behaviour, datasource, prompts_path, responses_path, out_path, nu
                 num_balanced=num_balanced,
             )
     
-    # Use Regex for arguments and haikus
     elif datasource == "arguments":
-        label_and_save_dataset_arguments(
-            responses_file=responses_path,
-            out_file=out_path,
-            num_balanced=num_balanced,
-        )
+        if behaviour == "sycophancy":
+            label_and_save_dataset_arguments(
+                responses_file=responses_path,
+                out_file=out_path,
+                num_balanced=num_balanced,
+            )
+        elif behaviour == "bias":
+            label_and_save_dataset_arguments_2outputs(
+                responses_file=responses_path,
+                out_file=out_path,
+                num_balanced=num_balanced,
+            )
+    
     elif datasource == "haikus":
-        print("labelling haikus")
-        label_and_save_dataset_haikus(
-            prompts_file=prompts_path,
-            responses_file=responses_path,
-            out_file=out_path,
-            num_balanced=num_balanced,
-        )
+        if behaviour == "sycophancy":
+            label_and_save_dataset_haikus(
+                prompts_file=prompts_path,
+                responses_file=responses_path,
+                out_file=out_path,
+                num_balanced=num_balanced,
+            )
+        elif behaviour == "bias":
+            label_and_save_dataset_haikus_2outputs(
+                responses_file=responses_path,
+                out_file=out_path,
+                num_balanced=num_balanced,
+            )
 
     # Otherwise use the LLM autograder
     else:
@@ -179,26 +193,21 @@ def get_labels(behaviour, datasource, prompts_path, responses_path, out_path, nu
             num_balanced=num_balanced,
         )
 
-def _build_balanced_file(file_in, file_out, num_balanced):
 
+def _build_balanced_file(file_in, file_out, num_balanced):
     num_pos = num_balanced // 2
     num_neg = num_balanced // 2
-
     pos_count = 0
     neg_count = 0
-
     with open(file_in, "r") as src, open(file_out, "w") as dst:
         for line in src:
             example = json.loads(line)
-
             label_value = example.get("scale_labels")
             if label_value is None:
                 continue  # skip if key missing
-
             if label_value <= 5 and pos_count < num_pos:
                 dst.write(json.dumps(example) + "\n")
                 pos_count += 1
-
             elif label_value >= 6 and neg_count < num_neg:
                 dst.write(json.dumps(example) + "\n")
                 neg_count += 1
@@ -209,8 +218,8 @@ def _build_balanced_file(file_in, file_out, num_balanced):
     
     return pos_count + neg_count, min(pos_count, neg_count)
 
-def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, mode, num_balanced, generation_batch_size=50):
 
+def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, response_model, temperature, generation_method, mode, num_balanced, generation_batch_size=50):
     temp_dir = Path("data/temp")
     temp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -227,7 +236,6 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
     ran_out_of_data = False
     datapoints_tried = 0
     next_n_samples = 2000
-
     print("loaded model")
     
     while not balance_aquired and not ran_out_of_data:
@@ -311,10 +319,12 @@ def generate_and_save_balanced_dataset(behaviour, datasource, prompt_dataset, re
         token=hf_token,
     )
 
+
 def wipe_directory(directory):
     for file in directory.iterdir():
         if file.is_file():  # only delete files, not subdirs
             file.unlink()
+
 
 def generate_and_save_activations(behaviour, datasource, activations_model, response_model, generation_method, mode, layers, balanced_responses_filepath, activations_batch_size=32):
     print(f"Loading model: {MODELS[activations_model]}")
@@ -445,6 +455,7 @@ def main():
             print(f"Error generating datasets for {exp}: {e}")
             wipe_directory(temp_dir)
             continue
+
 
 if __name__ == "__main__":
     main()

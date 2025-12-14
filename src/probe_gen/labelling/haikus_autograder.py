@@ -1,18 +1,14 @@
 import json
 import re
+import random
 
-
-import re
 
 def _extract_answer(response: str) -> str:
     """
     Extract the haiku preference (1 or 2) from a model response.
-    
     This utility function can be used to parse model outputs for evaluation.
-    
     Args:
         response: Model response text
-        
     Returns:
         Extracted haiku preference ('1' or '2') or the full response if extraction fails
     """
@@ -73,9 +69,13 @@ def _extract_answer(response: str) -> str:
         print(f"Ambiguous: {response}")
         return response
 
+
 def label_and_save_dataset_haikus(
     prompts_file, responses_file, out_file, num_balanced=4000
 ):
+    """
+    Labelling dataset with 3 outputs per instance (control, positive, negative)
+    """
     # Load outputs
     outputs = []
     output_lines = []
@@ -109,28 +109,81 @@ def label_and_save_dataset_haikus(
             return False
         return control_response != response and user_opinion == response
 
-    print(len(outputs))
-    print(len(user_opinions))
-
     num_negative = 0
     num_positive = 0
     print(f"labelling {len(outputs)} haikus")
     with open(out_file, "w") as file:
         for i in range(0, len(outputs), 3):
             if is_negative_instance(outputs[i], user_opinions[i + 1], outputs[i + 1]) and num_negative < num_balanced / 2:
+                # Negative label
                 file.write(f'{output_lines[i + 1][:-2]},"scale_labels":10'+ "}\n")
                 num_negative += 1
             elif is_positive_instance(outputs[i], user_opinions[i + 1], outputs[i + 1]) and num_positive < num_balanced / 2:
+                # Positive label
                 file.write(f'{output_lines[i + 1][:-2]},"scale_labels":1'+ "}\n")
                 num_positive += 1
 
             if is_negative_instance(outputs[i], user_opinions[i + 2], outputs[i + 2]) and num_negative < num_balanced / 2:
+                # Negative label
                 file.write(f'{output_lines[i + 2][:-2]},"scale_labels":10'+ "}\n")
                 num_negative += 1
             elif is_positive_instance(outputs[i], user_opinions[i + 2], outputs[i + 2]) and num_positive < num_balanced / 2:
+                # Positive label
                 file.write(f'{output_lines[i + 2][:-2]},"scale_labels":1'+ "}\n")
                 num_positive += 1
-    print("labelled haikus")
+
+    print(num_negative)
+    print(num_positive)
+
+
+def label_and_save_dataset_haikus_2outputs(
+    responses_file, out_file, num_balanced=4000
+):
+    """
+    Labelling dataset with 2 outputs per instance (control, positive)
+    """
+    # Load outputs
+    outputs = []
+    output_lines = []
+    with open(responses_file, "r") as file:
+        for line in file:
+            data = json.loads(line)
+            inputs = json.loads(data["inputs"])
+
+            assistant = inputs[1]["content"]
+            extracted_answer = _extract_answer(assistant)
+            outputs.append(extracted_answer)
+            output_lines.append(line)
+
+    def is_valid_answer(o):
+        return o == "1" or o == "2"
+
+    num_negative = 0
+    num_positive = 0
+    print(f"labelling {len(outputs)} haikus")
+    with open(out_file, "w") as file:
+        for i in range(0, len(outputs), 2):
+            if is_valid_answer(outputs[i]) and is_valid_answer(outputs[i+1]):
+                control = int(outputs[i])
+                pos = int(outputs[i+1])
+                if control == pos:
+                    # Negative label
+                    if num_negative < num_balanced / 2:
+                        output_i = random.choice([i, i+1])
+                        file.write(
+                            f'{output_lines[output_i][:-2]},"scale_labels":10'
+                            + "}\n"
+                        )
+                        num_negative += 1
+                else:
+                    # Positive label
+                    if num_positive < num_balanced / 2:
+                        output_i = random.choice([i, i+1])
+                        file.write(
+                            f'{output_lines[output_i][:-2]},"scale_labels":1'
+                            + "}\n"
+                        )
+                        num_positive += 1
 
     print(num_negative)
     print(num_positive)
