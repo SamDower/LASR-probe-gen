@@ -80,6 +80,8 @@ def get_or_search_for_best_hyperparams(train_setup):
                 layers_list = [8,12,16,20,24]
             elif tr[0][3] == "mixtral":
                 layers_list = [12,16,20,24]
+            elif tr[0][3] == "qwen_7b":
+                layers_list = [9,12,15,18,21,24]
             elif tr[0][3] == "qwen_30b":
                 layers_list = [24]
             elif tr[0][3] == "gemma_27b":
@@ -322,11 +324,10 @@ if __name__ == "__main__":
     # Do missing gemma 27b experiments
     for test_incentivised in [False]:
         do_probe_experiment_default_test_everything(
-            probe_type = ["mean", "attention_torch"][1],
-            activations_model = ["llama_3b", "ministral_8b", "qwen_30b", "gemma_27b"][-1], 
+            probe_type = ["mean", "attention_torch"][0],
+            activations_model = ["llama_3b", "ministral_8b", "qwen_30b", "gemma_27b"][0], 
             test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
         )
-    
     # # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
     # for test_incentivised in [False]:
     #     do_probe_experiment_default_test_everything(

@@ -32,6 +32,10 @@
             "sycophancy": {
                 "C": 0.01,
                 "layer": 12
+            },
+            "bias": {
+                "layer": 12,
+                "C": 0.001
             }
         },
         "mean_torch": {

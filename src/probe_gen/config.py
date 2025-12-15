@@ -65,101 +65,101 @@ class ConfigDict(dict):
 
 # Need to know what experiments are done, for plotting and reproducing
 BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
-    "refusal": {
-        "test_both": False, # whether we have test data for both ID and OOD
-        "rlhf": {
-            "llama_3b": "ministral_8b", 
-            "ministral_8b": "llama_3b", 
-            "qwen_30b": "ministral_8b",
-            "gemma_27b": "ministral_8b",
-        },
-        "jailbreaks": {
-            "llama_3b": "ministral_8b", 
-            "ministral_8b": "llama_3b",
-            "qwen_30b": "ministral_8b",
-            "gemma_27b": "ministral_8b",
-        }},
-    "lists": {
-        "test_both": False,
-        "ultrachat": {
-            "llama_3b": "qwen_3b", 
-            "ministral_8b": "llama_3b",
-            "qwen_30b": "ministral_8b",
-            "gemma_27b": "ministral_8b",
-        },
-        "writingprompts": {
-            "llama_3b": "qwen_3b",
-            "ministral_8b": "llama_3b",
-            "gemma_27b": "ministral_8b",
-        }},
-        # "shakespeare": {
-        #     "llama_3b": "qwen_3b", 
-        #     "ministral_8b": "llama_3b",
-        #     "qwen_30b": "llama_3b",
-        #     "gemma_27b": "ministral_8b",
-        # }},
-    "metaphors": {
-        "test_both": False,
-        "ultrachat": {
-            "llama_3b": "qwen_3b", 
-            "ministral_8b": "llama_3b",
-            "qwen_30b": "ministral_8b",
-            "gemma_27b": "ministral_8b",
-        },
-        "writingprompts": {
-            "llama_3b": "qwen_3b", 
-            "ministral_8b": "llama_3b",
-            "qwen_30b": "ministral_8b",
-            "gemma_27b": "ministral_8b",
-        }},
-    "science": {
-        "test_both": False,
-        "ultrachat": {
-            "llama_3b": "qwen_3b", 
-            "ministral_8b": "llama_3b",
-            "qwen_30b": "ministral_8b",
-            "gemma_27b": "ministral_8b",
-        },
-        "mmlu": {
-            "llama_3b": "qwen_3b", 
-            "ministral_8b": "llama_3b",
-            "qwen_30b": "ministral_8b",
-            "gemma_27b": "ministral_8b",
-        }},
-    "sycophancy": {
-        "test_both": True,
-        "multichoice": {
-            "llama_3b": "ministral_8b", 
-            "ministral_8b": "llama_3b",
-            "gemma_27b": "ministral_8b",
-        },
-        "arguments": {
-            "llama_3b": "qwen_7b", 
-            "ministral_8b": "llama_3b",
-            "gemma_27b": "ministral_8b",
-        },
-        "haikus": {
-            "llama_3b": "qwen_7b",
-        }},
-    "authority": {
-        "test_both": True,
-        "multichoice": {
-            "llama_3b": "ministral_8b", 
-            "ministral_8b": "llama_3b",
-            "gemma_27b": "ministral_8b",
-        },
-        "arguments": {
-            "llama_3b": "qwen_7b", 
-            "ministral_8b": "llama_3b",
-            "gemma_27b": "ministral_8b",
-        },
-        "haikus": {
-            "llama_3b": "ministral_8b",
-        }},
+    # "refusal": {
+    #     "test_both": False, # whether we have test data for both ID and OOD
+    #     "rlhf": {
+    #         "llama_3b": "ministral_8b", 
+    #         "ministral_8b": "llama_3b", 
+    #         "qwen_30b": "ministral_8b",
+    #         "gemma_27b": "ministral_8b",
+    #     },
+    #     "jailbreaks": {
+    #         "llama_3b": "ministral_8b", 
+    #         "ministral_8b": "llama_3b",
+    #         "qwen_30b": "ministral_8b",
+    #         "gemma_27b": "ministral_8b",
+    #     }},
+    # "lists": {
+    #     "test_both": False,
+    #     "ultrachat": {
+    #         "llama_3b": "qwen_3b", 
+    #         "ministral_8b": "llama_3b",
+    #         "qwen_30b": "ministral_8b",
+    #         "gemma_27b": "ministral_8b",
+    #     },
+    #     "writingprompts": {
+    #         "llama_3b": "qwen_3b",
+    #         "ministral_8b": "llama_3b",
+    #         "gemma_27b": "ministral_8b",
+    #     }},
+    #     # "shakespeare": {
+    #     #     "llama_3b": "qwen_3b", 
+    #     #     "ministral_8b": "llama_3b",
+    #     #     "qwen_30b": "llama_3b",
+    #     #     "gemma_27b": "ministral_8b",
+    #     # }},
+    # "metaphors": {
+    #     "test_both": False,
+    #     "ultrachat": {
+    #         "llama_3b": "qwen_3b", 
+    #         "ministral_8b": "llama_3b",
+    #         "qwen_30b": "ministral_8b",
+    #         "gemma_27b": "ministral_8b",
+    #     },
+    #     "writingprompts": {
+    #         "llama_3b": "qwen_3b", 
+    #         "ministral_8b": "llama_3b",
+    #         "qwen_30b": "ministral_8b",
+    #         "gemma_27b": "ministral_8b",
+    #     }},
+    # "science": {
+    #     "test_both": False,
+    #     "ultrachat": {
+    #         "llama_3b": "qwen_3b", 
+    #         "ministral_8b": "llama_3b",
+    #         "qwen_30b": "ministral_8b",
+    #         "gemma_27b": "ministral_8b",
+    #     },
+    #     "mmlu": {
+    #         "llama_3b": "qwen_3b", 
+    #         "ministral_8b": "llama_3b",
+    #         "qwen_30b": "ministral_8b",
+    #         "gemma_27b": "ministral_8b",
+    #     }},
+    # "sycophancy": {
+    #     "test_both": True,
+    #     "multichoice": {
+    #         "llama_3b": "ministral_8b", 
+    #         "ministral_8b": "llama_3b",
+    #         "gemma_27b": "ministral_8b",
+    #     },
+    #     "arguments": {
+    #         "llama_3b": "qwen_7b", 
+    #         "ministral_8b": "llama_3b",
+    #         "gemma_27b": "ministral_8b",
+    #     },
+    #     "haikus": {
+    #         "llama_3b": "qwen_7b",
+    #     }},
+    # "authority": {
+    #     "test_both": True,
+    #     "multichoice": {
+    #         "llama_3b": "ministral_8b", 
+    #         "ministral_8b": "llama_3b",
+    #         "gemma_27b": "ministral_8b",
+    #     },
+    #     "arguments": {
+    #         "llama_3b": "qwen_7b", 
+    #         "ministral_8b": "llama_3b",
+    #         "gemma_27b": "ministral_8b",
+    #     },
+    #     "haikus": {
+    #         "llama_3b": "ministral_8b",
+    #     }},
     "bias": {
         "test_both": True,
         "arguments": {
-            "llama_3b": "qwen_7b",
+            "llama_3b": "ministral_8b",
             "ministral_8b": "llama_3b",
             "gemma_27b": "llama_3b",
         },
@@ -171,14 +171,14 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
 }
 
 BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION = {
-    "deception": {
-        "test_both": True,
-        "roleplaying": {"llama_3b": "mistral_7b", "mistral_7b": "llama_3b"},
-        "trading": {"llama_3b": "deepseek_mixtral", "mixtral": "llama_3b"}},
-    "sandbagging": {
-        "test_both": True,
-        "wmd": {"llama_3b": "mistral_7b", "mistral_7b": "llama_3b"},
-        "multichoice": {"llama_3b": "ministral_8b", "ministral_8b": "llama_3b"}},
+    # "deception": {
+    #     "test_both": True,
+    #     "roleplaying": {"llama_3b": "mistral_7b", "mistral_7b": "llama_3b"},
+    #     "trading": {"llama_3b": "deepseek_mixtral", "mixtral": "llama_3b"}},
+    # "sandbagging": {
+    #     "test_both": True,
+    #     "wmd": {"llama_3b": "mistral_7b", "mistral_7b": "llama_3b"},
+    #     "multichoice": {"llama_3b": "ministral_8b", "ministral_8b": "llama_3b"}},
 }
 
 MODELS = {

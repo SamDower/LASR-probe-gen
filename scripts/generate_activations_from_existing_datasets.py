@@ -86,13 +86,13 @@ def generate_and_save_activations(behaviour, datasource, activations_model, resp
 
 def main():
     # ====== All settings to change are here ======
-    response_model = "llama_3b"
+    response_model = "ministral_8b"
     activations_model = "llama_3b"
     generation_methods = ["on_policy"]
-    layers = [12]
+    layers = [0,3,6,9,12,15,18,21,24,27]
     experiments = [
         # {"behaviour": "authority", "datasources": ["multichoice", "arguments"]},
-        {"behaviour": "sycophancy", "datasources": ["multichoice"]},
+        {"behaviour": "bias", "datasources": ["arguments"]},
         # {"behaviour": "lists", "datasources": ["ultrachat", "shakespeare"]},
         # {"behaviour": "metaphors", "datasources": ["ultrachat", "writingprompts"]},
         # {"behaviour": "science", "datasources": ["ultrachat", "mmlu"]},
