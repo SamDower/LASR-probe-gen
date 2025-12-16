@@ -321,20 +321,21 @@ if __name__ == "__main__":
     #     test_incentivised = True,
     # )
     
-    # Do missing gemma 27b experiments
-    for test_incentivised in [False]:
-        do_probe_experiment_default_test_everything(
-            probe_type = ["mean", "attention_torch"][0],
-            activations_model = ["llama_3b", "ministral_8b", "qwen_30b", "gemma_27b"][0], 
-            test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
-        )
-    # # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
+    # # Do missing gemma 27b experiments
     # for test_incentivised in [False]:
     #     do_probe_experiment_default_test_everything(
     #         probe_type = ["mean", "attention_torch"][0],
-    #         activations_model = ["llama_3b", "ministral_8b", "qwen_30b", "gemma_27b"][-1], 
+    #         activations_model = ["llama_3b", "ministral_8b", "qwen_30b", "gemma_27b"][1], 
     #         test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
     #     )
+    
+    # Option 1: Set probe type and activation model and keep all other parameters same as in initial experiments
+    for test_incentivised in [False]:
+        do_probe_experiment_default_test_everything(
+            probe_type = ["mean", "attention_torch"][0],
+            activations_model = ["llama_3b", "ministral_8b", "qwen_30b", "gemma_27b"][-1], 
+            test_incentivised = test_incentivised, # False means we test against on policy not on policy incentivised data
+        )
     
     # # Option 2: Set parameters based on all combinations
     # do_probe_experiment_combinations(
