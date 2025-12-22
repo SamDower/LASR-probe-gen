@@ -1,0 +1,23 @@
+experiments:
+  - behaviour: uncertainty
+    datasources: ["multichoice"]
+    generation_methods: ["on_policy", "incentivised", "prompted", "off_policy"]
+    off_policy_model: "llama_3b"
+    activations_model: "ministral_8b"
+    layers: [0,3,6,9,12,15,18,21,24,27]
+    train_size: 4000
+    test_size: 1000
+    temperature: 1.0
+    generation_batch_size: 50
+    activations_batch_size: 32
+  # - behaviour: bias
+  #   datasources: ["arguments", "haikus"]
+  #   generation_methods: ["on_policy", "incentivised", "prompted", "off_policy"]
+  #   off_policy_model: "llama_3b"
+  #   activations_model: "gemma_27b"
+  #   layers: [0,3,6,9,12,15,18,21,24,27]
+  #   train_size: 4000
+  #   test_size: 1000
+  #   temperature: 1.0
+  #   generation_batch_size: 50
+  #   activations_batch_size: 32
