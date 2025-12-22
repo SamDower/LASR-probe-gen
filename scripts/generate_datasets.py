@@ -35,6 +35,7 @@ from probe_gen.labelling.sandbagging_multi_autograder import (
 )
 from probe_gen.labelling.sycophancy_multichoice_autograder import (
     label_and_save_dataset_sycophancy_multichoice,
+    label_and_save_dataset_uncertainty_multichoice,
 )
 
 # Add the project root to Python path
@@ -94,7 +95,9 @@ def get_prompt_dataset(behaviour, datasource):
             return BiasHaikusDataset()
     if behaviour == "sandbagging" and datasource == "multichoice":
         return SandbaggingMultiDataset()
-    
+    if behaviour == "uncertainty":
+        if datasource == "multichoice":
+            return UncertaintyMultichoiceDataset()
     if datasource == "stories":
         return TinyStoriesDataset()
     if datasource == "ultrachat":
@@ -143,6 +146,12 @@ def get_labels(behaviour, datasource, prompts_path, responses_path, out_path, nu
             )
         elif behaviour == "sandbagging":
             label_and_save_dataset_sandbagging_multichoice(
+                responses_file=responses_path,
+                out_file=out_path,
+                num_balanced=num_balanced,
+            )
+        elif behaviour == "uncertainty":
+            label_and_save_dataset_uncertainty_multichoice(
                 responses_file=responses_path,
                 out_file=out_path,
                 num_balanced=num_balanced,

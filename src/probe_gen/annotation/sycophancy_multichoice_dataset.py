@@ -41,7 +41,6 @@ class SycophancyMultichoiceDataset(PromptDataset):
     ):
         """
         Initialize Sycophancy Multiple Choice prompt dataset.
-        
         Args:
             hf_repo_id: HuggingFace repository ID containing the CSV file
             csv_filename: Name of the CSV file in the repository
@@ -64,7 +63,6 @@ class SycophancyMultichoiceDataset(PromptDataset):
     def download_data(self) -> None:
         """
         Download and process multiple choice data from HuggingFace.
-        
         Process: Download CSV from HF repo → Filter valid rows → Shuffle → Cache
         This ensures consistent shuffling across different skip/sample requests.
         """
@@ -112,10 +110,8 @@ class SycophancyMultichoiceDataset(PromptDataset):
     def _find_correct_and_sample_wrong(self, row: pd.Series) -> tuple:
         """
         Find the correct answer letter and sample a wrong answer for a question.
-        
         Args:
             row: Pandas Series with question data
-            
         Returns:
             Tuple of (correct_letter, wrong_letter)
         """
@@ -143,10 +139,8 @@ class SycophancyMultichoiceDataset(PromptDataset):
     def _format_question(self, row: pd.Series) -> str:
         """
         Format a multiple choice question from a DataFrame row.
-        
         Args:
             row: Pandas Series with question data
-            
         Returns:
             Formatted question string with choices
         """
@@ -163,20 +157,16 @@ class SycophancyMultichoiceDataset(PromptDataset):
     def _create_dataset(self, mode: str, n_samples: int, skip: int) -> Dataset:
         """
         Create sycophancy multiple choice dataset with specified parameters.
-        
         For each question, creates three prompts:
         1. Control prompt: Standard multiple choice question
         2. Correct belief prompt: Question + "I think the answer is [correct]"
         3. Wrong belief prompt: Question + "I think the answer is [wrong]"
-        
         Args:
             mode: "train" or "test" (used for identification only)
             n_samples: Number of question triplets to generate
             skip: Number of question triplets to skip from the beginning
-            
         Returns:
             Dataset object with control, correct belief, and wrong belief prompts
-            
         Raises:
             ValueError: If not enough questions are available or data not loaded
         """
@@ -285,12 +275,9 @@ class SycophancyMultichoiceDataset(PromptDataset):
     def extract_answer(response: str) -> str:
         """
         Extract the answer choice (A, B, C, D) from a model response.
-        
         This utility function can be used to parse model outputs for evaluation.
-        
         Args:
             response: Model response text
-            
         Returns:
             Extracted answer choice or the full response if extraction fails
         """
@@ -334,7 +321,6 @@ class SycophancyMultichoiceDataset(PromptDataset):
 def _create_sycophancy_dataset_from_csv(csv_file_path: str, num_samples: int, skip: int, prompt: str) -> Dataset:
     """
     Create sycophancy dataset using the legacy function interface.
-    
     Note: csv_file_path parameter is ignored - now uses HuggingFace dataset.
     This function is kept for backward compatibility.
     New code should use SycophancyMultichoiceDataset class directly.
@@ -358,7 +344,6 @@ def _create_sycophancy_dataset_from_csv(csv_file_path: str, num_samples: int, sk
 def create_sycophancy_short_dataset_from_csv(csv_file_path: str, num_samples: int = 1000, skip: int = 0) -> Dataset:
     """
     Create short sycophancy dataset using the legacy function interface.
-    
     Note: csv_file_path parameter is ignored - now uses HuggingFace dataset.
     This function is kept for backward compatibility.
     New code should use SycophancyMultichoiceDataset class directly.
@@ -370,7 +355,6 @@ def create_sycophancy_short_dataset_from_csv(csv_file_path: str, num_samples: in
 def create_sycophancy_dataset_from_csv(csv_file_path: str, num_samples: int = 1000, skip: int = 0) -> Dataset:
     """
     Create long sycophancy dataset using the legacy function interface.
-    
     Note: csv_file_path parameter is ignored - now uses HuggingFace dataset.
     This function is kept for backward compatibility.
     New code should use SycophancyMultichoiceDataset class directly.
@@ -382,7 +366,6 @@ def create_sycophancy_dataset_from_csv(csv_file_path: str, num_samples: int = 10
 def extract_answer(response: str) -> str:
     """
     Legacy function for extracting answers.
-    
     This function is kept for backward compatibility.
     New code should use SycophancyMultichoiceDataset.extract_answer().
     """

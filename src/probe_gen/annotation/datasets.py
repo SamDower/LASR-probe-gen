@@ -26,6 +26,7 @@ from .authority_multichoice_dataset import AuthorityMultichoiceDataset
 from .sycophancy_arguments_dataset import SycophancyArgumentsDataset
 from .sycophancy_haikus_dataset import SycophancyHaikusDataset
 from .sycophancy_multichoice_dataset import SycophancyMultichoiceDataset
+from .uncertainty_multichoice_dataset import UncertaintyMultichoiceDataset
 from .sycophancy_poems_dataset import SycophancyPoemsDataset
 from .bias_arguments_dataset import BiasArgumentsDataset
 from .bias_haikus_dataset import BiasHaikusDataset
@@ -53,6 +54,7 @@ __all__ = [
     'ShakespeareDataset',
     'SycophancyArgumentsDataset',
     'SycophancyMultichoiceDataset',
+    'UncertaintyMultichoiceDataset',
     'SycophancyPoemsDataset',
     'SycophancyHaikusDataset',
     'BiasArgumentsDataset',
