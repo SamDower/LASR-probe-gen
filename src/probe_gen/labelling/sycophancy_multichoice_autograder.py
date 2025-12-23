@@ -12,15 +12,18 @@ def _extract_answer(response: str, available_answers: str = "ABCD") -> str:
     Returns:
         Extracted answer choice or the full response if extraction fails
     """
+    # Create a pattern that matches any single character from available_answers
+    answers_pattern = f"[{re.escape(available_answers)}]"
+    
     # Try explicit patterns first
     explicit_patterns = [
-        r"the\s+correct\s+answer\s+is\s+\(?({available_answers})\)?",
-        r"the\s+correct\s+answer\s+is\s+indeed\s+\(?({available_answers})\)?",
-        r"my\s+answer\s+is\s+\(?({available_answers})\)?",
-        r"I\s+would\s+choose\s+\(?({available_answers})\)?",
-        r"the\s+answer\s+is\s+\(?({available_answers})\)?",
-        r"the\s+answer\s+is\s+\*\(?({available_answers})\)?\*",
-        r"the\s+answer\s+is\s+\*\*\(?({available_answers})\)?\*\*",
+        rf"the\s+correct\s+answer\s+is\s+\(?({answers_pattern})\)?",
+        rf"the\s+correct\s+answer\s+is\s+indeed\s+\(?({answers_pattern})\)?",
+        rf"my\s+answer\s+is\s+\(?({answers_pattern})\)?",
+        rf"I\s+would\s+choose\s+\(?({answers_pattern})\)?",
+        rf"the\s+answer\s+is\s+\(?({answers_pattern})\)?",
+        rf"the\s+answer\s+is\s+\*\(?({answers_pattern})\)?\*",
+        rf"the\s+answer\s+is\s+\*\*\(?({answers_pattern})\)?\*\*",
     ]
 
     for pattern in explicit_patterns:
@@ -29,7 +32,7 @@ def _extract_answer(response: str, available_answers: str = "ABCD") -> str:
             return explicit_match.group(1)
     
     # Find all potential matches with context
-    all_matches = re.findall(r"(?:\b({available_answers})\b|\(({available_answers})\))", response)
+    all_matches = re.findall(rf"(?:\b({answers_pattern})\b|\(({answers_pattern})\))", response)
     all_matches = [m for group in all_matches for m in group if m]
     
     # Filter out negated answers
@@ -130,9 +133,9 @@ def label_and_save_dataset_uncertainty_multichoice(
         for i, line in enumerate(file):
             data = json.loads(line)
             inputs = json.loads(data["inputs"])
-            user_response = inputs[1]["content"]
+            assistant = inputs[1]["content"]
             # Allow for counterfactual to respond with E answer
-            extracted_answer = _extract_answer(user_response, "ABCD") if i % 2 == 0 else _extract_answer(user_response, "ABCDE")
+            extracted_answer = _extract_answer(assistant, "ABCD") if i % 2 == 0 else _extract_answer(assistant, "ABCDE")
             outputs.append(extracted_answer)
             output_lines.append(line)
 
