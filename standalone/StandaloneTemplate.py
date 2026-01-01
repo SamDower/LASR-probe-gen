@@ -67,6 +67,9 @@ PROBE_EPOCHS = 100
 PROBE_PATIENCE = 10
 PROBE_C = 1.0  # For sklearn logistic regression (inverse of regularization strength)
 
+# File I/O configuration
+OUTPUT_DIR = "standalone_output"  # Directory to save intermediate results
+
 
 # ============================================================================
 # Step 1: Load Input Data
@@ -88,6 +91,26 @@ def load_input_data():
 # ============================================================================
 # Step 2: Generate Outputs
 # ============================================================================
+
+def save_inputs_outputs(inputs: List[str], outputs: List[str], filename: str = "inputs_outputs.json"):
+    """Save inputs and outputs to JSON file."""
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    data = [{"input": inp, "output": out} for inp, out in zip(inputs, outputs)]
+    with open(filepath, 'w') as f:
+        json.dump(data, f, indent=2)
+    print(f"Saved inputs and outputs to {filepath}")
+
+
+def load_inputs_outputs(filename: str = "inputs_outputs.json") -> tuple[List[str], List[str]]:
+    """Load inputs and outputs from JSON file."""
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    with open(filepath, 'r') as f:
+        data = json.load(f)
+    inputs = [item["input"] for item in data]
+    outputs = [item["output"] for item in data]
+    print(f"Loaded inputs and outputs from {filepath}")
+    return inputs, outputs
+
 
 def load_model(model_name: str):
     """Load model and tokenizer."""
@@ -150,6 +173,23 @@ def generate_outputs(inputs: List[str], model, tokenizer):
 # ============================================================================
 # Step 3: Classify with GPT
 # ============================================================================
+
+def save_labeled_data(labeled_data: List[Dict], filename: str = "labeled_data.json"):
+    """Save labeled data to JSON file."""
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    with open(filepath, 'w') as f:
+        json.dump(labeled_data, f, indent=2)
+    print(f"Saved labeled data to {filepath}")
+
+
+def load_labeled_data(filename: str = "labeled_data.json") -> List[Dict]:
+    """Load labeled data from JSON file."""
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    with open(filepath, 'r') as f:
+        data = json.load(f)
+    print(f"Loaded labeled data from {filepath}")
+    return data
+
 
 async def classify_with_gpt(inputs: List[str], outputs: List[str]) -> List[Dict]:
     """Classify input-output pairs using GPT."""
@@ -215,6 +255,38 @@ async def classify_with_gpt(inputs: List[str], outputs: List[str]) -> List[Dict]
 # Step 4: Balance and Split Dataset
 # ============================================================================
 
+def save_splits(splits: Dict[str, List[Dict]], filename: str = "splits.json"):
+    """Save splits to JSON file."""
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    with open(filepath, 'w') as f:
+        json.dump(splits, f, indent=2)
+    print(f"Saved splits to {filepath}")
+
+
+def load_splits(filename: str = "splits.json") -> Dict[str, List[Dict]]:
+    """Load splits from JSON file."""
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    with open(filepath, 'r') as f:
+        splits = json.load(f)
+    print(f"Loaded splits from {filepath}")
+    return splits
+
+
+def save_labels(labels: Dict[str, torch.Tensor], filename: str = "labels.pt"):
+    """Save labels to PyTorch file."""
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    torch.save(labels, filepath)
+    print(f"Saved labels to {filepath}")
+
+
+def load_labels(filename: str = "labels.pt") -> Dict[str, torch.Tensor]:
+    """Load labels from PyTorch file."""
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    labels = torch.load(filepath)
+    print(f"Loaded labels from {filepath}")
+    return labels
+
+
 def balance_and_split_dataset(data: List[Dict]) -> Dict[str, List[Dict]]:
     """Balance dataset and split into train, val, and test sets. Returns lists of dicts."""
     print("\n" + "=" * 60)
@@ -270,6 +342,21 @@ def balance_and_split_dataset(data: List[Dict]) -> Dict[str, List[Dict]]:
 # ============================================================================
 # Step 5: Get Activations
 # ============================================================================
+
+def save_activations(activations: Dict[str, Dict[str, torch.Tensor]], filename: str = "activations.pt"):
+    """Save activations to PyTorch file."""
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    torch.save(activations, filepath)
+    print(f"Saved activations to {filepath}")
+
+
+def load_activations(filename: str = "activations.pt") -> Dict[str, Dict[str, torch.Tensor]]:
+    """Load activations from PyTorch file."""
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    activations = torch.load(filepath)
+    print(f"Loaded activations from {filepath}")
+    return activations
+
 
 def format_chat_prompt(tokenizer, input_text: str, output_text: str) -> str:
     """Format input-output pair as a chat prompt."""
@@ -642,32 +729,74 @@ async def main():
     print("STANDALONE PROBE EXPERIMENT")
     print("=" * 60)
     
+    # Create output directory
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    
     # Set random seed
     torch.manual_seed(PROBE_SEED)
     np.random.seed(PROBE_SEED)
     
     # Step 1: Load input data
-    inputs = load_input_data()
-    
-    # Step 2: Generate outputs
-    model, tokenizer = load_model(MODEL_NAME)
-    outputs = generate_outputs(inputs, model, tokenizer)
+    inputs_file = "inputs_outputs.json"
+    inputs_filepath = os.path.join(OUTPUT_DIR, inputs_file)
+    if os.path.exists(inputs_filepath):
+        print("Loading inputs and outputs from file...")
+        inputs, outputs = load_inputs_outputs(inputs_file)
+    else:
+        inputs = load_input_data()
+        # Step 2: Generate outputs
+        model, tokenizer = load_model(MODEL_NAME)
+        outputs = generate_outputs(inputs, model, tokenizer)
+        save_inputs_outputs(inputs, outputs, inputs_file)
+        del model, tokenizer
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
     
     # Step 3: Classify with GPT
-    labeled_data = await classify_with_gpt(inputs, outputs)
+    labeled_file = "labeled_data.json"
+    labeled_filepath = os.path.join(OUTPUT_DIR, labeled_file)
+    if os.path.exists(labeled_filepath):
+        print("Loading labeled data from file...")
+        labeled_data = load_labeled_data(labeled_file)
+    else:
+        labeled_data = await classify_with_gpt(inputs, outputs)
+        save_labeled_data(labeled_data, labeled_file)
     
     # Step 4: Balance and split
-    splits = balance_and_split_dataset(labeled_data)
+    splits_file = "splits.json"
+    splits_filepath = os.path.join(OUTPUT_DIR, splits_file)
+    if os.path.exists(splits_filepath):
+        print("Loading splits from file...")
+        splits = load_splits(splits_file)
+    else:
+        splits = balance_and_split_dataset(labeled_data)
+        save_splits(splits, splits_file)
     
     # Step 5: Get activations
-    activations = get_activations_for_splits(splits, model, tokenizer)
+    activations_file = "activations.pt"
+    activations_filepath = os.path.join(OUTPUT_DIR, activations_file)
+    if os.path.exists(activations_filepath):
+        print("Loading activations from file...")
+        activations = load_activations(activations_file)
+    else:
+        model, tokenizer = load_model(MODEL_NAME)
+        activations = get_activations_for_splits(splits, model, tokenizer)
+        save_activations(activations, activations_file)
+        del model, tokenizer
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
     
     # Prepare labels
-    labels = {
-        'train': torch.tensor([item['label_binary'] for item in splits['train']], dtype=torch.float32),
-        'val': torch.tensor([item['label_binary'] for item in splits['val']], dtype=torch.float32),
-        'test': torch.tensor([item['label_binary'] for item in splits['test']], dtype=torch.float32),
-    }
+    labels_file = "labels.pt"
+    labels_filepath = os.path.join(OUTPUT_DIR, labels_file)
+    if os.path.exists(labels_filepath):
+        print("Loading labels from file...")
+        labels = load_labels(labels_file)
+    else:
+        labels = {
+            'train': torch.tensor([item['label_binary'] for item in splits['train']], dtype=torch.float32),
+            'val': torch.tensor([item['label_binary'] for item in splits['val']], dtype=torch.float32),
+            'test': torch.tensor([item['label_binary'] for item in splits['test']], dtype=torch.float32),
+        }
+        save_labels(labels, labels_file)
     
     # Step 6: Create and train probe
     if PROBE_TRAINING_METHOD == "adam":
