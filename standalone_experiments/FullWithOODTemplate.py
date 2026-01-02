@@ -25,12 +25,19 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 # Configuration
 # ============================================================================
 
-# Dataset configuration
-HF_DATASET_NAME = "HuggingFaceH4/ultrachat_200k"
-HF_DATASET_SPLIT = "train_sft"
-HF_DATASET_COLUMN_INPUT = "prompt"
-MAX_INPUT_LENGTH = 500
-MAX_INPUTS = 3000
+# Dataset configuration - ID (In-Distribution) for training
+HF_DATASET_NAME_ID = "HuggingFaceH4/ultrachat_200k"
+HF_DATASET_SPLIT_ID = "train_sft"
+HF_DATASET_COLUMN_INPUT_ID = "prompt"
+MAX_INPUT_LENGTH_ID = 500
+MAX_INPUTS_ID = 3000
+
+# Dataset configuration - OOD (Out-Of-Distribution) for testing
+HF_DATASET_NAME_OOD = "fka/awesome-chatgpt-prompts"
+HF_DATASET_SPLIT_OOD = "train"
+HF_DATASET_COLUMN_INPUT_OOD = "prompt"
+MAX_INPUT_LENGTH_OOD = 1000
+MAX_INPUTS_OOD = 1000
 
 # Model configuration
 MODEL_NAME = "meta-llama/Llama-3.2-3B-Instruct"
@@ -55,9 +62,9 @@ NEGATIVE_THRESHOLD = 8  # Answer >= 8 is negative
 
 # Probe configuration
 LAYER = 12  # Layer to extract activations from
-TRAIN_PROP = 0.7  # Proportion for training set
-VAL_PROP = 0.1  # Proportion for validation set
-TEST_PROP = 0.2  # Proportion for test set
+TRAIN_PROP = 0.7  # Proportion for training set (within ID data)
+VAL_PROP = 0.3  # Proportion for validation set (within ID data)
+# Note: Test set comes from OOD data, not from ID data
 
 # Probe hyperparameters
 PROBE_TRAINING_METHOD = "sklearn"  # "adam" or "sklearn"
@@ -78,23 +85,24 @@ OUTPUT_DIR = "standalone_experiments/experiment_data"  # Directory to save inter
 # Step 1: Load Input Data
 # ============================================================================
 
-def load_input_data():
+def load_input_data(dataset_name: str, split: str, column_input: str, max_input_length: int, max_inputs: int, dataset_label: str = ""):
     """Load input data from HuggingFace dataset using streaming."""
+    label_str = f" ({dataset_label})" if dataset_label else ""
     print("=" * 60)
-    print("Step 1: Loading input data from HuggingFace (streaming)")
+    print(f"Step 1: Loading input data from HuggingFace (streaming){label_str}")
     print("=" * 60)
     
-    dataset = load_dataset(HF_DATASET_NAME, split=HF_DATASET_SPLIT, streaming=True)
+    dataset = load_dataset(dataset_name, split=split, streaming=True)
     inputs = []
     original_count = 0
     filtered_count = 0
     
     for item in dataset:
         original_count += 1
-        inp = item[HF_DATASET_COLUMN_INPUT]
-        if len(inp) < MAX_INPUT_LENGTH:
+        inp = item[column_input]
+        if len(inp) < max_input_length:
             inputs.append(inp)
-            if len(inputs) >= MAX_INPUTS:
+            if len(inputs) >= max_inputs:
                 break
         else:
             filtered_count += 1
@@ -103,7 +111,7 @@ def load_input_data():
             print(f"Processed {original_count} examples, kept {len(inputs)}")
     
     print(f"Processed {original_count} input examples")
-    print(f"Using {len(inputs)} input examples (limit: {MAX_INPUTS})")
+    print(f"Using {len(inputs)} input examples (limit: {max_inputs})")
     
     return inputs
 
@@ -314,9 +322,9 @@ def load_splits(filename: str = "splits.json") -> Dict[str, List[Dict]]:
 
 
 def balance_and_split_dataset(data: List[Dict]) -> Dict[str, List[Dict]]:
-    """Balance dataset and split into train, val, and test sets. Returns lists of dicts."""
+    """Balance dataset and split into train and val sets (no test - test comes from OOD). Returns lists of dicts."""
     print("\n" + "=" * 60)
-    print("Step 4: Balancing dataset and splitting into train-val-test")
+    print("Step 4: Balancing ID dataset and splitting into train-val")
     print("=" * 60)
     
     # Filter to only positive and negative, add label_binary
@@ -346,16 +354,14 @@ def balance_and_split_dataset(data: List[Dict]) -> Dict[str, List[Dict]]:
     balanced = positive_balanced + negative_balanced
     np.random.shuffle(balanced)
     
-    # Split into train, val, test using proportions
+    # Split into train and val only (test comes from OOD data)
     total = len(balanced)
     train_end = int(total * TRAIN_PROP)
-    val_end = train_end + int(total * VAL_PROP)
-    # Test gets the remainder to ensure all data is used
+    # Val gets the remainder to ensure all data is used
     
     splits = {
         'train': balanced[:train_end],
-        'val': balanced[train_end:val_end],
-        'test': balanced[val_end:],
+        'val': balanced[train_end:],
     }
     
     print("\nSplit sizes:")
@@ -364,6 +370,45 @@ def balance_and_split_dataset(data: List[Dict]) -> Dict[str, List[Dict]]:
         print(f"  {split_name}: {len(split_data)} samples ({pos_count} positive)")
     
     return splits
+
+
+def balance_ood_dataset(data: List[Dict]) -> List[Dict]:
+    """Balance OOD dataset without splitting (used as test set). Returns list of dicts."""
+    print("\n" + "=" * 60)
+    print("Step 4: Balancing OOD dataset (test set)")
+    print("=" * 60)
+    
+    # Filter to only positive and negative, add label_binary
+    filtered = []
+    for item in data:
+        if item['label'] in ['positive', 'negative']:
+            item['label_binary'] = 1 if item['label'] == 'positive' else 0
+            filtered.append(item)
+    
+    # Separate by label
+    positive = [item for item in filtered if item['label_binary'] == 1]
+    negative = [item for item in filtered if item['label_binary'] == 0]
+    min_count = min(len(positive), len(negative))
+    
+    print(f"Balancing: {len(positive)} positive, {len(negative)} negative")
+    print(f"Using {min_count} samples per class")
+    
+    # Sample balanced subsets
+    np.random.seed(42)  # Use same seed for reproducibility
+    positive_indices = np.random.choice(len(positive), size=min_count, replace=False)
+    negative_indices = np.random.choice(len(negative), size=min_count, replace=False)
+    
+    positive_balanced = [positive[i] for i in positive_indices]
+    negative_balanced = [negative[i] for i in negative_indices]
+    
+    # Combine and shuffle
+    balanced = positive_balanced + negative_balanced
+    np.random.shuffle(balanced)
+    
+    pos_count = sum(1 for item in balanced if item['label_binary'] == 1)
+    print(f"\nBalanced OOD test set: {len(balanced)} samples ({pos_count} positive)")
+    
+    return balanced
 
 
 # ============================================================================
@@ -722,10 +767,12 @@ def evaluate_probe(
     test_activations: torch.Tensor,
     test_masks: torch.Tensor,
     test_labels: torch.Tensor,
+    dataset_label: str = "",
 ) -> Dict[str, float]:
     """Evaluate the probe on test set."""
+    label_str = f" ({dataset_label})" if dataset_label else ""
     print("\n" + "=" * 60)
-    print("Step 7: Evaluating probe")
+    print(f"Step 7: Evaluating probe{label_str}")
     print("=" * 60)
     
     # Determine probe type by checking if it's a sklearn LogisticRegression
@@ -770,7 +817,10 @@ def evaluate_probe(
     }
     
     print("\n" + "=" * 60)
-    print("EVALUATION RESULTS")
+    if dataset_label:
+        print(f"EVALUATION RESULTS - {dataset_label}")
+    else:
+        print("EVALUATION RESULTS")
     print("=" * 60)
     for metric, value in results.items():
         print(f"{metric}: {value:.4f}")
@@ -784,9 +834,9 @@ def evaluate_probe(
 # ============================================================================
 
 async def main():
-    """Run the complete pipeline."""
+    """Run the complete pipeline with separate ID (train) and OOD (test) datasets."""
     print("\n" + "=" * 60)
-    print("STANDALONE PROBE EXPERIMENT")
+    print("STANDALONE PROBE EXPERIMENT (ID/OOD Split)")
     print("=" * 60)
     
     # Create output directory
@@ -796,42 +846,103 @@ async def main():
     torch.manual_seed(PROBE_SEED)
     np.random.seed(PROBE_SEED)
     
-    # Step 1: Load input data
-    inputs_file = "inputs_outputs.json"
-    inputs_filepath = os.path.join(OUTPUT_DIR, inputs_file)
-    if os.path.exists(inputs_filepath):
-        print("Loading inputs and outputs from file...")
-        inputs, outputs = load_inputs_outputs(inputs_file)
+    # ========================================================================
+    # Process ID (In-Distribution) Dataset for Training
+    # ========================================================================
+    
+    # Step 1: Load ID input data
+    inputs_id_file = "inputs_outputs_id.json"
+    inputs_id_filepath = os.path.join(OUTPUT_DIR, inputs_id_file)
+    if os.path.exists(inputs_id_filepath):
+        print("Loading ID inputs and outputs from file...")
+        inputs_id, outputs_id = load_inputs_outputs(inputs_id_file)
     else:
-        inputs = load_input_data()
-        # Step 2: Generate outputs
+        inputs_id = load_input_data(
+            HF_DATASET_NAME_ID,
+            HF_DATASET_SPLIT_ID,
+            HF_DATASET_COLUMN_INPUT_ID,
+            MAX_INPUT_LENGTH_ID,
+            MAX_INPUTS_ID,
+            "ID"
+        )
+        # Step 2: Generate outputs for ID data
         model, tokenizer = load_model(MODEL_NAME)
-        outputs = generate_outputs(inputs, model, tokenizer)
-        save_inputs_outputs(inputs, outputs, inputs_file)
+        outputs_id = generate_outputs(inputs_id, model, tokenizer)
+        save_inputs_outputs(inputs_id, outputs_id, inputs_id_file)
         del model, tokenizer
         torch.cuda.empty_cache() if torch.cuda.is_available() else None
     
-    # Step 3: Classify with GPT
-    labeled_file = "labeled_data.json"
-    labeled_filepath = os.path.join(OUTPUT_DIR, labeled_file)
-    if os.path.exists(labeled_filepath):
-        print("Loading labeled data from file...")
-        labeled_data = load_labeled_data(labeled_file)
+    # Step 3: Classify ID data with GPT
+    labeled_id_file = "labeled_data_id.json"
+    labeled_id_filepath = os.path.join(OUTPUT_DIR, labeled_id_file)
+    if os.path.exists(labeled_id_filepath):
+        print("Loading ID labeled data from file...")
+        labeled_data_id = load_labeled_data(labeled_id_file)
     else:
-        labeled_data = await classify_with_gpt(inputs, outputs)
-        save_labeled_data(labeled_data, labeled_file)
+        labeled_data_id = await classify_with_gpt(inputs_id, outputs_id)
+        save_labeled_data(labeled_data_id, labeled_id_file)
     
-    # Step 4: Balance and split
-    splits_file = "splits.json"
-    splits_filepath = os.path.join(OUTPUT_DIR, splits_file)
-    if os.path.exists(splits_filepath):
-        print("Loading splits from file...")
-        splits = load_splits(splits_file)
+    # Step 4: Balance and split ID data (train/val only)
+    splits_id_file = "splits_id.json"
+    splits_id_filepath = os.path.join(OUTPUT_DIR, splits_id_file)
+    if os.path.exists(splits_id_filepath):
+        print("Loading ID splits from file...")
+        splits_id = load_splits(splits_id_file)
     else:
-        splits = balance_and_split_dataset(labeled_data)
-        save_splits(splits, splits_file)
+        splits_id = balance_and_split_dataset(labeled_data_id)
+        save_splits(splits_id, splits_id_file)
     
-    # Step 5: Get activations
+    # ========================================================================
+    # Process OOD (Out-Of-Distribution) Dataset for Testing
+    # ========================================================================
+    
+    # Step 1: Load OOD input data
+    inputs_ood_file = "inputs_outputs_ood.json"
+    inputs_ood_filepath = os.path.join(OUTPUT_DIR, inputs_ood_file)
+    if os.path.exists(inputs_ood_filepath):
+        print("Loading OOD inputs and outputs from file...")
+        inputs_ood, outputs_ood = load_inputs_outputs(inputs_ood_file)
+    else:
+        inputs_ood = load_input_data(
+            HF_DATASET_NAME_OOD,
+            HF_DATASET_SPLIT_OOD,
+            HF_DATASET_COLUMN_INPUT_OOD,
+            MAX_INPUT_LENGTH_OOD,
+            MAX_INPUTS_OOD,
+            "OOD"
+        )
+        # Step 2: Generate outputs for OOD data
+        model, tokenizer = load_model(MODEL_NAME)
+        outputs_ood = generate_outputs(inputs_ood, model, tokenizer)
+        save_inputs_outputs(inputs_ood, outputs_ood, inputs_ood_file)
+        del model, tokenizer
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
+    
+    # Step 3: Classify OOD data with GPT
+    labeled_ood_file = "labeled_data_ood.json"
+    labeled_ood_filepath = os.path.join(OUTPUT_DIR, labeled_ood_file)
+    if os.path.exists(labeled_ood_filepath):
+        print("Loading OOD labeled data from file...")
+        labeled_data_ood = load_labeled_data(labeled_ood_file)
+    else:
+        labeled_data_ood = await classify_with_gpt(inputs_ood, outputs_ood)
+        save_labeled_data(labeled_data_ood, labeled_ood_file)
+    
+    # Step 4: Balance OOD data (test set only, no splitting)
+    ood_test_file = "ood_test.json"
+    ood_test_filepath = os.path.join(OUTPUT_DIR, ood_test_file)
+    if os.path.exists(ood_test_filepath):
+        print("Loading OOD test data from file...")
+        ood_test_data = load_labeled_data(ood_test_file)
+    else:
+        ood_test_data = balance_ood_dataset(labeled_data_ood)
+        save_labeled_data(ood_test_data, ood_test_file)
+    
+    # ========================================================================
+    # Get Activations
+    # ========================================================================
+    
+    # Step 5: Get activations for ID splits (train/val) and OOD test
     activations_file = "activations.pt"
     activations_filepath = os.path.join(OUTPUT_DIR, activations_file)
     if os.path.exists(activations_filepath):
@@ -839,19 +950,24 @@ async def main():
         activations = load_activations(activations_file)
     else:
         model, tokenizer = load_model(MODEL_NAME)
-        activations = get_activations_for_splits(splits, model, tokenizer)
+        # Get activations for ID splits
+        activations = get_activations_for_splits(splits_id, model, tokenizer)
+        # Get activations for OOD test data (wrap in dict format)
+        ood_test_splits = {'test': ood_test_data}
+        activations_ood = get_activations_for_splits(ood_test_splits, model, tokenizer)
+        activations['test'] = activations_ood['test']
         save_activations(activations, activations_file)
         del model, tokenizer
         torch.cuda.empty_cache() if torch.cuda.is_available() else None
     
     # Prepare labels from splits
     labels = {
-        'train': torch.tensor([item['label_binary'] for item in splits['train']], dtype=torch.float32),
-        'val': torch.tensor([item['label_binary'] for item in splits['val']], dtype=torch.float32),
-        'test': torch.tensor([item['label_binary'] for item in splits['test']], dtype=torch.float32),
+        'train': torch.tensor([item['label_binary'] for item in splits_id['train']], dtype=torch.float32),
+        'val': torch.tensor([item['label_binary'] for item in splits_id['val']], dtype=torch.float32),
+        'test': torch.tensor([item['label_binary'] for item in ood_test_data], dtype=torch.float32),
     }
     
-    # Step 6: Create and train probe
+    # Step 6: Create and train probe on ID data
     if PROBE_TRAINING_METHOD == "adam":
         probe = create_and_train_probe_adam(
             activations['train']['activations'],
@@ -873,13 +989,34 @@ async def main():
     else:
         raise ValueError(f"Unknown training method: {PROBE_TRAINING_METHOD}")
     
-    # Step 7: Evaluate probe
-    results = evaluate_probe(
+    # Step 7: Evaluate probe on both ID validation and OOD test sets
+    print("\n" + "=" * 60)
+    print("EVALUATION PHASE")
+    print("=" * 60)
+    
+    # Evaluate on ID validation set
+    results_id_val = evaluate_probe(
+        probe,
+        activations['val']['activations'],
+        activations['val']['attention_mask'],
+        labels['val'],
+        dataset_label="ID Validation Set",
+    )
+    
+    # Evaluate on OOD test set
+    results_ood_test = evaluate_probe(
         probe,
         activations['test']['activations'],
         activations['test']['attention_mask'],
         labels['test'],
+        dataset_label="OOD Test Set",
     )
+    
+    # Combine results
+    results = {
+        'id_validation': results_id_val,
+        'ood_test': results_ood_test,
+    }
     
     print("\n" + "=" * 60)
     print("PIPELINE COMPLETE!")
