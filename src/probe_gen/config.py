@@ -168,14 +168,14 @@ BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL = {
     #         "ministral_8b": "llama_3b",
     #         "gemma_27b": "llama_3b",
     #     }},
-    "uncertainty": {
-        "test_both": False,
-        "multichoice": {
-            "llama_3b": "ministral_8b", 
-            "ministral_8b": "llama_3b",
-            "gemma_27b": "ministral_8b",
-        },
-    },
+    # "uncertainty": {
+    #     "test_both": False,
+    #     "multichoice": {
+    #         "llama_3b": "ministral_8b", 
+    #         "ministral_8b": "llama_3b",
+    #         "gemma_27b": "ministral_8b",
+    #     },
+    # },
 }
 
 BEHAVIOUR_DATASOURCE_ACTMODEL_OFFPOLICYMODEL_DECEPTION = {
