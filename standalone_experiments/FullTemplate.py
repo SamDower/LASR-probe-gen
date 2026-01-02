@@ -28,15 +28,15 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 # Dataset configuration
 HF_DATASET_NAME = "HuggingFaceH4/ultrachat_200k"
 HF_DATASET_SPLIT = "train_sft"
-HF_DATASET_COLUMN_INPUT = "prompt"  # Column name for input text
-MAX_INPUT_LENGTH = 1000  # Filter inputs under this character length
-MAX_INPUTS = 30000  # Maximum number of inputs to keep
+HF_DATASET_COLUMN_INPUT = "prompt"
+MAX_INPUT_LENGTH = 500
+MAX_INPUTS = 3000
 
 # Model configuration
-MODEL_NAME = "meta-llama/Llama-3.2-3B-Instruct"  # Replace with your model
+MODEL_NAME = "meta-llama/Llama-3.2-3B-Instruct"
 GENERATION_TEMPERATURE = 1.0
 MAX_NEW_TOKENS = 200
-BATCH_SIZE = 8
+BATCH_SIZE = 100
 
 # GPT Classification configuration
 # Make sure to set the OPENAI_API_KEY environment variable
@@ -49,16 +49,15 @@ Respond with a JSON object containing:
 - "confidence": an integer from 1-10 indicating your confidence
 """
 
-NUM_BALANCED = 5000  # Total balanced samples (2500 pos + 2500 neg)
 CONFIDENCE_THRESHOLD = 7
 POSITIVE_THRESHOLD = 3  # Answer <= 3 is positive
 NEGATIVE_THRESHOLD = 8  # Answer >= 8 is negative
 
 # Probe configuration
 LAYER = 12  # Layer to extract activations from
-TRAIN_SIZE = 3500
-VAL_SIZE = 500
-TEST_SIZE = 1000
+TRAIN_PROP = 0.7  # Proportion for training set
+VAL_PROP = 0.1  # Proportion for validation set
+TEST_PROP = 0.2  # Proportion for test set
 
 # Probe hyperparameters
 PROBE_TRAINING_METHOD = "adam"  # "adam" or "sklearn"
@@ -72,7 +71,7 @@ PROBE_PATIENCE = 10
 PROBE_C = 1.0  # For sklearn logistic regression (inverse of regularization strength)
 
 # File I/O configuration
-OUTPUT_DIR = "experiment_data"  # Directory to save intermediate results
+OUTPUT_DIR = "standalone_experiments/experiment_data"  # Directory to save intermediate results
 
 
 # ============================================================================
@@ -220,9 +219,10 @@ async def classify_with_gpt(inputs: List[str], outputs: List[str]) -> List[Dict]
     
     client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     semaphore = asyncio.Semaphore(50)
+    total = len(inputs)
     
-    async def classify_single(input_text: str, output_text: str) -> Optional[Dict]:
-        """Classify a single input-output pair."""
+    async def classify_single(input_text: str, output_text: str, index: int) -> tuple[int, Optional[Dict]]:
+        """Classify a single input-output pair. Returns (index, result)."""
         async with semaphore:
             user_prompt = f"Input: {input_text}\n\nOutput: {output_text}"
             try:
@@ -235,20 +235,40 @@ async def classify_with_gpt(inputs: List[str], outputs: List[str]) -> List[Dict]
                     response_format={"type": "json_object"},
                 )
                 result = json.loads(response.choices[0].message.content)
-                return {
+                return (index, {
                     'input': input_text,
                     'output': output_text,
                     'answer': result.get('answer', 5),
                     'confidence': result.get('confidence', 5),
-                }
+                })
             except Exception as e:
-                print(f"Error classifying example: {e}")
-                return None
+                print(f"Error classifying example {index}: {e}")
+                return (index, None)
     
-    print(f"Labeling {len(inputs)} examples with {GPT_MODEL}...")
-    tasks = [classify_single(inp, out) for inp, out in zip(inputs, outputs)]
-    gathered = await asyncio.gather(*tasks)
-    results = [r for r in gathered if r is not None]
+    print(f"Labeling {total} examples with {GPT_MODEL}...")
+    tasks = [asyncio.create_task(classify_single(inp, out, i)) for i, (inp, out) in enumerate(zip(inputs, outputs))]
+    
+    # Process results as they complete for real-time progress
+    results_dict = {}
+    completed = 0
+    errors = 0
+    progress_interval = max(1, total // 20)  # Update every 5% or so
+    
+    for coro in asyncio.as_completed(tasks):
+        index, result = await coro
+        completed += 1
+        if result is None:
+            errors += 1
+        else:
+            results_dict[index] = result
+        
+        # Print progress updates
+        if completed % progress_interval == 0 or completed == total:
+            print(f"Progress: {completed}/{total} ({100*completed/total:.1f}%) - {len(results_dict)} successful, {errors} errors")
+    
+    # Convert dict back to list in original order
+    results = [results_dict[i] for i in range(total) if i in results_dict]
+    print(f"Completed labeling: {len(results)} successful, {errors} errors")
     
     # Classify labels and filter by confidence
     for item in results:
@@ -293,21 +313,6 @@ def load_splits(filename: str = "splits.json") -> Dict[str, List[Dict]]:
     return splits
 
 
-def save_labels(labels: Dict[str, torch.Tensor], filename: str = "labels.pt"):
-    """Save labels to PyTorch file."""
-    filepath = os.path.join(OUTPUT_DIR, filename)
-    torch.save(labels, filepath)
-    print(f"Saved labels to {filepath}")
-
-
-def load_labels(filename: str = "labels.pt") -> Dict[str, torch.Tensor]:
-    """Load labels from PyTorch file."""
-    filepath = os.path.join(OUTPUT_DIR, filename)
-    labels = torch.load(filepath)
-    print(f"Loaded labels from {filepath}")
-    return labels
-
-
 def balance_and_split_dataset(data: List[Dict]) -> Dict[str, List[Dict]]:
     """Balance dataset and split into train, val, and test sets. Returns lists of dicts."""
     print("\n" + "=" * 60)
@@ -341,15 +346,16 @@ def balance_and_split_dataset(data: List[Dict]) -> Dict[str, List[Dict]]:
     balanced = positive_balanced + negative_balanced
     np.random.shuffle(balanced)
     
-    # Split into train, val, test
+    # Split into train, val, test using proportions
     total = len(balanced)
-    train_end = int(total * TRAIN_SIZE / (TRAIN_SIZE + VAL_SIZE + TEST_SIZE))
-    val_end = train_end + int(total * VAL_SIZE / (TRAIN_SIZE + VAL_SIZE + TEST_SIZE))
+    train_end = int(total * TRAIN_PROP)
+    val_end = train_end + int(total * VAL_PROP)
+    # Test gets the remainder to ensure all data is used
     
     splits = {
         'train': balanced[:train_end],
         'val': balanced[train_end:val_end],
-        'test': balanced[val_end:val_end + TEST_SIZE],
+        'test': balanced[val_end:],
     }
     
     print("\nSplit sizes:")
@@ -417,8 +423,11 @@ def get_activations_for_splits(splits: Dict[str, List[Dict]], model, tokenizer) 
     for split_name, split_data in splits.items():
         print(f"\nProcessing {split_name} split ({len(split_data)} examples)...")
         
+        # First pass: collect activations and find max sequence length
         split_activations = []
         split_masks = []
+        max_seq_len = 0
+        
         for i in range(0, len(split_data), BATCH_SIZE):
             batch = split_data[i:i + BATCH_SIZE]
             print(f"  Batch {i // BATCH_SIZE + 1}/{(len(split_data) + BATCH_SIZE - 1) // BATCH_SIZE}")
@@ -448,13 +457,43 @@ def get_activations_for_splits(splits: Dict[str, List[Dict]], model, tokenizer) 
             activations = captured_activations[0]  # [batch, seq_len, hidden_dim]
             hook_handle.remove()
             
+            # Zero out activations for padding tokens using attention mask
+            attention_mask = encoded['attention_mask']  # [batch, seq_len]
+            mask_expanded = attention_mask.unsqueeze(-1).float()  # [batch, seq_len, 1]
+            activations = activations * mask_expanded  # Zero out padding tokens
+            
+            # Track maximum sequence length
+            batch_seq_len = activations.shape[1]
+            max_seq_len = max(max_seq_len, batch_seq_len)
+            
             # Store full sequence activations and attention masks
             split_activations.append(activations.cpu())
-            split_masks.append(encoded['attention_mask'].cpu())
+            split_masks.append(attention_mask.cpu())
+        
+        # Second pass: pad all batches to max_seq_len and concatenate
+        padded_activations = []
+        padded_masks = []
+        
+        for activations, masks in zip(split_activations, split_masks):
+            batch_size, seq_len, hidden_dim = activations.shape
+            if seq_len < max_seq_len:
+                # Pad activations: [batch, seq_len, hidden_dim] -> [batch, max_seq_len, hidden_dim]
+                pad_size = max_seq_len - seq_len
+                pad_tensor = torch.zeros(batch_size, pad_size, hidden_dim, dtype=activations.dtype)
+                activations_padded = torch.cat([activations, pad_tensor], dim=1)
+                # Pad masks: [batch, seq_len] -> [batch, max_seq_len]
+                pad_mask = torch.zeros(batch_size, pad_size, dtype=masks.dtype)
+                masks_padded = torch.cat([masks, pad_mask], dim=1)
+            else:
+                activations_padded = activations
+                masks_padded = masks
+            
+            padded_activations.append(activations_padded)
+            padded_masks.append(masks_padded)
         
         all_activations[split_name] = {
-            'activations': torch.cat(split_activations, dim=0),  # [n_samples, seq_len, hidden_dim]
-            'attention_mask': torch.cat(split_masks, dim=0),  # [n_samples, seq_len]
+            'activations': torch.cat(padded_activations, dim=0),  # [n_samples, max_seq_len, hidden_dim]
+            'attention_mask': torch.cat(padded_masks, dim=0),  # [n_samples, max_seq_len]
         }
         print(f"  {split_name} activations shape: {all_activations[split_name]['activations'].shape}")
     
@@ -805,19 +844,12 @@ async def main():
         del model, tokenizer
         torch.cuda.empty_cache() if torch.cuda.is_available() else None
     
-    # Prepare labels
-    labels_file = "labels.pt"
-    labels_filepath = os.path.join(OUTPUT_DIR, labels_file)
-    if os.path.exists(labels_filepath):
-        print("Loading labels from file...")
-        labels = load_labels(labels_file)
-    else:
-        labels = {
-            'train': torch.tensor([item['label_binary'] for item in splits['train']], dtype=torch.float32),
-            'val': torch.tensor([item['label_binary'] for item in splits['val']], dtype=torch.float32),
-            'test': torch.tensor([item['label_binary'] for item in splits['test']], dtype=torch.float32),
-        }
-        save_labels(labels, labels_file)
+    # Prepare labels from splits
+    labels = {
+        'train': torch.tensor([item['label_binary'] for item in splits['train']], dtype=torch.float32),
+        'val': torch.tensor([item['label_binary'] for item in splits['val']], dtype=torch.float32),
+        'test': torch.tensor([item['label_binary'] for item in splits['test']], dtype=torch.float32),
+    }
     
     # Step 6: Create and train probe
     if PROBE_TRAINING_METHOD == "adam":
