@@ -80,3 +80,16 @@ When not running individual python scripts and want to use JupyterLabs, need to 
 uv sync && uv run python -m ipykernel install --user --name=uv-env --display-name "Python (uv)"
 ```
 Now open the notebook and go to Kernel → Change Kernel → Python (uv). You may need to press the refresh button if it is not showing up.
+
+# Citation
+```
+@misc{kirch2025impactoffpolicytrainingdata,
+      title={The Impact of Off-Policy Training Data on Probe Generalisation}, 
+      author={Nathalie Kirch and Samuel Dower and Adrians Skapars and Ekdeep Singh Lubana and Dmitrii Krasheninnikov},
+      year={2025},
+      eprint={2511.17408},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2511.17408}, 
+}
+```
