@@ -5,6 +5,7 @@ from pathlib import Path
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import stats
 from scipy.stats import gaussian_kde
 from tqdm import tqdm
 
@@ -69,6 +70,14 @@ def get_bar_chart_results_table_from_wandb(train_setup, train_gen_methods, test_
     results_table = np.array(results_list).reshape(len(tr), len(train_gen_methods)).transpose()
     return results_table
 
+def hanley_mcneil_se(auc, n_pos, n_neg):
+    q1 = auc / (2 - auc)
+    q2 = (2 * auc**2) / (1 + auc)
+    se = np.sqrt(
+        (auc * (1 - auc) + (n_pos - 1) * (q1 - auc**2) + (n_neg - 1) * (q2 - auc**2))
+        / (n_pos * n_neg)
+    )
+    return se
 
 def plot_behaviour_barchart(
     train_setup, 
@@ -78,25 +87,32 @@ def plot_behaviour_barchart(
     title=None,
     xlabel="Behaviour",
     ylabel="Test AUROC",
-    save_path = None,
+    save_path=None,
     figsize=(12, 3), 
     dpi=300,
     legend_loc="upper right",
     extra_whitespace=1,
     probe_type="mean",
-    do_seperator_line=True, 
+    do_seperator_line=True,
+    error_bars=False,
+    n_test=1000,
+    ci=0.95,
+    verbose=False,
     ):
     """
     Plots a bar chart of the results of the probes specified in the train_setup list.
     Args:
         train_setup (list): 
             [probe_type, behaviour, [ID datasource, OOD datasource], activations_model, [ID off_policy_model, OOD off_policy_model]]
+        error_bars (bool): If True, adds Hanley & McNeil CI error bars to each bar.
+        n_test (int): Total test set size, assumed to be a 50/50 positive/negative split.
+        ci (float): Confidence interval level (default 0.95).
+        verbose (bool): If True, prints AUROC values and confidence intervals for each bar.
         ...
     """
     small_gap = 0.2
     big_gap = 0.5
 
-    # Get all results by querying wandb for all run configs
     if test_incentivised:
         group_labels =  ['On-Policy Incentivised', 'On-Policy Prompted', 'Off-Policy']
         train_gen_methods = ['incentivised', 'prompted', 'off_policy']
@@ -105,38 +121,84 @@ def plot_behaviour_barchart(
         group_labels =  ['On-Policy Natural', 'On-Policy Incentivised', 'On-Policy Prompted', 'Off-Policy']
         train_gen_methods = ['on_policy', 'incentivised', 'prompted', 'off_policy']
         test_gen_method = 'on_policy'
+
     print("Fetching results...")
     results_table = get_bar_chart_results_table_from_wandb(train_setup, train_gen_methods, test_gen_method, train_OOD)
     print("Fetched.")
-    
-    x = np.arange(len(train_setup))  # Positions 0, 1, 2, ..., 8
+
+    x = np.arange(len(train_setup))
     masked_array = np.ma.masked_equal(results_table, 0)
     row_means = np.ma.mean(masked_array, axis=1)
     row_stds = np.ma.std(masked_array, axis=1)
+
+    if error_bars:
+        z = stats.norm.ppf(1 - (1 - ci) / 2)
+        n_pos = n_neg = n_test // 2
+        ci_table = np.zeros_like(results_table, dtype=float)
+        for i in range(results_table.shape[0]):
+            for j in range(results_table.shape[1]):
+                auc = results_table[i, j]
+                if auc > 0:
+                    se = hanley_mcneil_se(auc, n_pos, n_neg)
+                    ci_table[i, j] = z * se
+        yerr_low  = np.where(results_table > 0, np.minimum(ci_table, results_table), 0)
+        yerr_high = np.where(results_table > 0, np.minimum(ci_table, 1 - results_table), 0)
+
+    if verbose:
+        for j in range(results_table.shape[1]):
+            behaviour = train_setup[j][1].capitalize()
+            datasource = train_setup[j][2][1 if train_OOD else 0].capitalize()
+            print(f"\n{behaviour} ({datasource})")
+            for i in range(results_table.shape[0]):
+                auc = results_table[i, j]
+                if auc > 0:
+                    if error_bars:
+                        low  = auc - yerr_low[i, j]
+                        high = auc + yerr_high[i, j]
+                        print(f"  {group_labels[i]}: {auc:.3f} ({int(ci*100)}% CI: {low:.3f} – {high:.3f})")
+                    else:
+                        print(f"  {group_labels[i]}: {auc:.3f}")
 
     behaviour_labels = [f"{train_setup[i][1].capitalize()} ({train_setup[i][2][1].capitalize() if train_OOD else train_setup[i][2][0].capitalize()})" 
                         for i in range(len(train_setup))]
     if add_mean_summary:
         behaviour_labels.append('Mean ± MSE')
 
-    # Create the figure and axis
     fig, ax = plt.subplots(figsize=figsize)
-    train_colors = ['#264653', '#2A9D8F', '#E76F51', '#F18F01']  if not test_incentivised else ['#2A9D8F', '#E76F51', '#F18F01']
+    train_colors = ['#264653', '#2A9D8F', '#E76F51', '#F18F01'] if not test_incentivised else ['#2A9D8F', '#E76F51', '#F18F01']
 
-    # Create the grouped bars - separate first groups from mean group
     pattern = "xx" if train_OOD else ""
     num_groups = results_table.shape[0]
     bar_width = (1 - small_gap) / num_groups
+
     for i in range(num_groups):
         group_offset = (i - num_groups / 2 + 0.5) * bar_width
 
-        ax.bar(x + group_offset, results_table[i], bar_width, label=group_labels[i], color=train_colors[i % 4], alpha=0.8, hatch=pattern)
+        yerr_arg = [yerr_low[i], yerr_high[i]] if error_bars else None
+        error_kw = {'elinewidth': 1.5, 'capthick': 1.5, 'capsize': 3} if error_bars else {}
+
+        ax.bar(
+            x + group_offset, results_table[i], bar_width,
+            label=group_labels[i], color=train_colors[i % 4], alpha=0.8,
+            hatch=pattern,
+            yerr=yerr_arg,
+            error_kw=error_kw,
+        )
         
         if add_mean_summary:
-            ax.bar(np.array([len(train_setup) + big_gap - small_gap]) + group_offset, row_means[i], bar_width, color=train_colors[i % 4], alpha=0.8, 
-                     yerr=row_stds[i], capsize=5, error_kw={'elinewidth': 2, 'capthick': 2}, hatch=pattern)
+            if error_bars:
+                mean_se = hanley_mcneil_se(row_means[i], n_pos, n_neg)
+                mean_yerr = z * mean_se
+            else:
+                mean_yerr = row_stds[i]
+            ax.bar(
+                np.array([len(train_setup) + big_gap - small_gap]) + group_offset,
+                row_means[i], bar_width, color=train_colors[i % 4], alpha=0.8,
+                yerr=mean_yerr, capsize=5,
+                error_kw={'elinewidth': 2, 'capthick': 2},
+                hatch=pattern,
+            )
 
-    # Customize the plot
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
@@ -153,28 +215,20 @@ def plot_behaviour_barchart(
     current_xlim = ax.get_xlim()
     ax.set_xlim(current_xlim[0], current_xlim[1] + extra_whitespace)
     
-    #ax.legend(loc='upper right', title="ID Training Set")
     ax.legend(loc=legend_loc, fontsize=10, title_fontsize=11)
-
-    # Add a grid for better readability
     ax.grid(True, alpha=0.3, axis='y')
     
-    ax.title.set_fontsize(16)     # change font size separately
-    ax.xaxis.label.set_size(13)   # x-axis label font size
-    ax.yaxis.label.set_size(13)   # y-axis label font size
+    ax.title.set_fontsize(16)
+    ax.xaxis.label.set_size(13)
+    ax.yaxis.label.set_size(13)
     
     if test_incentivised and (do_seperator_line != False):
-        # Insert vertical dashed red line
-        split_index = len(train_setup) - 4  # index where the last 4 behaviours begin
+        split_index = len(train_setup) - 4
         ax.axvline(
-            x=split_index - 0.5,   # -0.5 so it appears between bars
-            color='red',
-            linestyle='--',
-            linewidth=1.5,
-            alpha=0.8,
+            x=split_index - 0.5,
+            color='red', linestyle='--', linewidth=1.5, alpha=0.8,
         )
 
-    # Adjust layout and display
     plt.ylim(0.5, 1)
     plt.tight_layout()
     if save_path is not None:

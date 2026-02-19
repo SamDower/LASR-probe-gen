@@ -35,7 +35,7 @@ hf_cache/
 # datasets
 *.pt
 *.pkl
-*.jsonl
+# *.jsonl
 *.json
 *.npy
 *.csv
